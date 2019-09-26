@@ -1,0 +1,22 @@
+{
+  "name": "mini3d",
+  "version": "0.1.0",
+  "description": "A tiny webGL library",
+  "main": "mini3d_base.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/happyfire/mini3d.js.git"
+  },
+  "keywords": [
+    "webGL"
+  ],
+  "author": "happyfire",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/happyfire/mini3d.js/issues"
+  },
+  "homepage": "https://github.com/happyfire/mini3d.js#readme"
+}
