@@ -1,7 +1,7 @@
 
-let span = document.querySelector('#time-now');
+
 
 export default function update(){
-    span.textContent = format(new Date(), 'h:mm:ssa');
+    console.log((new Date()).toTimeString());
     setTimeout(update, 1000);
 }

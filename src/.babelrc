@@ -1,5 +1,9 @@
 {
     "presets": [
-      ["@babel/env", {"modules": false}]
+      ["@babel/env", 
+        {"modules": false,
+        "useBuiltIns": "usage"
+        }
+      ]
     ]
   }
