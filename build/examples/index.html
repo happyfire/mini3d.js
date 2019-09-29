@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Mini3d Examples</title>
+    </head>
+
+    <body onload="onLoad()">
+        <canvas id="webgl" width="400" height="400">
+            Please use the browser support canvas.
+        </canvas>
+
+        <script src="../mini3d.js"></script>
+        <script src="bundle.js"></script>
+        <script>
+            function onLoad(){
+                console.log("onLoad");
+                var canvas = document.getElementById('webgl');
+                var gl = MINI3D.GLHelper.initWebGL(canvas);
+                console.log(gl);
+                main();
+            }
+        </script> 
+    </body>
+</html>
