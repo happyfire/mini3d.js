@@ -16,8 +16,8 @@
             function onLoad(){
                 console.log("onLoad");
                 var canvas = document.getElementById('webgl');
-                var gl = MINI3D.GLHelper.initWebGL(canvas);
-                console.log(gl);
+                MINI3D.init(canvas);
+                console.log(MINI3D.gl);
                 main();
             }
         </script> 
