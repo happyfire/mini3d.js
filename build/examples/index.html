@@ -1,23 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+    <style type="text/css">
+        html, body{
+            padding: 0;
+            margin: 0;
+            overflow: hidden;      
+            background: gray;      
+        }
+
+        #webgl{
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%,-50%);
+        }
+    </style>
     <head>
         <meta charset="utf-8"/>
         <title>Mini3d Examples</title>
     </head>
 
     <body onload="onLoad()">
-        <canvas id="webgl" width="400" height="400">
+        <canvas id="webgl" width=480 height=320>
             Please use the browser support canvas.
         </canvas>
 
         <script src="../mini3d.js"></script>
         <script src="bundle.js"></script>
         <script>
-            function onLoad(){
-                console.log("onLoad");
-                var canvas = document.getElementById('webgl');
-                MINI3D.init(canvas);
-                console.log(MINI3D.gl);
+            function onLoad(){                               
+                mini3d.init('webgl');               
                 main();
             }
         </script> 

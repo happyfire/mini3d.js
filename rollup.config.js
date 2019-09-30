@@ -11,7 +11,7 @@ export default [ {
     input: 'src/mini3d.js',
     output: {        
         format: 'iife',
-        name: 'MINI3D',
+        name: 'mini3d',
         file: 'build/mini3d.js',
         sourcemap: true
     },

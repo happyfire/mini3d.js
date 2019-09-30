@@ -1,9 +1,32 @@
-var MINI3D = (function (exports) {
+var mini3d = (function (exports) {
     'use strict';
 
     exports.gl = null;
 
-    function init(canvas) {
+    function init(canvasId) {
+      var width = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : -1;
+      var height = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : -1;
+      var canvas;
+
+      if (canvasId != null) {
+        canvas = document.getElementById(canvasId);
+
+        if (canvas === undefined) {
+          console.error("cannot find a canvas named:" + canvasId);
+          return;
+        }
+      } else {
+        canvas = document.createElement("canvas");
+        document.body.appendChild(canvas);
+        canvas.width = 400;
+        canvas.height = 400;
+      }
+
+      if (width > 0 && height > 0) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
       var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
       var context = null;
 
@@ -90,12 +113,12 @@ var MINI3D = (function (exports) {
       return typeof it === 'object' ? it !== null : typeof it === 'function';
     };
 
-    var document = global_1.document;
+    var document$1 = global_1.document;
     // typeof document.createElement is 'object' in old IE
-    var EXISTS = isObject(document) && isObject(document.createElement);
+    var EXISTS = isObject(document$1) && isObject(document$1.createElement);
 
     var documentCreateElement = function (it) {
-      return EXISTS ? document.createElement(it) : {};
+      return EXISTS ? document$1.createElement(it) : {};
     };
 
     // Thank's IE8 for his funny defineProperty

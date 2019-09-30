@@ -2302,7 +2302,7 @@ var main = (function () {
   }
 
   function example(gl) {
-    var shader = new MINI3D.Shader();
+    var shader = new mini3d.Shader();
 
     if (!shader.create(VSHADER_SOURCE, FSHADER_SOURCE)) {
       console.log("Failed to initialize shaders");
@@ -2333,7 +2333,7 @@ var main = (function () {
       return;
     }
 
-    var viewMatrix = new MINI3D.Matrix4();
+    var viewMatrix = new mini3d.Matrix4();
     viewMatrix.setLookAtGL(0.2, 0.25, 0.25, 0, 0, 0, 0, 1, 0); //viewMatrix.setLookAt(0.20, 0.25, 0.25,   0, 0, 0,   0, 1, 0);
 
     gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
@@ -2356,7 +2356,7 @@ var main = (function () {
 
   function main() {
     console.log('main');
-    example(MINI3D.gl);
+    example(mini3d.gl);
   }
 
   return main;
