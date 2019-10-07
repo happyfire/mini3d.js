@@ -2498,8 +2498,33 @@ var mini3d = (function (exports) {
      return Shader;
    }();
 
+   var glBuffer =
+   /*#__PURE__*/
+   function () {
+     function glBuffer() {
+       _classCallCheck(this, glBuffer);
+
+       this.vbo = exports.gl.createBuffer();
+       this.vcount = 0;
+     }
+
+     _createClass(glBuffer, [{
+       key: "create",
+       value: function create(data, vertexCount) {
+         this.vcount = vertexCount;
+         exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, this.vbo);
+         exports.gl.bufferData(exports.gl.ARRAY_BUFFER, data, exports.gl.STATIC_DRAW);
+         exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
+         this.FSIZE = data.BYTES_PER_ELEMENT;
+       }
+     }]);
+
+     return glBuffer;
+   }();
+
    exports.Matrix4 = Matrix4;
    exports.Shader = Shader;
+   exports.glBuffer = glBuffer;
    exports.init = init;
 
    return exports;

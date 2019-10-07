@@ -21,15 +21,8 @@ var FSHADER_SOURCE=`
     }
 `;
 
-function createVBO(gl, data){
-    var vbo = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    return vbo;
-}
-
 function initVertexBuffers(gl){
+
     var verticesColors = new Float32Array([
         // vertex coordinates and color
         0.0, 0.5, -0.4,  0.4, 1.0, 0.4, //The back green triangle
@@ -44,13 +37,10 @@ function initVertexBuffers(gl){
         -0.5, -0.5, 0.0, 0.4, 0.4, 1.0,
         0.5, -0.5, 0.0, 1.0, 0.4, 0.4
     ]);
-    var n = 9;
-    var vbo = createVBO(gl, verticesColors);
-    return {
-        vbo:vbo,
-        vcount:n,
-        FSIZE:verticesColors.BYTES_PER_ELEMENT
-    };
+
+    let glBuffer = new mini3d.glBuffer();
+    glBuffer.create(verticesColors, 9);
+    return glBuffer;
 }
 
 function example(gl){
@@ -82,14 +72,13 @@ function example(gl){
     }
 
     var viewMatrix = new mini3d.Matrix4();
-    viewMatrix.setLookAtGL(0.2, 0.25, 0.25,  0, 0, 0,  0, 1, 0);
-    //viewMatrix.setLookAt(0.20, 0.25, 0.25,   0, 0, 0,   0, 1, 0);
+    viewMatrix.setLookAtGL(0.2, 0.25, 0.25,  0, 0, 0,  0, 1, 0);    
     gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
 
-    var vbodata = initVertexBuffers(gl);
-    var n = vbodata.vcount;
-    var vbo = vbodata.vbo;
-    var FSIZE = vbodata.FSIZE;
+    var vertexBuffer = initVertexBuffers(gl);
+    var n = vertexBuffer.vcount;
+    var vbo = vertexBuffer.vbo;
+    var FSIZE = vertexBuffer.FSIZE;
 
     gl.clearColor(0, 0, 0, 1);
     //gl.enable(gl.DEPTH_TEST);

@@ -2278,27 +2278,15 @@ var main = (function () {
   var VSHADER_SOURCE = "\n    attribute vec4 a_Position;\n    attribute vec4 a_Color;\n    uniform mat4 u_ViewMatrix;\n    varying vec4 v_Color;\n    void main(){\n        gl_Position = u_ViewMatrix * a_Position;\n        v_Color = a_Color;\n    }\n";
   var FSHADER_SOURCE = "\n    #ifdef GL_ES\n    precision mediump float;\n    #endif\n    varying vec4 v_Color;\n    void main(){\n        gl_FragColor = v_Color;\n    }\n";
 
-  function createVBO(gl, data) {
-    var vbo = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    return vbo;
-  }
-
   function initVertexBuffers(gl) {
     var verticesColors = new Float32Array([// vertex coordinates and color
     0.0, 0.5, -0.4, 0.4, 1.0, 0.4, //The back green triangle
     -0.5, -0.5, -0.4, 0.4, 1.0, 0.4, 0.5, -0.5, -0.4, 1.0, 0.4, 0.4, 0.5, 0.4, -0.2, 1.0, 0.4, 0.4, //The middle yellow triangle
     -0.5, 0.4, -0.2, 1.0, 1.0, 0.4, 0.0, -0.6, -0.2, 1.0, 1.0, 0.4, 0.0, 0.5, 0.0, 0.4, 0.4, 1.0, //The front blue triangle
     -0.5, -0.5, 0.0, 0.4, 0.4, 1.0, 0.5, -0.5, 0.0, 1.0, 0.4, 0.4]);
-    var n = 9;
-    var vbo = createVBO(gl, verticesColors);
-    return {
-      vbo: vbo,
-      vcount: n,
-      FSIZE: verticesColors.BYTES_PER_ELEMENT
-    };
+    var glBuffer = new mini3d.glBuffer();
+    glBuffer.create(verticesColors, 9);
+    return glBuffer;
   }
 
   function example(gl) {
@@ -2334,13 +2322,12 @@ var main = (function () {
     }
 
     var viewMatrix = new mini3d.Matrix4();
-    viewMatrix.setLookAtGL(0.2, 0.25, 0.25, 0, 0, 0, 0, 1, 0); //viewMatrix.setLookAt(0.20, 0.25, 0.25,   0, 0, 0,   0, 1, 0);
-
+    viewMatrix.setLookAtGL(0.2, 0.25, 0.25, 0, 0, 0, 0, 1, 0);
     gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
-    var vbodata = initVertexBuffers(gl);
-    var n = vbodata.vcount;
-    var vbo = vbodata.vbo;
-    var FSIZE = vbodata.FSIZE;
+    var vertexBuffer = initVertexBuffers();
+    var n = vertexBuffer.vcount;
+    var vbo = vertexBuffer.vbo;
+    var FSIZE = vertexBuffer.FSIZE;
     gl.clearColor(0, 0, 0, 1); //gl.enable(gl.DEPTH_TEST);
     // draw
 
