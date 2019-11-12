@@ -25,46 +25,31 @@ var FSHADER_SOURCE=`
 function initVertexBuffers(gl){
 
     let vertexBuffer = new VertexBuffer();
-    vertexBuffer.appendVertexPosition(0.0, 0.5, -0.4);
-    vertexBuffer.appendVertexPosition(-0.5, -0.5, -0.4);
-    vertexBuffer.appendVertexPosition(0.5, -0.5, -0.4);
-    vertexBuffer.appendVertexPosition(0.5, 0.4, -0.2);
-    vertexBuffer.appendVertexPosition(-0.5, 0.4, -0.2);
-    vertexBuffer.appendVertexPosition(0.0, -0.6, -0.2);
-    vertexBuffer.appendVertexPosition(0.0, 0.5, 0.0);
-    vertexBuffer.appendVertexPosition(-0.5, -0.5, 0.0);
-    vertexBuffer.appendVertexPosition(0.5, -0.5, 0.0);
+    vertexBuffer.setPositions([
+        0.0, 0.5, -0.4,
+        -0.5, -0.5, -0.4,
+        0.5, -0.5, -0.4,
+        0.5, 0.4, -0.2,
+        -0.5, 0.4, -0.2,
+        0.0, -0.6, -0.2,
+        0.0, 0.5, 0.0,
+        -0.5, -0.5, 0.0,
+        0.5, -0.5, 0.0
+    ], 3);
+    
+    vertexBuffer.setColors([
+        0.4, 1.0, 0.4,
+        0.4, 1.0, 0.4,
+        1.0, 0.4, 0.4,
+        1.0, 0.4, 0.4,
+        1.0, 1.0, 0.4,
+        1.0, 1.0, 0.4,
+        0.4, 0.4, 1.0,
+        0.4, 0.4, 1.0,
+        1.0, 0.4, 0.4
+    ], 3);
 
-    vertexBuffer.appendVertexColor(0.4, 1.0, 0.4);
-    vertexBuffer.appendVertexColor(0.4, 1.0, 0.4);
-    vertexBuffer.appendVertexColor(1.0, 0.4, 0.4);
-    vertexBuffer.appendVertexColor(1.0, 0.4, 0.4);
-    vertexBuffer.appendVertexColor(1.0, 1.0, 0.4);
-    vertexBuffer.appendVertexColor(1.0, 1.0, 0.4);
-    vertexBuffer.appendVertexColor(0.4, 0.4, 1.0);
-    vertexBuffer.appendVertexColor(0.4, 0.4, 1.0);
-    vertexBuffer.appendVertexColor(1.0, 0.4, 0.4);
-
-    return vertexBuffer.createBuffer();
-
-    // var verticesColors = new Float32Array([
-    //     // vertex coordinates and color
-    //     0.0, 0.5, -0.4,  0.4, 1.0, 0.4, //The back green triangle
-    //     -0.5, -0.5, -0.4, 0.4, 1.0, 0.4,
-    //     0.5, -0.5, -0.4, 1.0, 0.4, 0.4,
-
-    //     0.5, 0.4, -0.2, 1.0, 0.4, 0.4, //The middle yellow triangle
-    //     -0.5, 0.4, -0.2, 1.0, 1.0, 0.4,
-    //     0.0, -0.6, -0.2, 1.0, 1.0, 0.4,
-
-    //     0.0, 0.5, 0.0, 0.4, 0.4, 1.0, //The front blue triangle
-    //     -0.5, -0.5, 0.0, 0.4, 0.4, 1.0,
-    //     0.5, -0.5, 0.0, 1.0, 0.4, 0.4
-    // ]);
-
-    // let glBuffer = new mini3d.glBuffer();
-    // glBuffer.create(verticesColors, 9);
-    // return glBuffer;
+    return vertexBuffer.createBuffer();    
 }
 
 function example(gl){

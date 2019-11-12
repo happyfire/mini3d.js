@@ -3,29 +3,39 @@ class VertexBuffer{
     
 
     constructor(){
-        this._positions = [];
-        this._colors=[];
+        this._positions = null;
+        this._posCompCnt = 3;
+        this._colors= null;
+        this._colorCompCnt = 3;
     }
 
-    appendVertexPosition(x,y,z){
-        this._positions.push([x,y,z]);
+    setPositions(positions, compCnt){
+        this._positions = positions;
+        this._posCompCnt = compCnt;
     }
 
-    appendVertexColor(r,g,b){
-        this._colors.push([r,g,b]);
-    }
+    setColors(colors, compCnt){
+        this._colors = colors;
+        this._colorCompCnt = compCnt;
+    }   
 
     createBuffer(){
-        let vertexCount = this._positions.length;
-        let hasColor = this._colors.length > 0;        
+        if(this._positions == null || this._positions.length==0){
+            return;
+        }
+
+        let vertexCount = this._positions.length / this._posCompCnt;
+        let hasColor = this._colors && this._colors.length > 0;        
 
         let data = [];
         for(let i=0; i<vertexCount; i++){
-            let pos = this._positions[i];
-            data.push(pos[0],pos[1],pos[2]);
+            for(let k=0; k<this._posCompCnt; k++){
+                data.push(this._positions[i*this._posCompCnt+k]);
+            }            
             if(hasColor){
-                let color = this._colors[i];
-                data.push(color[0],color[1],color[2]);
+                for(let k=0; k<this._colorCompCnt; k++){
+                    data.push(this._colors[i*this._colorCompCnt+k]);
+                }                
             }
         }
 

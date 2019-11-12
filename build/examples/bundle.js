@@ -2303,34 +2303,44 @@ var main = (function () {
      function VertexBuffer() {
        _classCallCheck(this, VertexBuffer);
 
-       this._positions = [];
-       this._colors = [];
+       this._positions = null;
+       this._posCompCnt = 3;
+       this._colors = null;
+       this._colorCompCnt = 3;
      }
 
      _createClass(VertexBuffer, [{
-       key: "appendVertexPosition",
-       value: function appendVertexPosition(x, y, z) {
-         this._positions.push([x, y, z]);
+       key: "setPositions",
+       value: function setPositions(positions, compCnt) {
+         this._positions = positions;
+         this._posCompCnt = compCnt;
        }
      }, {
-       key: "appendVertexColor",
-       value: function appendVertexColor(r, g, b) {
-         this._colors.push([r, g, b]);
+       key: "setColors",
+       value: function setColors(colors, compCnt) {
+         this._colors = colors;
+         this._colorCompCnt = compCnt;
        }
      }, {
        key: "createBuffer",
        value: function createBuffer() {
-         var vertexCount = this._positions.length;
-         var hasColor = this._colors.length > 0;
+         if (this._positions == null || this._positions.length == 0) {
+           return;
+         }
+
+         var vertexCount = this._positions.length / this._posCompCnt;
+         var hasColor = this._colors && this._colors.length > 0;
          var data = [];
 
          for (var i = 0; i < vertexCount; i++) {
-           var pos = this._positions[i];
-           data.push(pos[0], pos[1], pos[2]);
+           for (var k = 0; k < this._posCompCnt; k++) {
+             data.push(this._positions[i * this._posCompCnt + k]);
+           }
 
            if (hasColor) {
-             var color = this._colors[i];
-             data.push(color[0], color[1], color[2]);
+             for (var _k = 0; _k < this._colorCompCnt; _k++) {
+               data.push(this._colors[i * this._colorCompCnt + _k]);
+             }
            }
          }
 
@@ -2349,39 +2359,9 @@ var main = (function () {
 
    function initVertexBuffers(gl) {
      var vertexBuffer = new VertexBuffer();
-     vertexBuffer.appendVertexPosition(0.0, 0.5, -0.4);
-     vertexBuffer.appendVertexPosition(-0.5, -0.5, -0.4);
-     vertexBuffer.appendVertexPosition(0.5, -0.5, -0.4);
-     vertexBuffer.appendVertexPosition(0.5, 0.4, -0.2);
-     vertexBuffer.appendVertexPosition(-0.5, 0.4, -0.2);
-     vertexBuffer.appendVertexPosition(0.0, -0.6, -0.2);
-     vertexBuffer.appendVertexPosition(0.0, 0.5, 0.0);
-     vertexBuffer.appendVertexPosition(-0.5, -0.5, 0.0);
-     vertexBuffer.appendVertexPosition(0.5, -0.5, 0.0);
-     vertexBuffer.appendVertexColor(0.4, 1.0, 0.4);
-     vertexBuffer.appendVertexColor(0.4, 1.0, 0.4);
-     vertexBuffer.appendVertexColor(1.0, 0.4, 0.4);
-     vertexBuffer.appendVertexColor(1.0, 0.4, 0.4);
-     vertexBuffer.appendVertexColor(1.0, 1.0, 0.4);
-     vertexBuffer.appendVertexColor(1.0, 1.0, 0.4);
-     vertexBuffer.appendVertexColor(0.4, 0.4, 1.0);
-     vertexBuffer.appendVertexColor(0.4, 0.4, 1.0);
-     vertexBuffer.appendVertexColor(1.0, 0.4, 0.4);
-     return vertexBuffer.createBuffer(); // var verticesColors = new Float32Array([
-     //     // vertex coordinates and color
-     //     0.0, 0.5, -0.4,  0.4, 1.0, 0.4, //The back green triangle
-     //     -0.5, -0.5, -0.4, 0.4, 1.0, 0.4,
-     //     0.5, -0.5, -0.4, 1.0, 0.4, 0.4,
-     //     0.5, 0.4, -0.2, 1.0, 0.4, 0.4, //The middle yellow triangle
-     //     -0.5, 0.4, -0.2, 1.0, 1.0, 0.4,
-     //     0.0, -0.6, -0.2, 1.0, 1.0, 0.4,
-     //     0.0, 0.5, 0.0, 0.4, 0.4, 1.0, //The front blue triangle
-     //     -0.5, -0.5, 0.0, 0.4, 0.4, 1.0,
-     //     0.5, -0.5, 0.0, 1.0, 0.4, 0.4
-     // ]);
-     // let glBuffer = new mini3d.glBuffer();
-     // glBuffer.create(verticesColors, 9);
-     // return glBuffer;
+     vertexBuffer.setPositions([0.0, 0.5, -0.4, -0.5, -0.5, -0.4, 0.5, -0.5, -0.4, 0.5, 0.4, -0.2, -0.5, 0.4, -0.2, 0.0, -0.6, -0.2, 0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0], 3);
+     vertexBuffer.setColors([0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 1.0, 1.0, 0.4, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 0.4], 3);
+     return vertexBuffer.createBuffer();
    }
 
    function example(gl) {
