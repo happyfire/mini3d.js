@@ -1,12 +1,17 @@
+import { gl } from "./gl";
 
-class VertexBuffer{
-    
-
-    constructor(){
+class Mesh{    
+    constructor(){        
         this._positions = null;
         this._posCompCnt = 3;
         this._colors= null;
-        this._colorCompCnt = 3;
+        this._colorCompCnt = 3;  
+        this._vbo = gl.createBuffer();
+        this._vcount = 0;      
+    }
+
+    destroy(){
+        gl.deleteBuffer(this._vbo);        
     }
 
     setPositions(positions, compCnt){
@@ -19,7 +24,7 @@ class VertexBuffer{
         this._colorCompCnt = compCnt;
     }   
 
-    createBuffer(){
+    apply(){
         if(this._positions == null || this._positions.length==0){
             return;
         }
@@ -39,11 +44,15 @@ class VertexBuffer{
             }
         }
 
-        let buffer = new Float32Array(data);
-        let glBuffer = new mini3d.glBuffer();
-        glBuffer.create(buffer, vertexCount);
-        return glBuffer;
+        let array = new Float32Array(data);
+
+        this._vcount =  vertexCount;
+        gl.bindBuffer(gl.ARRAY_BUFFER, this._vbo);
+        gl.bufferData(gl.ARRAY_BUFFER, array, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        
+        this.FSIZE = array.BYTES_PER_ELEMENT;
     }
 }
 
-export { VertexBuffer };
+export { Mesh };

@@ -1,4 +1,4 @@
-import { VertexBuffer } from "../../src/mini3d";
+import { Mesh } from "../../src/mini3d";
 
 
 var VSHADER_SOURCE=`
@@ -22,10 +22,10 @@ var FSHADER_SOURCE=`
     }
 `;
 
-function initVertexBuffers(gl){
+function createMesh(gl){
 
-    let vertexBuffer = new VertexBuffer();
-    vertexBuffer.setPositions([
+    let mesh = new mini3d.Mesh();    
+    mesh.setPositions([
         0.0, 0.5, -0.4,
         -0.5, -0.5, -0.4,
         0.5, -0.5, -0.4,
@@ -37,7 +37,7 @@ function initVertexBuffers(gl){
         0.5, -0.5, 0.0
     ], 3);
     
-    vertexBuffer.setColors([
+    mesh.setColors([
         0.4, 1.0, 0.4,
         0.4, 1.0, 0.4,
         1.0, 0.4, 0.4,
@@ -49,7 +49,9 @@ function initVertexBuffers(gl){
         1.0, 0.4, 0.4
     ], 3);
 
-    return vertexBuffer.createBuffer();    
+    mesh.apply();
+
+    return mesh;   
 }
 
 function example(gl){
@@ -84,10 +86,10 @@ function example(gl){
     viewMatrix.setLookAtGL(0.2, 0.25, 0.25,  0, 0, 0,  0, 1, 0);    
     gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
 
-    var vertexBuffer = initVertexBuffers(gl);
-    var n = vertexBuffer.vcount;
-    var vbo = vertexBuffer.vbo;
-    var FSIZE = vertexBuffer.FSIZE;
+    var mesh = createMesh(gl);
+    var n = mesh._vcount;
+    var vbo = mesh._vbo;
+    var FSIZE = mesh._FSIZE;
 
     gl.clearColor(0, 0, 0, 1);
     //gl.enable(gl.DEPTH_TEST);

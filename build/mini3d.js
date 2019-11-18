@@ -181,31 +181,18 @@ var mini3d = (function (exports) {
 
    }
 
-   class glBuffer {
-       constructor(){
-          this.vbo = exports.gl.createBuffer();
-          this.vcount = 0;
-       }
-
-       create(data, vertexCount){    
-           this.vcount =  vertexCount;
-           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, this.vbo);
-           exports.gl.bufferData(exports.gl.ARRAY_BUFFER, data, exports.gl.STATIC_DRAW);
-           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
-           
-           this.FSIZE = data.BYTES_PER_ELEMENT;
-       }
-
-   }
-
-   class VertexBuffer{
-       
-
-       constructor(){
+   class Mesh{    
+       constructor(){        
            this._positions = null;
            this._posCompCnt = 3;
            this._colors= null;
-           this._colorCompCnt = 3;
+           this._colorCompCnt = 3;  
+           this._vbo = exports.gl.createBuffer();
+           this._vcount = 0;      
+       }
+
+       destroy(){
+           exports.gl.deleteBuffer(this._vbo);        
        }
 
        setPositions(positions, compCnt){
@@ -218,7 +205,7 @@ var mini3d = (function (exports) {
            this._colorCompCnt = compCnt;
        }   
 
-       createBuffer(){
+       apply(){
            if(this._positions == null || this._positions.length==0){
                return;
            }
@@ -238,17 +225,20 @@ var mini3d = (function (exports) {
                }
            }
 
-           let buffer = new Float32Array(data);
-           let glBuffer = new mini3d.glBuffer();
-           glBuffer.create(buffer, vertexCount);
-           return glBuffer;
+           let array = new Float32Array(data);
+
+           this._vcount =  vertexCount;
+           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, this._vbo);
+           exports.gl.bufferData(exports.gl.ARRAY_BUFFER, array, exports.gl.STATIC_DRAW);
+           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
+           
+           this.FSIZE = array.BYTES_PER_ELEMENT;
        }
    }
 
    exports.Matrix4 = Matrix4;
+   exports.Mesh = Mesh;
    exports.Shader = Shader;
-   exports.VertexBuffer = VertexBuffer;
-   exports.glBuffer = glBuffer;
    exports.init = init;
 
    return exports;

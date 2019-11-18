@@ -2275,93 +2275,15 @@ var main = (function () {
    // https://tc39.github.io/ecma262/#sec-%typedarray%.prototype.tostring
    arrayBufferViewCore.exportProto('toString', arrayToString, (Uint8ArrayPrototype || {}).toString != arrayToString);
 
-   function _classCallCheck(instance, Constructor) {
-     if (!(instance instanceof Constructor)) {
-       throw new TypeError("Cannot call a class as a function");
-     }
-   }
-
-   function _defineProperties(target, props) {
-     for (var i = 0; i < props.length; i++) {
-       var descriptor = props[i];
-       descriptor.enumerable = descriptor.enumerable || false;
-       descriptor.configurable = true;
-       if ("value" in descriptor) descriptor.writable = true;
-       Object.defineProperty(target, descriptor.key, descriptor);
-     }
-   }
-
-   function _createClass(Constructor, protoProps, staticProps) {
-     if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-     if (staticProps) _defineProperties(Constructor, staticProps);
-     return Constructor;
-   }
-
-   var VertexBuffer =
-   /*#__PURE__*/
-   function () {
-     function VertexBuffer() {
-       _classCallCheck(this, VertexBuffer);
-
-       this._positions = null;
-       this._posCompCnt = 3;
-       this._colors = null;
-       this._colorCompCnt = 3;
-     }
-
-     _createClass(VertexBuffer, [{
-       key: "setPositions",
-       value: function setPositions(positions, compCnt) {
-         this._positions = positions;
-         this._posCompCnt = compCnt;
-       }
-     }, {
-       key: "setColors",
-       value: function setColors(colors, compCnt) {
-         this._colors = colors;
-         this._colorCompCnt = compCnt;
-       }
-     }, {
-       key: "createBuffer",
-       value: function createBuffer() {
-         if (this._positions == null || this._positions.length == 0) {
-           return;
-         }
-
-         var vertexCount = this._positions.length / this._posCompCnt;
-         var hasColor = this._colors && this._colors.length > 0;
-         var data = [];
-
-         for (var i = 0; i < vertexCount; i++) {
-           for (var k = 0; k < this._posCompCnt; k++) {
-             data.push(this._positions[i * this._posCompCnt + k]);
-           }
-
-           if (hasColor) {
-             for (var _k = 0; _k < this._colorCompCnt; _k++) {
-               data.push(this._colors[i * this._colorCompCnt + _k]);
-             }
-           }
-         }
-
-         var buffer = new Float32Array(data);
-         var glBuffer = new mini3d.glBuffer();
-         glBuffer.create(buffer, vertexCount);
-         return glBuffer;
-       }
-     }]);
-
-     return VertexBuffer;
-   }();
-
    var VSHADER_SOURCE = "\n    attribute vec4 a_Position;\n    attribute vec4 a_Color;\n    uniform mat4 u_ViewMatrix;\n    varying vec4 v_Color;\n    void main(){\n        gl_Position = u_ViewMatrix * a_Position;\n        v_Color = a_Color;\n    }\n";
    var FSHADER_SOURCE = "\n    #ifdef GL_ES\n    precision mediump float;\n    #endif\n    varying vec4 v_Color;\n    void main(){\n        gl_FragColor = v_Color;\n    }\n";
 
-   function initVertexBuffers(gl) {
-     var vertexBuffer = new VertexBuffer();
-     vertexBuffer.setPositions([0.0, 0.5, -0.4, -0.5, -0.5, -0.4, 0.5, -0.5, -0.4, 0.5, 0.4, -0.2, -0.5, 0.4, -0.2, 0.0, -0.6, -0.2, 0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0], 3);
-     vertexBuffer.setColors([0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 1.0, 1.0, 0.4, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 0.4], 3);
-     return vertexBuffer.createBuffer();
+   function createMesh(gl) {
+     var mesh = new mini3d.Mesh();
+     mesh.setPositions([0.0, 0.5, -0.4, -0.5, -0.5, -0.4, 0.5, -0.5, -0.4, 0.5, 0.4, -0.2, -0.5, 0.4, -0.2, 0.0, -0.6, -0.2, 0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0], 3);
+     mesh.setColors([0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 1.0, 1.0, 0.4, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 0.4], 3);
+     mesh.apply();
+     return mesh;
    }
 
    function example(gl) {
@@ -2399,10 +2321,10 @@ var main = (function () {
      var viewMatrix = new mini3d.Matrix4();
      viewMatrix.setLookAtGL(0.2, 0.25, 0.25, 0, 0, 0, 0, 1, 0);
      gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
-     var vertexBuffer = initVertexBuffers();
-     var n = vertexBuffer.vcount;
-     var vbo = vertexBuffer.vbo;
-     var FSIZE = vertexBuffer.FSIZE;
+     var mesh = createMesh();
+     var n = mesh._vcount;
+     var vbo = mesh._vbo;
+     var FSIZE = mesh._FSIZE;
      gl.clearColor(0, 0, 0, 1); //gl.enable(gl.DEPTH_TEST);
      // draw
 
