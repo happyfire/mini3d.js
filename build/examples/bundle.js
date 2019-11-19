@@ -2322,9 +2322,9 @@ var main = (function () {
      viewMatrix.setLookAtGL(0.2, 0.25, 0.25, 0, 0, 0, 0, 1, 0);
      gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
      var mesh = createMesh();
-     var n = mesh._vcount;
-     var vbo = mesh._vbo;
-     var FSIZE = mesh._FSIZE;
+     var n = mesh.vcount;
+     var vbo = mesh.vbo;
+     var FSIZE = mesh.FSIZE;
      gl.clearColor(0, 0, 0, 1); //gl.enable(gl.DEPTH_TEST);
      // draw
 

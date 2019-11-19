@@ -191,6 +191,18 @@ var mini3d = (function (exports) {
            this._vcount = 0;      
        }
 
+       get vbo(){
+           return this._vbo;
+       }
+
+       get vcount(){
+           return this._vcount;
+       }
+
+       get FSIZE(){
+           return this._FSIZE;
+       }
+
        destroy(){
            exports.gl.deleteBuffer(this._vbo);        
        }
@@ -225,14 +237,14 @@ var mini3d = (function (exports) {
                }
            }
 
-           let array = new Float32Array(data);
+           let buffer = new Float32Array(data);
 
            this._vcount =  vertexCount;
            exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, this._vbo);
-           exports.gl.bufferData(exports.gl.ARRAY_BUFFER, array, exports.gl.STATIC_DRAW);
+           exports.gl.bufferData(exports.gl.ARRAY_BUFFER, buffer, exports.gl.STATIC_DRAW);
            exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
            
-           this.FSIZE = array.BYTES_PER_ELEMENT;
+           this._FSIZE = buffer.BYTES_PER_ELEMENT;
        }
    }
 

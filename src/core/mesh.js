@@ -10,6 +10,18 @@ class Mesh{
         this._vcount = 0;      
     }
 
+    get vbo(){
+        return this._vbo;
+    }
+
+    get vcount(){
+        return this._vcount;
+    }
+
+    get FSIZE(){
+        return this._FSIZE;
+    }
+
     destroy(){
         gl.deleteBuffer(this._vbo);        
     }
@@ -44,14 +56,14 @@ class Mesh{
             }
         }
 
-        let array = new Float32Array(data);
+        let buffer = new Float32Array(data);
 
         this._vcount =  vertexCount;
         gl.bindBuffer(gl.ARRAY_BUFFER, this._vbo);
-        gl.bufferData(gl.ARRAY_BUFFER, array, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, buffer, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         
-        this.FSIZE = array.BYTES_PER_ELEMENT;
+        this._FSIZE = buffer.BYTES_PER_ELEMENT;
     }
 }
 
