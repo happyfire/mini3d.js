@@ -2275,6 +2275,28 @@ var main = (function () {
    // https://tc39.github.io/ecma262/#sec-%typedarray%.prototype.tostring
    arrayBufferViewCore.exportProto('toString', arrayToString, (Uint8ArrayPrototype || {}).toString != arrayToString);
 
+   var defineProperty$2 = objectDefineProperty.f;
+
+   var FunctionPrototype = Function.prototype;
+   var FunctionPrototypeToString = FunctionPrototype.toString;
+   var nameRE = /^\s*function ([^ (]*)/;
+   var NAME$1 = 'name';
+
+   // Function instances `.name` property
+   // https://tc39.github.io/ecma262/#sec-function-instances-name
+   if (descriptors && !(NAME$1 in FunctionPrototype)) {
+     defineProperty$2(FunctionPrototype, NAME$1, {
+       configurable: true,
+       get: function () {
+         try {
+           return FunctionPrototypeToString.call(this).match(nameRE)[1];
+         } catch (error) {
+           return '';
+         }
+       }
+     });
+   }
+
    var VSHADER_SOURCE = "\n    attribute vec4 a_Position;\n    attribute vec4 a_Color;\n    uniform mat4 u_ViewMatrix;\n    varying vec4 v_Color;\n    void main(){\n        gl_Position = u_ViewMatrix * a_Position;\n        v_Color = a_Color;\n    }\n";
    var FSHADER_SOURCE = "\n    #ifdef GL_ES\n    precision mediump float;\n    #endif\n    varying vec4 v_Color;\n    void main(){\n        gl_FragColor = v_Color;\n    }\n";
 
@@ -2308,19 +2330,11 @@ var main = (function () {
      if (a_Color < 0) {
        console.log('Failed to get the storage location of a_Color');
        return;
-     } // Get the storage location of uniform
-
-
-     var u_ViewMatrix = gl.getUniformLocation(shader.program, 'u_ViewMatrix');
-
-     if (!u_ViewMatrix) {
-       console.log('Failed to get the storage locations of u_ViewMatrix');
-       return;
      }
 
      var viewMatrix = new mini3d.Matrix4();
      viewMatrix.setLookAtGL(0.2, 0.25, 0.25, 0, 0, 0, 0, 1, 0);
-     gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
+     shader.setUniform('u_ViewMatrix', viewMatrix.elements);
      var mesh = createMesh();
      var n = mesh.vcount;
      var vbo = mesh.vbo;

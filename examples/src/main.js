@@ -74,17 +74,12 @@ function example(gl){
         console.log('Failed to get the storage location of a_Color');
         return;
     }
-
-    // Get the storage location of uniform
-    var u_ViewMatrix = gl.getUniformLocation(shader.program, 'u_ViewMatrix');
-    if(!u_ViewMatrix){
-        console.log('Failed to get the storage locations of u_ViewMatrix');
-        return;
-    }
+    
 
     var viewMatrix = new mini3d.Matrix4();
     viewMatrix.setLookAtGL(0.2, 0.25, 0.25,  0, 0, 0,  0, 1, 0);    
-    gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
+
+    shader.setUniform('u_ViewMatrix', viewMatrix.elements);   
 
     var mesh = createMesh(gl);
     var n = mesh.vcount;

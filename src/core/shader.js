@@ -1,9 +1,21 @@
 import { gl } from "./gl";
 
+class UniformInfo{
+    constructor(name, location, type, size, isArray){
+        this.name = name;
+        this.location = location; //WebGLUniformLocation
+        this.type = type;
+        this.size = size;   
+        this.isArray = isArray;     
+    }
+}
+
 class Shader{
     
     constructor(){          
-        this.program = null;    
+        this.program = null;   
+        this._attributes = {}; // {[name:string]:number}
+        this._uniforms = {};  // {[name:string]:WebGLUniformLocation}
     }
 
     create(vshader, fshader){
@@ -37,6 +49,10 @@ class Shader{
             this.program = null;    
             return false;        
         }
+
+        this.findoutAttributes();
+        this.findoutUniforms();
+
         return true;
     }
 
@@ -63,6 +79,86 @@ class Shader{
         }
 
         return shader;
+    }
+
+    findoutAttributes(){
+        let attributeCount = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
+        for(let i=0; i<attributeCount; ++i){
+            let info = gl.getActiveAttrib(this.program, i);
+            if(!info){
+                break;
+            }
+
+            this._attributes[info.name] = gl.getAttribLocation(this.program, info.name);
+        }
+
+        console.log('attributes',this._attributes);
+    }
+
+    findoutUniforms(){
+        let uniformCount = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
+        for(let i=0; i<uniformCount; ++i){
+            let info = gl.getActiveUniform(this.program, i);
+            if(!info){
+                break;
+            }
+
+            let location = gl.getUniformLocation(this.program, info.name);
+            let isArray = info.size > 1 && info.name.substr(-3) === '[0]';
+            let uniformInfo = new UniformInfo(info.name, location, info.type, info.size, isArray);
+            this._uniforms[info.name] = uniformInfo;
+        }
+
+        console.log('uniforms',this._uniforms);
+    }
+
+    setUniform(name, value){
+        let info = this._uniforms[name];
+        if(!info){
+            console.error('can not find uniform named '+name);
+            return;
+        }
+        switch(info.type){
+            case gl.FLOAT:{
+                if(info.isArray){
+                    gl.uniform1fv(info.location, value);
+                } else {
+                    gl.uniform1f(info.location, value);
+                }
+                break;
+            }
+            case gl.FLOAT_VEC2:{
+                gl.uniform2fv(info.location, value);
+                break;
+            }
+            case gl.FLOAT_VEC3:{
+                gl.uniform3fv(info.location, value);
+                break;
+            }
+            case gl.FLOAT_VEC4:{
+                gl.uniform4fv(info.location, value);
+                break;
+            }
+            case gl.FLOAT_MAT4:{
+                gl.uniformMatrix4fv(info.location, false, value);
+                break;
+            }
+            default:{
+                console.error('uniform type not support', info.type)
+                break;
+            }
+        }
+    }
+
+    setAttribute(name, vbo){
+        let location = this._attributes[name];
+        if(!location){
+            console.error('can not find attribute named '+name);
+            return;
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+        gl.enableVertexAttribArray(location);
+        
     }
 
     use(){
