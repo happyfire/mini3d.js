@@ -2316,40 +2316,16 @@ var main = (function () {
        return;
      }
 
-     shader.use(); // Get the storage location of attribute variable
-
-     var a_Position = gl.getAttribLocation(shader.program, 'a_Position');
-
-     if (a_Position < 0) {
-       console.log('Failed to get the storage location of a_Position');
-       return;
-     }
-
-     var a_Color = gl.getAttribLocation(shader.program, 'a_Color');
-
-     if (a_Color < 0) {
-       console.log('Failed to get the storage location of a_Color');
-       return;
-     }
-
+     shader.use();
      var viewMatrix = new mini3d.Matrix4();
      viewMatrix.setLookAtGL(0.2, 0.25, 0.25, 0, 0, 0, 0, 1, 0);
      shader.setUniform('u_ViewMatrix', viewMatrix.elements);
      var mesh = createMesh();
-     var n = mesh.vcount;
-     var vbo = mesh.vbo;
-     var FSIZE = mesh.FSIZE;
      gl.clearColor(0, 0, 0, 1); //gl.enable(gl.DEPTH_TEST);
      // draw
 
      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-     gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 6, 0);
-     gl.enableVertexAttribArray(a_Position);
-     gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, FSIZE * 6, FSIZE * 3);
-     gl.enableVertexAttribArray(a_Color);
-     gl.bindBuffer(gl.ARRAY_BUFFER, null);
-     gl.drawArrays(gl.TRIANGLES, 0, n);
+     mesh.draw(shader);
    }
 
    function main() {

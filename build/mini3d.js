@@ -258,12 +258,49 @@ var mini3d = (function (exports) {
            }
        }
 
+       setAttribute(name, bufferAttrib){
+           let location = this._attributes[name];
+           if(location==null){
+               console.error('can not find attribute named '+name);
+               return;
+           }
+           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, bufferAttrib.vbo);
+           exports.gl.vertexAttribPointer(location, 
+               bufferAttrib.size, 
+               bufferAttrib.type, 
+               bufferAttrib.normalized, 
+               bufferAttrib.stride, 
+               bufferAttrib.offset);
+           exports.gl.enableVertexAttribArray(location);                
+       }
+
+       disableAttribute(name){
+           let location = this._attributes[name];
+           if(location==null){
+               console.error('can not find attribute named '+name);
+               return;
+           }
+
+           exports.gl.disableVertexAttribArray(location);        
+       }
+
        use(){
            if(this.program){
                exports.gl.useProgram(this.program);
            }
        }
 
+   }
+
+   class BufferAttribInfo{
+       constructor(vbo, size, stride, offset){
+           this.vbo = vbo;
+           this.size = size;
+           this.type = exports.gl.FLOAT;
+           this.normalized = false;
+           this.stride = stride;
+           this.offset = offset;
+       }
    }
 
    class Mesh{    
@@ -273,7 +310,10 @@ var mini3d = (function (exports) {
            this._colors= null;
            this._colorCompCnt = 3;  
            this._vbo = exports.gl.createBuffer();
-           this._vcount = 0;      
+           this._vcount = 0;     
+           
+           this._attribPos = null;
+           this._attribColor = null;
        }
 
        get vbo(){
@@ -282,10 +322,6 @@ var mini3d = (function (exports) {
 
        get vcount(){
            return this._vcount;
-       }
-
-       get FSIZE(){
-           return this._FSIZE;
        }
 
        destroy(){
@@ -330,6 +366,33 @@ var mini3d = (function (exports) {
            exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
            
            this._FSIZE = buffer.BYTES_PER_ELEMENT;
+
+           let vertexSize = this._posCompCnt;
+           if(hasColor){
+               vertexSize += this._colorCompCnt;
+           }
+
+           this._attribPos = new BufferAttribInfo(this._vbo, this._posCompCnt, vertexSize*this._FSIZE, 0);
+           if(hasColor){
+               this._attribColor = new BufferAttribInfo(this._vbo, this._colorCompCnt, vertexSize*this._FSIZE, this._posCompCnt*this._FSIZE);
+           }
+           
+       }
+
+       draw(shader){
+           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, this._vbo);
+           shader.setAttribute('a_Position', this._attribPos);
+           if(this._attribColor){
+               shader.setAttribute('a_Color', this._attribColor);
+           }
+                
+           exports.gl.drawArrays(exports.gl.TRIANGLES, 0, this._vcount);
+
+           shader.disableAttribute('a_Position');
+           if(this._attribColor){
+               shader.disableAttribute('a_Color');
+           }
+           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
        }
    }
 

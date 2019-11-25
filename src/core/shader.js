@@ -150,15 +150,30 @@ class Shader{
         }
     }
 
-    setAttribute(name, vbo){
+    setAttribute(name, bufferAttrib){
         let location = this._attributes[name];
-        if(!location){
+        if(location==null){
             console.error('can not find attribute named '+name);
             return;
         }
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-        gl.enableVertexAttribArray(location);
-        
+        gl.bindBuffer(gl.ARRAY_BUFFER, bufferAttrib.vbo);
+        gl.vertexAttribPointer(location, 
+            bufferAttrib.size, 
+            bufferAttrib.type, 
+            bufferAttrib.normalized, 
+            bufferAttrib.stride, 
+            bufferAttrib.offset);
+        gl.enableVertexAttribArray(location);                
+    }
+
+    disableAttribute(name){
+        let location = this._attributes[name];
+        if(location==null){
+            console.error('can not find attribute named '+name);
+            return;
+        }
+
+        gl.disableVertexAttribArray(location);        
     }
 
     use(){

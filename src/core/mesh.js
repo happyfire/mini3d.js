@@ -1,5 +1,16 @@
 import { gl } from "./gl";
 
+class BufferAttribInfo{
+    constructor(vbo, size, stride, offset){
+        this.vbo = vbo;
+        this.size = size;
+        this.type = gl.FLOAT;
+        this.normalized = false;
+        this.stride = stride;
+        this.offset = offset;
+    }
+}
+
 class Mesh{    
     constructor(){        
         this._positions = null;
@@ -7,7 +18,10 @@ class Mesh{
         this._colors= null;
         this._colorCompCnt = 3;  
         this._vbo = gl.createBuffer();
-        this._vcount = 0;      
+        this._vcount = 0;     
+        
+        this._attribPos = null;
+        this._attribColor = null;
     }
 
     get vbo(){
@@ -16,10 +30,6 @@ class Mesh{
 
     get vcount(){
         return this._vcount;
-    }
-
-    get FSIZE(){
-        return this._FSIZE;
     }
 
     destroy(){
@@ -64,6 +74,33 @@ class Mesh{
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         
         this._FSIZE = buffer.BYTES_PER_ELEMENT;
+
+        let vertexSize = this._posCompCnt;
+        if(hasColor){
+            vertexSize += this._colorCompCnt;
+        }
+
+        this._attribPos = new BufferAttribInfo(this._vbo, this._posCompCnt, vertexSize*this._FSIZE, 0);
+        if(hasColor){
+            this._attribColor = new BufferAttribInfo(this._vbo, this._colorCompCnt, vertexSize*this._FSIZE, this._posCompCnt*this._FSIZE);
+        }
+        
+    }
+
+    draw(shader){
+        gl.bindBuffer(gl.ARRAY_BUFFER, this._vbo);
+        shader.setAttribute('a_Position', this._attribPos);
+        if(this._attribColor){
+            shader.setAttribute('a_Color', this._attribColor);
+        }
+             
+        gl.drawArrays(gl.TRIANGLES, 0, this._vcount);
+
+        shader.disableAttribute('a_Position');
+        if(this._attribColor){
+            shader.disableAttribute('a_Color');
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
     }
 }
 
