@@ -1,6 +1,3 @@
-import { Mesh } from "../../src/mini3d";
-
-
 var VSHADER_SOURCE=`
     attribute vec4 a_Position;
     attribute vec4 a_Color;
@@ -25,7 +22,7 @@ var FSHADER_SOURCE=`
 function createMesh(gl){
 
     let mesh = new mini3d.Mesh();    
-    mesh.setPositions([
+    let position_data = [
         0.0, 0.5, -0.4,
         -0.5, -0.5, -0.4,
         0.5, -0.5, -0.4,
@@ -35,9 +32,8 @@ function createMesh(gl){
         0.0, 0.5, 0.0,
         -0.5, -0.5, 0.0,
         0.5, -0.5, 0.0
-    ], 3);
-    
-    mesh.setColors([
+    ];
+    let color_data = [
         0.4, 1.0, 0.4,
         0.4, 1.0, 0.4,
         1.0, 0.4, 0.4,
@@ -47,9 +43,20 @@ function createMesh(gl){
         0.4, 0.4, 1.0,
         0.4, 0.4, 1.0,
         1.0, 0.4, 0.4
-    ], 3);
+    ];
 
+    mesh.setPositions(position_data, 3);    
+    mesh.setColors(color_data, 3);
     mesh.apply();
+
+    let format = new mini3d.VertexFormat();
+    format.addAttrib(mini3d.VertexAttribSemantic.POSITION, 3);
+    format.addAttrib(mini3d.VertexAttribSemantic.COLOR, 3);
+
+    let buffer = new mini3d.VertexBuffer(format);
+    buffer.setData(mini3d.VertexAttribSemantic.POSITION, position_data);
+    buffer.setData(mini3d.VertexAttribSemantic.COLOR, color_data);
+    buffer.uploadData();
 
     return mesh;   
 }

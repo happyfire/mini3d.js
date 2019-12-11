@@ -1,5 +1,6 @@
 import { gl } from "./gl";
 
+
 class BufferAttribInfo{
     constructor(vbo, size, stride, offset){
         this.vbo = vbo;
@@ -12,7 +13,7 @@ class BufferAttribInfo{
 }
 
 class Mesh{    
-    constructor(){        
+    constructor(){       
         this._positions = null;
         this._posCompCnt = 3;
         this._colors= null;
