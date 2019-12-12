@@ -122,8 +122,13 @@ var mini3d = (function (exports) {
        
        constructor(){          
            this.program = null;   
+           this._semanticToAttribName = {}; // {[semantic:string]:string}
            this._attributes = {}; // {[name:string]:number}
            this._uniforms = {};  // {[name:string]:WebGLUniformLocation}
+       }
+
+       mapAttributeSemantic(semantic, attribName){
+           this._semanticToAttribName[semantic] = attribName;
        }
 
        create(vshader, fshader){
@@ -258,31 +263,16 @@ var mini3d = (function (exports) {
            }
        }
 
-       setAttribute(name, bufferAttrib){
-           let location = this._attributes[name];
-           if(location==null){
-               console.error('can not find attribute named '+name);
-               return;
+       getAttributeLocation(semantic){
+           let name = this._semanticToAttribName[semantic];
+           if(name){
+               let location = this._attributes[name];
+               return location;
+           } else {
+               console.error('Shader: can not find attribute for semantic '+semantic);
+               return -1;
            }
-           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, bufferAttrib.vbo);
-           exports.gl.vertexAttribPointer(location, 
-               bufferAttrib.size, 
-               bufferAttrib.type, 
-               bufferAttrib.normalized, 
-               bufferAttrib.stride, 
-               bufferAttrib.offset);
-           exports.gl.enableVertexAttribArray(location);                
-       }
-
-       disableAttribute(name){
-           let location = this._attributes[name];
-           if(location==null){
-               console.error('can not find attribute named '+name);
-               return;
-           }
-
-           exports.gl.disableVertexAttribArray(location);        
-       }
+       }    
 
        use(){
            if(this.program){
@@ -292,111 +282,7 @@ var mini3d = (function (exports) {
 
    }
 
-   class BufferAttribInfo{
-       constructor(vbo, size, stride, offset){
-           this.vbo = vbo;
-           this.size = size;
-           this.type = exports.gl.FLOAT;
-           this.normalized = false;
-           this.stride = stride;
-           this.offset = offset;
-       }
-   }
-
-   class Mesh{    
-       constructor(){       
-           this._positions = null;
-           this._posCompCnt = 3;
-           this._colors= null;
-           this._colorCompCnt = 3;  
-           this._vbo = exports.gl.createBuffer();
-           this._vcount = 0;     
-           
-           this._attribPos = null;
-           this._attribColor = null;
-       }
-
-       get vbo(){
-           return this._vbo;
-       }
-
-       get vcount(){
-           return this._vcount;
-       }
-
-       destroy(){
-           exports.gl.deleteBuffer(this._vbo);        
-       }
-
-       setPositions(positions, compCnt){
-           this._positions = positions;
-           this._posCompCnt = compCnt;
-       }
-
-       setColors(colors, compCnt){
-           this._colors = colors;
-           this._colorCompCnt = compCnt;
-       }   
-
-       apply(){
-           if(this._positions == null || this._positions.length==0){
-               return;
-           }
-
-           let vertexCount = this._positions.length / this._posCompCnt;
-           let hasColor = this._colors && this._colors.length > 0;        
-
-           let data = [];
-           for(let i=0; i<vertexCount; i++){
-               for(let k=0; k<this._posCompCnt; k++){
-                   data.push(this._positions[i*this._posCompCnt+k]);
-               }            
-               if(hasColor){
-                   for(let k=0; k<this._colorCompCnt; k++){
-                       data.push(this._colors[i*this._colorCompCnt+k]);
-                   }                
-               }
-           }
-
-           let buffer = new Float32Array(data);
-
-           this._vcount =  vertexCount;
-           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, this._vbo);
-           exports.gl.bufferData(exports.gl.ARRAY_BUFFER, buffer, exports.gl.STATIC_DRAW);
-           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
-           
-           this._FSIZE = buffer.BYTES_PER_ELEMENT;
-
-           let vertexSize = this._posCompCnt;
-           if(hasColor){
-               vertexSize += this._colorCompCnt;
-           }
-
-           this._attribPos = new BufferAttribInfo(this._vbo, this._posCompCnt, vertexSize*this._FSIZE, 0);
-           if(hasColor){
-               this._attribColor = new BufferAttribInfo(this._vbo, this._colorCompCnt, vertexSize*this._FSIZE, this._posCompCnt*this._FSIZE);
-           }
-           
-       }
-
-       draw(shader){
-           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, this._vbo);
-           shader.setAttribute('a_Position', this._attribPos);
-           if(this._attribColor){
-               shader.setAttribute('a_Color', this._attribColor);
-           }
-                
-           exports.gl.drawArrays(exports.gl.TRIANGLES, 0, this._vcount);
-
-           shader.disableAttribute('a_Position');
-           if(this._attribColor){
-               shader.disableAttribute('a_Color');
-           }
-           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
-       }
-   }
-
-   let VertexAttribSemantic = {    
+   let VertexSemantic = {    
        POSITION : 'position',        
        NORMAL : 'normal',
        TANGENT : 'tangent',
@@ -404,15 +290,7 @@ var mini3d = (function (exports) {
        UV0 : 'uv0',
        UV1 : 'uv1',  
        UV2 : 'uv2', 
-       UV3 : 'uv3', 
-       Custom0 : 'custom0',
-       Custom1 : 'custom1',
-       Custom2 : 'custom2',
-       Custom3 : 'custom3',
-       Custom4 : 'custom4',
-       Custom5 : 'custom5',
-       Custom6 : 'custom6',
-       Custom7 : 'custom7'
+       UV3 : 'uv3'
    };
 
    //mini3d顶点使用float32类型
@@ -421,6 +299,7 @@ var mini3d = (function (exports) {
        constructor(){
            this.attribs = [];
            this.attribSizeMap = {};
+           this._vertexSize = 0;
        }
 
        addAttrib(attribSemantic, size){       
@@ -429,19 +308,21 @@ var mini3d = (function (exports) {
        }
 
        getVertexSize(){
-           let size = 0;
-           for(let i=0; i<this.attribs.length; ++i){
-               let semantic = this.attribs[i];
-               size += this.attribSizeMap[semantic];
-           }
-           return size;
+           if(this._vertexSize === 0){          
+               for(let i=0; i<this.attribs.length; ++i){
+                   let semantic = this.attribs[i];
+                   this._vertexSize += this.attribSizeMap[semantic];
+               }
+           }        
+           return this._vertexSize;
        }
    }
 
-   class VertexAttribData{
+   class VertexAttribInfo{
        constructor(attribSemantic, attribSize){
            this.semantic = attribSemantic;
            this.size = attribSize;
+           this.offset = 0;
            this.data = null;
        }
    }
@@ -449,9 +330,13 @@ var mini3d = (function (exports) {
    class VertexBuffer{
        constructor(vertexFormat){
            this._vertexCount = 0;
-           this._vertexSize = 0;
+           this._vertexStride = 0; // vertex data size in byte
            this._vertexFormat = vertexFormat;
-           this._attribData = {};
+           this._attribsInfo = {};
+           this._bufferData = null;
+
+           this.BYTES_PER_ELEMENT = 4; // for Float32Array
+
            let attribNum = this._vertexFormat.attribs.length;
            for(let i=0; i<attribNum; ++i){
                let semantic = this._vertexFormat.attribs[i];
@@ -459,8 +344,8 @@ var mini3d = (function (exports) {
                if(size==null){
                    console.error('VertexBuffer: bad semantic');
                } else {
-                   let attribData = new VertexAttribData(semantic, size);
-                   this._attribData[semantic] = attribData;
+                   let info = new VertexAttribInfo(semantic, size);
+                   this._attribsInfo[semantic] = info;
                }            
            }
 
@@ -468,7 +353,7 @@ var mini3d = (function (exports) {
        }
 
        setData(semantic, data){
-           this._attribData[semantic].data = data;
+           this._attribsInfo[semantic].data = data;
        }
 
        get vbo(){
@@ -479,64 +364,138 @@ var mini3d = (function (exports) {
            return this._vertexCount;
        }
 
+       get vertexStride(){
+           return this._vertexStride;
+       }
+
        destroy(){
            exports.gl.deleteBuffer(this._vbo);  
            this._vbo = 0;      
        }
 
-       //upload data to webGL
-       uploadData(){
-           let attribPosition = this._attribData[VertexAttribSemantic.POSITION];
-           if(attribPosition == null){
+       //combine vertex attribute datas to a data array
+       _compile(){
+           let positionInfo = this._attribsInfo[VertexSemantic.POSITION];
+           if(positionInfo == null){
                console.error('VertexBuffer: no attrib position');
                return;
            }
-           if(attribPosition.data == null || attribPosition.data.length===0){
+           if(positionInfo.data == null || positionInfo.data.length===0){
                console.error('VertexBuffer: position data is empty');
                return;
            }
 
-           this._vertexCount = attribPosition.data.length / attribPosition.size;  
-           this._vertexSize = this._vertexFormat.getVertexSize();       
-
-           let data = [];
+           this._vertexCount = positionInfo.data.length / positionInfo.size;  
+           this._vertexStride = this._vertexFormat.getVertexSize() * this.BYTES_PER_ELEMENT; 
+           
+           this._bufferData = [];
            for(let i=0; i<this._vertexCount; ++i){
                for(let semantic of this._vertexFormat.attribs){
-                   let attribData = this._attribData[semantic];
-                   if(attribData==null || attribData.data==null){
+                   let info = this._attribsInfo[semantic];
+                   if(info==null || info.data==null){
                        console.error('VertexBuffer: bad semantic '+semantic);
                        continue;
                    }
-                   for(let k=0; k<attribData.size; ++k){
-                       data.push(attribData.data[i*attribData.size+k]);
+                   for(let k=0; k<info.size; ++k){
+                       let value = info.data[ i * info.size + k ];
+                       if(value===undefined){
+                           console.error('VertexBuffer: missing value for '+semantic);
+                       }
+                       this._bufferData.push(value);
                    }
                }            
            }
 
-           console.log(data);
+           //compute offset for attrib info, and free info.data
+           let offset = 0;
+           for(let semantic of this._vertexFormat.attribs){
+               let info = this._attribsInfo[semantic];
+               info.offset = offset;
+               info.data = null;
+               offset += info.size * this.BYTES_PER_ELEMENT;
+           }
+       }
 
-           let buffer = new Float32Array(data);
+       //upload data to webGL, add free buffer data
+       upload(){
+           this._compile();
+
+           let buffer = new Float32Array(this._bufferData);
 
            exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, this._vbo);
            exports.gl.bufferData(exports.gl.ARRAY_BUFFER, buffer, exports.gl.STATIC_DRAW);
            exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
+                     
+           this._bufferData = null;
+       }
+
+       bindAttrib(shader){
+           for(let semantic of this._vertexFormat.attribs){
+               let info = this._attribsInfo[semantic];
+               
+               let location = shader.getAttributeLocation(semantic);
+               if(location>=0){
+                   exports.gl.vertexAttribPointer(location, 
+                       info.size, 
+                       exports.gl.FLOAT, //type 
+                       false, //normalized, 
+                       this._vertexStride, 
+                       info.offset);
+                   exports.gl.enableVertexAttribArray(location);
+               }                          
+           }
+       }
+
+       unbindAttrib(shader){
+           for(let semantic of this._vertexFormat.attribs){            
+               let location = shader.getAttributeLocation(semantic);
+               if(location>=0){
+                   exports.gl.disableVertexAttribArray(location);
+               }                          
+           }        
+       }
+   }
+
+   class Mesh{    
+       constructor(vertexFormat){        
+           this._vertexBuffer = new VertexBuffer(vertexFormat);
+       }
+
+       setVertexData(semantic, data){
+           this._vertexBuffer.setData(semantic, data);        
+       }  
+       
+       setTriangles(){
+
+       }
+
+       destroy(){
+           this._vertexBuffer.destroy();    
+       }      
+
+       upload(){        
+           this._vertexBuffer.upload();                               
+       }
+
+       render(shader){
+           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, this._vertexBuffer.vbo);
            
-           this._FSIZE = buffer.BYTES_PER_ELEMENT;
+           this._vertexBuffer.bindAttrib(shader);
+                     
+           exports.gl.drawArrays(exports.gl.TRIANGLES, 0, this._vertexBuffer.vertexCount);
+
+           this._vertexBuffer.unbindAttrib(shader);
            
-           // this._attribPos = new BufferAttribInfo(this._vbo, this._posCompCnt, vertexSize*this._FSIZE, 0);
-           // if(hasColor){
-           //     this._attribColor = new BufferAttribInfo(this._vbo, this._colorCompCnt, vertexSize*this._FSIZE, this._posCompCnt*this._FSIZE);
-           // }
-           
+           exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
        }
    }
 
    exports.Matrix4 = Matrix4;
    exports.Mesh = Mesh;
    exports.Shader = Shader;
-   exports.VertexAttribSemantic = VertexAttribSemantic;
    exports.VertexBuffer = VertexBuffer;
    exports.VertexFormat = VertexFormat;
+   exports.VertexSemantic = VertexSemantic;
    exports.init = init;
 
    return exports;

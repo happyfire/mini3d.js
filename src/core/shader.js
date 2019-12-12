@@ -14,8 +14,13 @@ class Shader{
     
     constructor(){          
         this.program = null;   
+        this._semanticToAttribName = {}; // {[semantic:string]:string}
         this._attributes = {}; // {[name:string]:number}
         this._uniforms = {};  // {[name:string]:WebGLUniformLocation}
+    }
+
+    mapAttributeSemantic(semantic, attribName){
+        this._semanticToAttribName[semantic] = attribName;
     }
 
     create(vshader, fshader){
@@ -150,31 +155,16 @@ class Shader{
         }
     }
 
-    setAttribute(name, bufferAttrib){
-        let location = this._attributes[name];
-        if(location==null){
-            console.error('can not find attribute named '+name);
-            return;
+    getAttributeLocation(semantic){
+        let name = this._semanticToAttribName[semantic];
+        if(name){
+            let location = this._attributes[name];
+            return location;
+        } else {
+            console.error('Shader: can not find attribute for semantic '+semantic);
+            return -1;
         }
-        gl.bindBuffer(gl.ARRAY_BUFFER, bufferAttrib.vbo);
-        gl.vertexAttribPointer(location, 
-            bufferAttrib.size, 
-            bufferAttrib.type, 
-            bufferAttrib.normalized, 
-            bufferAttrib.stride, 
-            bufferAttrib.offset);
-        gl.enableVertexAttribArray(location);                
-    }
-
-    disableAttribute(name){
-        let location = this._attributes[name];
-        if(location==null){
-            console.error('can not find attribute named '+name);
-            return;
-        }
-
-        gl.disableVertexAttribArray(location);        
-    }
+    }    
 
     use(){
         if(this.program){
