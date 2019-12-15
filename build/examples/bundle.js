@@ -1,7 +1,7 @@
 var main = (function () {
     'use strict';
 
-    var VSHADER_SOURCE = "\n    attribute vec4 a_Position;\n    attribute vec4 a_Color;\n    attribute float a_Custom;\n    uniform mat4 u_ViewMatrix;\n    varying vec4 v_Color;\n    varying float v_Custom;\n    void main(){\n        gl_Position = u_ViewMatrix * a_Position;\n        v_Color = a_Color;\n        v_Custom = a_Custom;\n    }\n";
+    var VSHADER_SOURCE = "\n    attribute vec4 a_Position;\n    attribute vec4 a_Color;\n    attribute float a_Custom;    \n    uniform mat4 u_ModelViewMatrix;\n    varying vec4 v_Color;\n    varying float v_Custom;\n    void main(){\n        gl_Position = u_ModelViewMatrix * a_Position;\n        v_Color = a_Color;\n        v_Custom = a_Custom;\n    }\n";
     var FSHADER_SOURCE = "\n    #ifdef GL_ES\n    precision mediump float;\n    #endif\n    varying vec4 v_Color;\n    varying float v_Custom;\n    void main(){\n        gl_FragColor = v_Color * v_Custom;\n    }\n";
     var Semantic_Custom = 'custom';
 
@@ -21,6 +21,8 @@ var main = (function () {
       return mesh;
     }
 
+    var g_eyeX, g_eyeY, g_eyeZ;
+
     function example(gl) {
       var shader = new mini3d.Shader();
 
@@ -34,12 +36,41 @@ var main = (function () {
       shader.mapAttributeSemantic(Semantic_Custom, 'a_Custom');
       shader.use();
       var viewMatrix = new mini3d.Matrix4();
-      viewMatrix.setLookAtGL(0.2, 0.25, 0.25, 0, 0, 0, 0, 1, 0);
-      shader.setUniform('u_ViewMatrix', viewMatrix.elements);
+      g_eyeX = 0.2;
+      g_eyeY = 0.25;
+      g_eyeZ = 0.25;
       var mesh = createMesh();
-      gl.clearColor(0, 0, 0, 1); //gl.enable(gl.DEPTH_TEST);
-      // draw
 
+      document.onkeydown = function (ev) {
+        keydown(ev, mesh, shader, viewMatrix);
+      }; //let modelMatrix = new mini3d.Matrix4();
+      //modelMatrix.setRotate(-10, 0, 0, 1); //Rotate around z-axis
+      //let modelViewMatrix = viewMatrix.multiply(modelMatrix);
+
+
+      gl.clearColor(0, 0, 0, 1); //gl.enable(gl.DEPTH_TEST);
+
+      draw(mesh, shader, viewMatrix);
+    }
+
+    function keydown(ev, mesh, shader, viewMatrix) {
+      if (ev.keyCode == 39) {
+        //right arrow
+        g_eyeX += 0.01;
+      } else if (ev.keyCode == 37) {
+        //left arrow
+        g_eyeX -= 0.01;
+      } else {
+        return;
+      }
+
+      draw(mesh, shader, viewMatrix);
+    }
+
+    function draw(mesh, shader, viewMatrix) {
+      viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ, 0, 0, 0, 0, 1, 0);
+      shader.setUniform('u_ModelViewMatrix', viewMatrix.elements);
+      var gl = mini3d.gl;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       mesh.render(shader);
     }

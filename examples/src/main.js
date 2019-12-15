@@ -1,12 +1,12 @@
 var VSHADER_SOURCE=`
     attribute vec4 a_Position;
     attribute vec4 a_Color;
-    attribute float a_Custom;
-    uniform mat4 u_ViewMatrix;
+    attribute float a_Custom;    
+    uniform mat4 u_ModelViewMatrix;
     varying vec4 v_Color;
     varying float v_Custom;
     void main(){
-        gl_Position = u_ViewMatrix * a_Position;
+        gl_Position = u_ModelViewMatrix * a_Position;
         v_Color = a_Color;
         v_Custom = a_Custom;
     }
@@ -75,6 +75,8 @@ function createMesh(){
     return mesh;   
 }
 
+let g_eyeX, g_eyeY, g_eyeZ;
+
 function example(gl){
     let shader = new mini3d.Shader();
     if(!shader.create(VSHADER_SOURCE, FSHADER_SOURCE)){
@@ -88,19 +90,50 @@ function example(gl){
 
     shader.use();    
     
-    var viewMatrix = new mini3d.Matrix4();
-    viewMatrix.setLookAtGL(0.2, 0.25, 0.25,  0, 0, 0,  0, 1, 0);    
-    shader.setUniform('u_ViewMatrix', viewMatrix.elements);   
+    let viewMatrix = new mini3d.Matrix4();
+    g_eyeX = 0.2;
+    g_eyeY = 0.25;
+    g_eyeZ = 0.25;
 
-    var mesh = createMesh();    
+    var mesh = createMesh(); 
+
+    document.onkeydown = function(ev){
+        keydown(ev, mesh, shader, viewMatrix);
+    }
+
+         
+
+    //let modelMatrix = new mini3d.Matrix4();
+    //modelMatrix.setRotate(-10, 0, 0, 1); //Rotate around z-axis
+
+    //let modelViewMatrix = viewMatrix.multiply(modelMatrix);
 
     gl.clearColor(0, 0, 0, 1);
     //gl.enable(gl.DEPTH_TEST);
-    // draw
+
+    draw(mesh, shader, viewMatrix);
+
+}
+
+function keydown(ev, mesh, shader, viewMatrix){
+    if(ev.keyCode==39){ //right arrow
+        g_eyeX += 0.01;
+    } else if(ev.keyCode==37){ //left arrow
+        g_eyeX -= 0.01;
+    } else {
+        return;
+    }
+
+    draw(mesh, shader, viewMatrix);
+}
+
+function draw(mesh, shader, viewMatrix){
+    viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ,  0, 0, 0,  0, 1, 0);  
+    shader.setUniform('u_ModelViewMatrix', viewMatrix.elements);
+
+    let gl = mini3d.gl;
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-
     mesh.render(shader);
-
 }
 
 export default function main(){
