@@ -1,7 +1,7 @@
 var main = (function () {
     'use strict';
 
-    var VSHADER_SOURCE = "\n    attribute vec4 a_Position;\n    attribute vec4 a_Color;\n    attribute float a_Custom;    \n    uniform mat4 u_ModelViewMatrix;\n    varying vec4 v_Color;\n    varying float v_Custom;\n    void main(){\n        gl_Position = u_ModelViewMatrix * a_Position;\n        v_Color = a_Color;\n        v_Custom = a_Custom;\n    }\n";
+    var VSHADER_SOURCE = "\n    attribute vec4 a_Position;\n    attribute vec4 a_Color;\n    attribute float a_Custom;    \n    uniform mat4 u_mvpMatrix;\n    varying vec4 v_Color;\n    varying float v_Custom;\n    void main(){\n        gl_Position = u_mvpMatrix * a_Position;\n        v_Color = a_Color;\n        v_Custom = a_Custom;\n    }\n";
     var FSHADER_SOURCE = "\n    #ifdef GL_ES\n    precision mediump float;\n    #endif\n    varying vec4 v_Color;\n    varying float v_Custom;\n    void main(){\n        gl_FragColor = v_Color * v_Custom;\n    }\n";
     var Semantic_Custom = 'custom';
 
@@ -69,7 +69,10 @@ var main = (function () {
 
     function draw(mesh, shader, viewMatrix) {
       viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ, 0, 0, 0, 0, 1, 0);
-      shader.setUniform('u_ModelViewMatrix', viewMatrix.elements);
+      var projMatrix = new mini3d.Matrix4();
+      projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 2.0);
+      var mvpMatrix = projMatrix.multiply(viewMatrix);
+      shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
       var gl = mini3d.gl;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       mesh.render(shader);

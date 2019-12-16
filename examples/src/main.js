@@ -2,11 +2,11 @@ var VSHADER_SOURCE=`
     attribute vec4 a_Position;
     attribute vec4 a_Color;
     attribute float a_Custom;    
-    uniform mat4 u_ModelViewMatrix;
+    uniform mat4 u_mvpMatrix;
     varying vec4 v_Color;
     varying float v_Custom;
     void main(){
-        gl_Position = u_ModelViewMatrix * a_Position;
+        gl_Position = u_mvpMatrix * a_Position;
         v_Color = a_Color;
         v_Custom = a_Custom;
     }
@@ -128,8 +128,13 @@ function keydown(ev, mesh, shader, viewMatrix){
 }
 
 function draw(mesh, shader, viewMatrix){
-    viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ,  0, 0, 0,  0, 1, 0);  
-    shader.setUniform('u_ModelViewMatrix', viewMatrix.elements);
+    viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ,  0, 0, 0,  0, 1, 0); 
+    let projMatrix = new mini3d.Matrix4();
+    projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 2.0); 
+
+    let mvpMatrix = projMatrix.multiply(viewMatrix);
+    
+    shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
 
     let gl = mini3d.gl;
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
