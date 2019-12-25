@@ -187,20 +187,19 @@ class Matrix4 {
         e[15] = 1;
     
         return this.translate(-eyeX, -eyeY, -eyeZ);
-    };
+    }
 
-    setOrtho(left, right, bottom, top, near, far){
-        let e, rw, rh, rd;
-
+    setOrtho(left, right, bottom, top, near, far){ 
         if (left === right || bottom === top || near === far) {
-            throw 'null frustum';
+            console.error("wrong param");
+            return;
         }
 
-        rw = 1 / (right - left);
-        rh = 1 / (top - bottom);
-        rd = 1 / (far - near);
+        let rw = 1 / (right - left);
+        let rh = 1 / (top - bottom);
+        let rd = 1 / (far - near);
 
-        e = this.elements;
+        let e = this.elements;
 
         e[0]  = 2 * rw;
         e[1]  = 0;
@@ -221,6 +220,88 @@ class Matrix4 {
         e[13] = -(top + bottom) * rh;
         e[14] = -(far + near) * rd;
         e[15] = 1;
+
+        return this;
+    }
+
+    setFrustum(left, right, bottom, top, near, far){
+        if (left === right || bottom === top || near === far) {
+            console.error("wrong param");
+            return;
+        }
+        if(near <= 0){
+            console.error("wrong near");
+            return;
+        }
+        if(far <= 0){
+            console.error("wrong far");
+            return;
+        }
+
+        let rw = 1 / (right - left);
+        let rh = 1 / (top - bottom);
+        let rd = 1 / (far - near);
+
+        let e = this.elements;
+
+        e[0]  = 2 * near * rw;
+        e[1]  = 0;
+        e[2]  = 0;
+        e[3]  = 0;
+
+        e[4]  = 0;
+        e[5]  = 2 * near * rh;
+        e[6]  = 0;
+        e[7]  = 0;
+
+        e[8]  = (right + left) * rw;
+        e[9]  = (top + bottom) * rh;
+        e[10] = -(far + near) * rd;
+        e[11] = -1;
+
+        e[12] = 0
+        e[13] = 0
+        e[14] = -2 * near * far * rd;
+        e[15] = 0;
+
+        return this;
+    }
+
+    setPerspective(fovy, aspect, near, far){
+        if(near === far || aspect === 0 || near <= 0 || far <= 0){
+            console.error("wrong param");
+            return;
+        }
+
+        let radius = fovy * Math.PI / 180 / 2;
+        let sin = Math.sin(radius);
+        if(sin === 0){
+            console.error("wrong param");
+            return;
+        }
+        let ctan = Math.cos(radius) / sin;
+        let rd = 1 / (far - near);
+       
+        let e =  this.elements;
+        e[0] = ctan / aspect;
+        e[1] = 0;
+        e[2] = 0;
+        e[3] = 0;
+
+        e[4] = 0;
+        e[5] = ctan;
+        e[6] = 0;
+        e[7] = 0;
+
+        e[8] = 0;
+        e[9] = 0;
+        e[10] = -(far + near) * rd;
+        e[11] = -1;
+
+        e[12] = 0;
+        e[13] = 0;
+        e[14] = -2 * near * far * rd;
+        e[15] = 0;
 
         return this;
     }
