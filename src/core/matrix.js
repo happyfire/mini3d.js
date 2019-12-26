@@ -279,17 +279,17 @@ class Matrix4 {
             console.error("wrong param");
             return;
         }
-        let ctan = Math.cos(radius) / sin;
+        let cot = Math.cos(radius) / sin;
         let rd = 1 / (far - near);
        
         let e =  this.elements;
-        e[0] = ctan / aspect;
+        e[0] = cot / aspect;
         e[1] = 0;
         e[2] = 0;
         e[3] = 0;
 
         e[4] = 0;
-        e[5] = ctan;
+        e[5] = cot;
         e[6] = 0;
         e[7] = 0;
 
