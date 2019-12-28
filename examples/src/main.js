@@ -34,37 +34,76 @@ function createMesh(){
 
     let mesh = new mini3d.Mesh(format);    
     let position_data = [
-        0.0, 0.6, -0.4,
-        -0.5, -0.4, -0.4,
-        0.5, -0.4, -0.4,
-        0.5, 0.4, -0.2,
-        -0.5, 0.4, -0.2,
-        0.0, -0.6, -0.2,
-        0.0, 0.5, 0.0,
-        -0.5, -0.5, 0.0,
-        0.5, -0.5, 0.0
+        //Three triangles on the right side
+        0.75, 1.0, -4.0,
+        0.25, -1.0, -4.0,
+        1.25, -1.0, -4.0,
+        
+        0.75, 1.0, -2.0,
+        0.25, -1.0, -2.0,
+        1.25, -1.0, -2.0,
+
+        0.75, 1.0, 0.0,
+        0.25, -1.0, 0.0,
+        1.25, -1.0, 0.0,
+
+        //Three triangles on the left side
+        -0.75, 1.0, -4.0,
+        -1.25, -1.0, -4.0,
+        -0.25, -1.0, -4.0,
+        
+        -0.75, 1.0, -2.0,
+        -1.25, -1.0, -2.0,
+        -0.25, -1.0, -2.0,
+        
+        -0.75, 1.0, 0.0,
+        -1.25, -1.0, 0.0,
+        -0.25, -1.0, 0.0        
     ];
     let color_data = [
         0.4, 1.0, 0.4,
         0.4, 1.0, 0.4,
         1.0, 0.4, 0.4,
+        
+        1.0, 1.0, 0.4,
+        1.0, 1.0, 0.4,
         1.0, 0.4, 0.4,
+
+        0.4, 0.4, 1.0,
+        0.4, 0.4, 1.0,
+        1.0, 0.4, 0.4,
+
+        0.4, 1.0, 0.4,
+        0.4, 1.0, 0.4,
+        1.0, 0.4, 0.4,
+        
         1.0, 1.0, 0.4,
         1.0, 1.0, 0.4,
+        1.0, 0.4, 0.4,
+        
         0.4, 0.4, 1.0,
         0.4, 0.4, 1.0,
         1.0, 0.4, 0.4
     ];
     let custom_data = [
-        0.5,
-        0.5,
-        0.5,
         1,
         1,
         1,
-        2,
-        2,
-        2
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
     ];
 
     mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);    
@@ -91,9 +130,9 @@ function example(gl){
     shader.use();    
     
     let viewMatrix = new mini3d.Matrix4();
-    g_eyeX = 0.2;
-    g_eyeY = 0.25;
-    g_eyeZ = 0.25;
+    g_eyeX = 0;
+    g_eyeY = 0;
+    g_eyeZ = 5;
 
     var mesh = createMesh(); 
 
@@ -128,13 +167,12 @@ function keydown(ev, mesh, shader, viewMatrix){
 }
 
 function draw(mesh, shader, viewMatrix){
-    viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ,  0, 0, 0,  0, 1, 0); 
+    viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ,  0, 0, -100,  0, 1, 0); 
+    
     let projMatrix = new mini3d.Matrix4();
-    projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 0.5); 
-    //projMatrix.setOrtho(-0.5,0.5,-0.5,0.5,0,0.5);
-    //projMatrix.setOrtho(-0.3,0.3,-1.0,1.0,0,0.5);
+    projMatrix.setPerspective(30, mini3d.canvas.width/mini3d.canvas.height, 1, 100);
 
-    let mvpMatrix = projMatrix;//.multiply(viewMatrix);
+    let mvpMatrix = projMatrix.multiply(viewMatrix);
     
     shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
 

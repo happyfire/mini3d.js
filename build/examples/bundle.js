@@ -11,9 +11,11 @@ var main = (function () {
       format.addAttrib(mini3d.VertexSemantic.COLOR, 3);
       format.addAttrib(Semantic_Custom, 1);
       var mesh = new mini3d.Mesh(format);
-      var position_data = [0.0, 0.6, -0.4, -0.5, -0.4, -0.4, 0.5, -0.4, -0.4, 0.5, 0.4, -0.2, -0.5, 0.4, -0.2, 0.0, -0.6, -0.2, 0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0];
-      var color_data = [0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 1.0, 1.0, 0.4, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 0.4];
-      var custom_data = [0.5, 0.5, 0.5, 1, 1, 1, 2, 2, 2];
+      var position_data = [//Three triangles on the right side
+      0.75, 1.0, -4.0, 0.25, -1.0, -4.0, 1.25, -1.0, -4.0, 0.75, 1.0, -2.0, 0.25, -1.0, -2.0, 1.25, -1.0, -2.0, 0.75, 1.0, 0.0, 0.25, -1.0, 0.0, 1.25, -1.0, 0.0, //Three triangles on the left side
+      -0.75, 1.0, -4.0, -1.25, -1.0, -4.0, -0.25, -1.0, -4.0, -0.75, 1.0, -2.0, -1.25, -1.0, -2.0, -0.25, -1.0, -2.0, -0.75, 1.0, 0.0, -1.25, -1.0, 0.0, -0.25, -1.0, 0.0];
+      var color_data = [0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 1.0, 1.0, 0.4, 1.0, 0.4, 0.4, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 1.0, 1.0, 0.4, 1.0, 0.4, 0.4, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 0.4];
+      var custom_data = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
       mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);
       mesh.setVertexData(mini3d.VertexSemantic.COLOR, color_data);
       mesh.setVertexData(Semantic_Custom, custom_data);
@@ -36,9 +38,9 @@ var main = (function () {
       shader.mapAttributeSemantic(Semantic_Custom, 'a_Custom');
       shader.use();
       var viewMatrix = new mini3d.Matrix4();
-      g_eyeX = 0.2;
-      g_eyeY = 0.25;
-      g_eyeZ = 0.25;
+      g_eyeX = 0;
+      g_eyeY = 0;
+      g_eyeZ = 5;
       var mesh = createMesh();
 
       document.onkeydown = function (ev) {
@@ -68,13 +70,10 @@ var main = (function () {
     }
 
     function draw(mesh, shader, viewMatrix) {
-      viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ, 0, 0, 0, 0, 1, 0);
+      viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ, 0, 0, -100, 0, 1, 0);
       var projMatrix = new mini3d.Matrix4();
-      projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 0.5); //projMatrix.setOrtho(-0.5,0.5,-0.5,0.5,0,0.5);
-      //projMatrix.setOrtho(-0.3,0.3,-1.0,1.0,0,0.5);
-
-      var mvpMatrix = projMatrix; //.multiply(viewMatrix);
-
+      projMatrix.setPerspective(30, mini3d.canvas.width / mini3d.canvas.height, 1, 100);
+      var mvpMatrix = projMatrix.multiply(viewMatrix);
       shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
       var gl = mini3d.gl;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);

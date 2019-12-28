@@ -2,35 +2,35 @@ var mini3d = (function (exports) {
    'use strict';
 
    exports.gl = null;
+   exports.canvas = null;
 
-   function init(canvasId){
-       let canvas;
+   function init(canvasId){    
        if(canvasId != null){
-           canvas = document.getElementById(canvasId);
-           if(canvas === undefined){
+           exports.canvas = document.getElementById(canvasId);
+           if(exports.canvas === undefined){
                console.error("cannot find a canvas named:"+canvasId);
                return;
            }
        } else {
-           canvas = document.createElement("canvas");       
-           document.body.appendChild(canvas);       
+           exports.canvas = document.createElement("canvas");       
+           document.body.appendChild(exports.canvas);       
        }
       
-       canvas.width = Math.floor(canvas.clientWidth * window.devicePixelRatio);
-       canvas.height = Math.floor(canvas.clientHeight * window.devicePixelRatio);    
+       exports.canvas.width = Math.floor(exports.canvas.clientWidth * window.devicePixelRatio);
+       exports.canvas.height = Math.floor(exports.canvas.clientHeight * window.devicePixelRatio);    
 
        let names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
        let context = null;
        for(let i=0; i<names.length; ++i){
            try{
-               context = canvas.getContext(names[i]);
+               context = exports.canvas.getContext(names[i]);
            } catch(e){}
            if(context){
                break;
            }
        }
        exports.gl = context;
-       exports.gl.viewport(0, 0, canvas.width, canvas.height);
+       exports.gl.viewport(0, 0, exports.canvas.width, exports.canvas.height);
    }
 
    class Matrix4 {

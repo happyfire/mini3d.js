@@ -1,7 +1,7 @@
 let gl = null;
+let canvas = null;
 
-function init(canvasId){
-    let canvas;
+function init(canvasId){    
     if(canvasId != null){
         canvas = document.getElementById(canvasId);
         if(canvas === undefined){
@@ -30,5 +30,5 @@ function init(canvasId){
     gl.viewport(0, 0, canvas.width, canvas.height);
 };
 
-export { init, gl };
+export { init, gl, canvas };
 
