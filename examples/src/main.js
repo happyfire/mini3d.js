@@ -34,9 +34,9 @@ function createMesh(){
 
     let mesh = new mini3d.Mesh(format);    
     let position_data = [
-        0.0, 0.5, -0.4,
-        -0.5, -0.5, -0.4,
-        0.5, -0.5, -0.4,
+        0.0, 0.6, -0.4,
+        -0.5, -0.4, -0.4,
+        0.5, -0.4, -0.4,
         0.5, 0.4, -0.2,
         -0.5, 0.4, -0.2,
         0.0, -0.6, -0.2,
@@ -130,9 +130,11 @@ function keydown(ev, mesh, shader, viewMatrix){
 function draw(mesh, shader, viewMatrix){
     viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ,  0, 0, 0,  0, 1, 0); 
     let projMatrix = new mini3d.Matrix4();
-    projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 2.0); 
+    projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 0.5); 
+    //projMatrix.setOrtho(-0.5,0.5,-0.5,0.5,0,0.5);
+    //projMatrix.setOrtho(-0.3,0.3,-1.0,1.0,0,0.5);
 
-    let mvpMatrix = projMatrix.multiply(viewMatrix);
+    let mvpMatrix = projMatrix;//.multiply(viewMatrix);
     
     shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
 

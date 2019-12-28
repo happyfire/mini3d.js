@@ -11,7 +11,7 @@ var main = (function () {
       format.addAttrib(mini3d.VertexSemantic.COLOR, 3);
       format.addAttrib(Semantic_Custom, 1);
       var mesh = new mini3d.Mesh(format);
-      var position_data = [0.0, 0.5, -0.4, -0.5, -0.5, -0.4, 0.5, -0.5, -0.4, 0.5, 0.4, -0.2, -0.5, 0.4, -0.2, 0.0, -0.6, -0.2, 0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0];
+      var position_data = [0.0, 0.6, -0.4, -0.5, -0.4, -0.4, 0.5, -0.4, -0.4, 0.5, 0.4, -0.2, -0.5, 0.4, -0.2, 0.0, -0.6, -0.2, 0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0];
       var color_data = [0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 1.0, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 1.0, 1.0, 0.4, 0.4, 0.4, 1.0, 0.4, 0.4, 1.0, 1.0, 0.4, 0.4];
       var custom_data = [0.5, 0.5, 0.5, 1, 1, 1, 2, 2, 2];
       mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);
@@ -70,8 +70,11 @@ var main = (function () {
     function draw(mesh, shader, viewMatrix) {
       viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ, 0, 0, 0, 0, 1, 0);
       var projMatrix = new mini3d.Matrix4();
-      projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 2.0);
-      var mvpMatrix = projMatrix.multiply(viewMatrix);
+      projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, 0.0, 0.5); //projMatrix.setOrtho(-0.5,0.5,-0.5,0.5,0,0.5);
+      //projMatrix.setOrtho(-0.3,0.3,-1.0,1.0,0,0.5);
+
+      var mvpMatrix = projMatrix; //.multiply(viewMatrix);
+
       shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
       var gl = mini3d.gl;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
