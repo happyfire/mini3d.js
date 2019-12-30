@@ -4,3 +4,4 @@ export {Shader} from "./core/shader";
 export {Mesh} from "./core/mesh";
 export {VertexFormat, VertexSemantic} from "./core/vertexFormat";
 export {VertexBuffer} from './core/vertexBuffer';
+export {IndexBuffer} from './core/indexBuffer';

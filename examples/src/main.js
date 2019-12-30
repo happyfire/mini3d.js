@@ -4,11 +4,9 @@ var VSHADER_SOURCE=`
     attribute float a_Custom;    
     uniform mat4 u_mvpMatrix;
     varying vec4 v_Color;
-    varying float v_Custom;
     void main(){
         gl_Position = u_mvpMatrix * a_Position;
         v_Color = a_Color;
-        v_Custom = a_Custom;
     }
 `;
 
@@ -17,98 +15,62 @@ var FSHADER_SOURCE=`
     precision mediump float;
     #endif
     varying vec4 v_Color;
-    varying float v_Custom;
     void main(){
-        gl_FragColor = v_Color * v_Custom;
+        gl_FragColor = v_Color;
     }
 `;
-
-const Semantic_Custom = 'custom';
 
 function createMesh(){
 
     let format = new mini3d.VertexFormat();
     format.addAttrib(mini3d.VertexSemantic.POSITION, 3);
     format.addAttrib(mini3d.VertexSemantic.COLOR, 3);
-    format.addAttrib(Semantic_Custom, 1);
+
+    // cube
+    //    v6----- v5
+    //   /|      /|
+    //  v1------v0|
+    //  | |     | |
+    //  | |v7---|-|v4
+    //  |/      |/
+    //  v2------v3
 
     let mesh = new mini3d.Mesh(format);    
     let position_data = [
-        //Three triangles on the right side
-        0.75, 1.0, -4.0,
-        0.25, -1.0, -4.0,
-        1.25, -1.0, -4.0,
+        1.0, 1.0, 1.0,  //v0
+        -1.0, 1.0, 1.0, //v1 
+        -1.0, -1.0, 1.0,//v2
+        1.0, -1.0, 1.0, //v3
         
-        0.75, 1.0, -2.0,
-        0.25, -1.0, -2.0,
-        1.25, -1.0, -2.0,
-
-        0.75, 1.0, 0.0,
-        0.25, -1.0, 0.0,
-        1.25, -1.0, 0.0,
-
-        //Three triangles on the left side
-        -0.75, 1.0, -4.0,
-        -1.25, -1.0, -4.0,
-        -0.25, -1.0, -4.0,
-        
-        -0.75, 1.0, -2.0,
-        -1.25, -1.0, -2.0,
-        -0.25, -1.0, -2.0,
-        
-        -0.75, 1.0, 0.0,
-        -1.25, -1.0, 0.0,
-        -0.25, -1.0, 0.0        
+        1.0, -1.0, -1.0,//v4
+        1.0, 1.0, -1.0, //v5
+        -1.0, 1.0, -1.0,//v6
+        -1.0, -1.0, -1.0//v7
     ];
     let color_data = [
-        0.4, 1.0, 0.4,
-        0.4, 1.0, 0.4,
-        1.0, 0.4, 0.4,
-        
-        1.0, 1.0, 0.4,
-        1.0, 1.0, 0.4,
-        1.0, 0.4, 0.4,
-
-        0.4, 0.4, 1.0,
-        0.4, 0.4, 1.0,
-        1.0, 0.4, 0.4,
-
-        0.4, 1.0, 0.4,
-        0.4, 1.0, 0.4,
-        1.0, 0.4, 0.4,
-        
-        1.0, 1.0, 0.4,
-        1.0, 1.0, 0.4,
-        1.0, 0.4, 0.4,
-        
-        0.4, 0.4, 1.0,
-        0.4, 0.4, 1.0,
-        1.0, 0.4, 0.4
+        1.0, 1.0, 1.0, //v0 white
+        1.0, 0.0, 1.0, //v1 magenta
+        1.0, 0.0, 0.0, //v2 red
+        1.0, 1.0, 0.0, //v3 yellow
+        0.0, 1.0, 0.0, //v4 green
+        0.0, 1.0, 1.0, //v5 cyan
+        0.0, 0.0, 1.0, //v6 blue
+        0.0, 0.0, 0.0  //v7 black
     ];
-    let custom_data = [
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1,
-        1
-    ];
+
+    let triangels = [
+        0,1,2, 0,2,3, //front
+        0,3,4, 0,4,5, //right
+        0,5,6, 0,6,1, //top
+        1,6,7, 1,7,2, //left
+        7,4,3, 7,3,2, //bottom
+        4,7,6, 4,6,5 //back
+    ]
+
 
     mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);    
-    mesh.setVertexData(mini3d.VertexSemantic.COLOR, color_data);
-    mesh.setVertexData(Semantic_Custom, custom_data);
+    mesh.setVertexData(mini3d.VertexSemantic.COLOR, color_data);   
+    mesh.setTriangles(triangels);
     mesh.upload();            
 
     return mesh;   
@@ -124,15 +86,14 @@ function example(gl){
     }
 
     shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
-    shader.mapAttributeSemantic(mini3d.VertexSemantic.COLOR, 'a_Color');
-    shader.mapAttributeSemantic(Semantic_Custom, 'a_Custom');
+    shader.mapAttributeSemantic(mini3d.VertexSemantic.COLOR, 'a_Color');    
 
     shader.use();    
     
     let viewMatrix = new mini3d.Matrix4();
-    g_eyeX = 0;
-    g_eyeY = 0;
-    g_eyeZ = 5;
+    g_eyeX = 3;
+    g_eyeY = 3;
+    g_eyeZ = 7;
 
     var mesh = createMesh(); 
 
@@ -148,7 +109,8 @@ function example(gl){
     //let modelViewMatrix = viewMatrix.multiply(modelMatrix);
 
     gl.clearColor(0, 0, 0, 1);
-    //gl.enable(gl.DEPTH_TEST);
+    gl.clearDepth(1.0);
+    gl.enable(gl.DEPTH_TEST);
 
     draw(mesh, shader, viewMatrix);
 
@@ -156,9 +118,9 @@ function example(gl){
 
 function keydown(ev, mesh, shader, viewMatrix){
     if(ev.keyCode==39){ //right arrow
-        g_eyeX += 0.01;
+        g_eyeX += 0.1;
     } else if(ev.keyCode==37){ //left arrow
-        g_eyeX -= 0.01;
+        g_eyeX -= 0.1;
     } else {
         return;
     }
@@ -167,7 +129,7 @@ function keydown(ev, mesh, shader, viewMatrix){
 }
 
 function draw(mesh, shader, viewMatrix){
-    viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ,  0, 0, -100,  0, 1, 0); 
+    viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ,  0, 0, 0,  0, 1, 0); 
     
     let projMatrix = new mini3d.Matrix4();
     projMatrix.setPerspective(30, mini3d.canvas.width/mini3d.canvas.height, 1, 100);

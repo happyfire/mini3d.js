@@ -690,17 +690,73 @@ var mini3d = (function (exports) {
        }
    }
 
+   class IndexBuffer{
+       constructor(){
+           this._indexCount = 0;
+           this._mode = exports.gl.TRIANGLES;
+           this._type = exports.gl.UNSIGNED_SHORT;
+           this._vbo = exports.gl.createBuffer();
+           this._bufferData = null;
+       }
+
+       setData(data){
+           this._bufferData = data;
+       }
+
+       get vbo(){
+           return this._vbo;
+       }
+
+       get indexCount(){
+           return this._indexCount;
+       }
+
+       get mode(){
+           return this._mode;
+       }
+
+       get type(){
+           return this._type;
+       }
+
+       destroy(){
+           exports.gl.deleteBuffer(this._vbo);  
+           this._vbo = 0;
+       }
+
+       upload(){
+           if(this._bufferData==null){
+               console.error("buffer data is null.");
+               return;
+           }
+           let useByte = this._bufferData.length<=256;
+           let buffer = useByte ? new Uint8Array(this._bufferData) : new Uint16Array(this._bufferData);
+           this._type = useByte ? exports.gl.UNSIGNED_BYTE : exports.gl.UNSIGNED_SHORT;
+           
+           exports.gl.bindBuffer(exports.gl.ELEMENT_ARRAY_BUFFER, this._vbo);
+           exports.gl.bufferData(exports.gl.ELEMENT_ARRAY_BUFFER, buffer, exports.gl.STATIC_DRAW);
+           exports.gl.bindBuffer(exports.gl.ELEMENT_ARRAY_BUFFER, null);
+
+           this._indexCount = buffer.length;
+           this._bufferData = null;
+       }
+   }
+
    class Mesh{    
        constructor(vertexFormat){        
            this._vertexBuffer = new VertexBuffer(vertexFormat);
+           this._indexBuffer = null;
        }
 
        setVertexData(semantic, data){
            this._vertexBuffer.setData(semantic, data);        
        }  
        
-       setTriangles(){
-
+       setTriangles(data){
+           if(this._indexBuffer==null){
+               this._indexBuffer = new IndexBuffer();            
+           }
+           this._indexBuffer.setData(data);
        }
 
        destroy(){
@@ -708,7 +764,10 @@ var mini3d = (function (exports) {
        }      
 
        upload(){        
-           this._vertexBuffer.upload();                               
+           this._vertexBuffer.upload();   
+           if(this._indexBuffer){
+               this._indexBuffer.upload();
+           }                            
        }
 
        render(shader){
@@ -716,14 +775,21 @@ var mini3d = (function (exports) {
            
            this._vertexBuffer.bindAttrib(shader);
                      
-           exports.gl.drawArrays(exports.gl.TRIANGLES, 0, this._vertexBuffer.vertexCount);
-
-           this._vertexBuffer.unbindAttrib(shader);
+           if(this._indexBuffer){
+               exports.gl.bindBuffer(exports.gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer.vbo);
+               exports.gl.drawElements(this._indexBuffer.mode, this._indexBuffer.indexCount, this._indexBuffer.type, 0);
+               exports.gl.bindBuffer(exports.gl.ELEMENT_ARRAY_BUFFER, null);
+           } else {
+               exports.gl.drawArrays(exports.gl.TRIANGLES, 0, this._vertexBuffer.vertexCount);
+           }
            
+           this._vertexBuffer.unbindAttrib(shader);
+
            exports.gl.bindBuffer(exports.gl.ARRAY_BUFFER, null);
        }
    }
 
+   exports.IndexBuffer = IndexBuffer;
    exports.Matrix4 = Matrix4;
    exports.Mesh = Mesh;
    exports.Shader = Shader;

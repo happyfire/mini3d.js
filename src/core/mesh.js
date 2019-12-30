@@ -1,17 +1,22 @@
 import { gl } from "./gl";
 import { VertexBuffer } from "./vertexBuffer";
+import { IndexBuffer } from "./indexBuffer";
 
 class Mesh{    
     constructor(vertexFormat){        
         this._vertexBuffer = new VertexBuffer(vertexFormat);
+        this._indexBuffer = null;
     }
 
     setVertexData(semantic, data){
         this._vertexBuffer.setData(semantic, data);        
     }  
     
-    setTriangles(){
-
+    setTriangles(data){
+        if(this._indexBuffer==null){
+            this._indexBuffer = new IndexBuffer();            
+        }
+        this._indexBuffer.setData(data);
     }
 
     destroy(){
@@ -19,7 +24,10 @@ class Mesh{
     }      
 
     upload(){        
-        this._vertexBuffer.upload();                               
+        this._vertexBuffer.upload();   
+        if(this._indexBuffer){
+            this._indexBuffer.upload();
+        }                            
     }
 
     render(shader){
@@ -27,10 +35,16 @@ class Mesh{
         
         this._vertexBuffer.bindAttrib(shader);
                   
-        gl.drawArrays(gl.TRIANGLES, 0, this._vertexBuffer.vertexCount);
-
-        this._vertexBuffer.unbindAttrib(shader);
+        if(this._indexBuffer){
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer.vbo);
+            gl.drawElements(this._indexBuffer.mode, this._indexBuffer.indexCount, this._indexBuffer.type, 0);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        } else {
+            gl.drawArrays(gl.TRIANGLES, 0, this._vertexBuffer.vertexCount);
+        }
         
+        this._vertexBuffer.unbindAttrib(shader);
+
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
     }
 }
