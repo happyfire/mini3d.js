@@ -4,6 +4,35 @@ class Matrix4 {
     }
 
     /**
+     * Set the identity matrix.
+     */
+    setIdentity(){
+        let e = this.elements;
+        e[0] = 1; e[4] = 0; e[8] = 0;  e[12] = 0;
+        e[1] = 0; e[5] = 1; e[9] = 0;  e[13] = 0;
+        e[2] = 0; e[6] = 0; e[10] = 1; e[14] = 0;
+        e[3] = 0; e[7] = 0; e[11] = 0; e[15] = 1;
+        return this;
+    }
+
+    /**
+     * Copy matrix.
+     */
+    set(other){
+        let src = other.elements;
+        let dst = this.elements;
+        if(src === dst){
+            return this;
+        }
+
+        for(let i=0; i<16; i++){
+            dst[i] = src[i];
+        }
+
+        return this;
+    }
+
+    /**
      * Multiply the matrix from the right.
      * @param {Matrix4} other The multiply matrix
      * @returns this 
@@ -35,14 +64,53 @@ class Matrix4 {
         return this;
     }
 
+    /**
+     * Set the matrix for translation.
+     */
+    setTranslate(x,y,z){
+        let e = this.elements;
+        e[0] = 1; e[4] = 0; e[8] = 0;  e[12] = x;
+        e[1] = 0; e[5] = 1; e[9] = 0;  e[13] = y;
+        e[2] = 0; e[6] = 0; e[10] = 1; e[14] = z;
+        e[3] = 0; e[7] = 0; e[11] = 0; e[15] = 1;
+        return this;
+    }
+
+    /**
+     * Multiply the matrix for translation from the right. 
+     */
     translate(x, y, z) {
-        var e = this.elements;
+        let e = this.elements;
         e[12] += e[0] * x + e[4] * y + e[8]  * z;
         e[13] += e[1] * x + e[5] * y + e[9]  * z;
         e[14] += e[2] * x + e[6] * y + e[10] * z;
         e[15] += e[3] * x + e[7] * y + e[11] * z;
         return this;
     };
+
+    /**
+     * Set the matrix for scaling.
+     */
+    setScale(sx, sy, sz){
+        let e = this.elements;
+        e[0] = sx; e[4] = 0;  e[8] = 0;   e[12] = 0;
+        e[1] = 0;  e[5] = sy; e[9] = 0;   e[13] = 0;
+        e[2] = 0;  e[6] = 0;  e[10] = sz; e[14] = 0;
+        e[3] = 0;  e[7] = 0;  e[11] = 0;  e[15] = 1;
+        return this;
+    }  
+    
+    /**
+     * Multiply the matrix for scaling from the right.
+     */
+    scale(sx, sy, sz){
+        let e = this.elements;
+        e[0] *= sx; e[4] *= sy;  e[8] *= sz;
+        e[1] *= sx; e[5] *= sy;  e[9] *= sz;
+        e[2] *= sx; e[6] *= sy;  e[10] *= sz;
+        e[3] *= sx; e[7] *= sy;  e[11] *= sz;
+        return this;
+    }
 
     /**
      * Set the matrix for rotation.
@@ -130,24 +198,32 @@ class Matrix4 {
     }
 
     /**
+     * Multiply the matrix for rotation from the right.
+     * The vector of rotation axis may not be normalized.
+     */
+    rotate(angle, x, y, z){
+        return this.multiply(new Matrix4().setRotate(angle, x, y, z));
+    }
+
+    /**
      * Set the viewing matrix.
      * @param eyeX, eyeY, eyeZ The position of the eye point.
      * @param centerX, centerY, centerZ The position of the reference point.
      * @param upX, upY, upZ The direction of the up vector.
      * @return this
      */
-    setLookAtGL(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
+    setLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
         // N = eye - target
-        var nx, ny, nz;
+        let nx, ny, nz;
         nx = eyeX - targetX;
         ny = eyeY - targetY;
         nz = eyeZ - targetZ;
-        var rl = 1/Math.sqrt(nx*nx+ny*ny+nz*nz);
+        let rl = 1/Math.sqrt(nx*nx+ny*ny+nz*nz);
         nx *= rl;
         ny *= rl;
         nz *= rl;
         // U = UP cross N
-        var ux, uy, uz;
+        let ux, uy, uz;
         ux = upY * nz - upZ * ny;
         uy = upZ * nx - upX * nz;
         uz = upX * ny - upY * nx;
@@ -156,7 +232,7 @@ class Matrix4 {
         uy *= rl;
         uz *= rl;
         // V = N cross U
-        var vx, vy, vz;
+        let vx, vy, vz;
         vx = ny * uz - nz * uy;
         vy = nz * ux - nx * uz;
         vz = nx * uy - ny * ux;
@@ -165,7 +241,7 @@ class Matrix4 {
         vy *= rl;
         vz *= rl;
     
-        var e = this.elements;
+        let e = this.elements;
         e[0] = ux;
         e[1] = vx;
         e[2] = nx;

@@ -54,9 +54,14 @@ var main = (function () {
       return mesh;
     }
 
-    var g_eyeX, g_eyeY, g_eyeZ;
+    var modelMatrix = new mini3d.Matrix4();
+    var viewProjMatrix = new mini3d.Matrix4();
+    var mvpMatrix = new mini3d.Matrix4();
+    var rotX = 0;
+    var rotY = 0;
 
-    function example(gl) {
+    function example() {
+      var gl = mini3d.gl;
       var shader = new mini3d.Shader();
 
       if (!shader.create(VSHADER_SOURCE, FSHADER_SOURCE)) {
@@ -67,53 +72,78 @@ var main = (function () {
       shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
       shader.mapAttributeSemantic(mini3d.VertexSemantic.COLOR, 'a_Color');
       shader.use();
-      var viewMatrix = new mini3d.Matrix4();
-      g_eyeX = 3;
-      g_eyeY = 3;
-      g_eyeZ = 7;
       var mesh = createMesh();
+      var viewMatrix = new mini3d.Matrix4();
+      viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+      viewProjMatrix.setPerspective(30.0, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100.0);
+      viewProjMatrix.multiply(viewMatrix);
+      setupInput(function (dx, dy) {
+        rotX = Math.max(Math.min(rotX + dy, 90.0), -90.0); //rotX += dy;
 
-      document.onkeydown = function (ev) {
-        keydown(ev, mesh, shader, viewMatrix);
-      }; //let modelMatrix = new mini3d.Matrix4();
-      //modelMatrix.setRotate(-10, 0, 0, 1); //Rotate around z-axis
-      //let modelViewMatrix = viewMatrix.multiply(modelMatrix);
-
-
+        rotY += dx;
+        draw(mesh, shader);
+      });
       gl.clearColor(0, 0, 0, 1);
       gl.clearDepth(1.0);
       gl.enable(gl.DEPTH_TEST);
-      draw(mesh, shader, viewMatrix);
+      draw(mesh, shader);
     }
 
-    function keydown(ev, mesh, shader, viewMatrix) {
-      if (ev.keyCode == 39) {
-        //right arrow
-        g_eyeX += 0.1;
-      } else if (ev.keyCode == 37) {
-        //left arrow
-        g_eyeX -= 0.1;
-      } else {
-        return;
-      }
+    function draw(mesh, shader) {
+      modelMatrix.setRotate(rotX, 1, 0, 0); //rot around x-axis
 
-      draw(mesh, shader, viewMatrix);
-    }
+      modelMatrix.rotate(rotY, 0.0, 1.0, 0.0); //rot around y-axis
 
-    function draw(mesh, shader, viewMatrix) {
-      viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ, 0, 0, 0, 0, 1, 0);
-      var projMatrix = new mini3d.Matrix4();
-      projMatrix.setPerspective(30, mini3d.canvas.width / mini3d.canvas.height, 1, 100);
-      var mvpMatrix = projMatrix.multiply(viewMatrix);
+      mvpMatrix.set(viewProjMatrix);
+      mvpMatrix.multiply(modelMatrix);
       shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
       var gl = mini3d.gl;
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       mesh.render(shader);
     }
 
+    function setupInput(onDrag) {
+      var dragging = false;
+      var lastX = -1,
+          lastY = -1;
+
+      mini3d.canvas.onmousedown = function (event) {
+        var x = event.clientX;
+        var y = event.clientY;
+        var rect = event.target.getBoundingClientRect();
+
+        if (x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom) {
+          lastX = x;
+          lastY = y;
+          dragging = true;
+        }
+      };
+
+      mini3d.canvas.onmouseup = function (event) {
+        dragging = false;
+      };
+
+      mini3d.canvas.onmousemove = function (event) {
+        var x = event.clientX;
+        var y = event.clientY;
+
+        if (dragging) {
+          var factor = 300 / mini3d.canvas.height;
+          var dx = factor * (x - lastX);
+          var dy = factor * (y - lastY);
+
+          if (onDrag) {
+            onDrag(dx, dy);
+          }
+        }
+
+        lastX = x;
+        lastY = y;
+      };
+    }
+
     function main() {
-      console.log('main');
-      example(mini3d.gl);
+      example();
     }
 
     return main;

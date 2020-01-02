@@ -1,4 +1,4 @@
-var VSHADER_SOURCE=`
+let VSHADER_SOURCE=`
     attribute vec4 a_Position;
     attribute vec4 a_Color;
     attribute float a_Custom;    
@@ -10,7 +10,7 @@ var VSHADER_SOURCE=`
     }
 `;
 
-var FSHADER_SOURCE=`
+let FSHADER_SOURCE=`
     #ifdef GL_ES
     precision mediump float;
     #endif
@@ -92,9 +92,15 @@ function createMesh(){
     return mesh;   
 }
 
-let g_eyeX, g_eyeY, g_eyeZ;
+let modelMatrix = new mini3d.Matrix4();
+let viewProjMatrix = new mini3d.Matrix4();
+let mvpMatrix = new mini3d.Matrix4();
+let rotX = 0;
+let rotY = 0;
 
-function example(gl){
+function example(){
+    let gl = mini3d.gl;
+
     let shader = new mini3d.Shader();
     if(!shader.create(VSHADER_SOURCE, FSHADER_SOURCE)){
         console.log("Failed to initialize shaders");
@@ -105,52 +111,37 @@ function example(gl){
     shader.mapAttributeSemantic(mini3d.VertexSemantic.COLOR, 'a_Color');    
 
     shader.use();    
-    
+
+    let mesh = createMesh();     
+
     let viewMatrix = new mini3d.Matrix4();
-    g_eyeX = 3;
-    g_eyeY = 3;
-    g_eyeZ = 7;
+    viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+    viewProjMatrix.setPerspective(30.0, mini3d.canvas.width/mini3d.canvas.height, 1.0, 100.0);
+    viewProjMatrix.multiply(viewMatrix);
 
-    var mesh = createMesh(); 
-
-    document.onkeydown = function(ev){
-        keydown(ev, mesh, shader, viewMatrix);
-    }
-
-         
-
-    //let modelMatrix = new mini3d.Matrix4();
-    //modelMatrix.setRotate(-10, 0, 0, 1); //Rotate around z-axis
-
-    //let modelViewMatrix = viewMatrix.multiply(modelMatrix);
+    setupInput(function(dx, dy){
+        rotX = Math.max(Math.min(rotX + dy, 90.0), -90.0);
+        //rotX += dy;
+        rotY += dx;
+        draw(mesh, shader);
+    })
+    
 
     gl.clearColor(0, 0, 0, 1);
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
 
-    draw(mesh, shader, viewMatrix);
-
+    draw(mesh, shader);
 }
 
-function keydown(ev, mesh, shader, viewMatrix){
-    if(ev.keyCode==39){ //right arrow
-        g_eyeX += 0.1;
-    } else if(ev.keyCode==37){ //left arrow
-        g_eyeX -= 0.1;
-    } else {
-        return;
-    }
 
-    draw(mesh, shader, viewMatrix);
-}
-
-function draw(mesh, shader, viewMatrix){
-    viewMatrix.setLookAtGL(g_eyeX, g_eyeY, g_eyeZ,  0, 0, 0,  0, 1, 0); 
+function draw(mesh, shader){        
     
-    let projMatrix = new mini3d.Matrix4();
-    projMatrix.setPerspective(30, mini3d.canvas.width/mini3d.canvas.height, 1, 100);
+    modelMatrix.setRotate(rotX, 1, 0, 0); //rot around x-axis
+    modelMatrix.rotate(rotY, 0.0, 1.0, 0.0); //rot around y-axis
 
-    let mvpMatrix = projMatrix.multiply(viewMatrix);
+    mvpMatrix.set(viewProjMatrix);
+    mvpMatrix.multiply(modelMatrix);
     
     shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
 
@@ -159,7 +150,41 @@ function draw(mesh, shader, viewMatrix){
     mesh.render(shader);
 }
 
-export default function main(){
-    console.log('main');
-    example(mini3d.gl);
+function setupInput(onDrag){
+    let dragging = false;
+    let lastX = -1, lastY = -1;
+
+    mini3d.canvas.onmousedown = function(event){        
+        let x = event.clientX;
+        let y = event.clientY;
+        let rect = event.target.getBoundingClientRect();
+        if(x>=rect.left && x<rect.right && y>=rect.top && y<rect.bottom){
+            lastX = x;
+            lastY = y;
+            dragging = true;
+        }
+    }
+
+    mini3d.canvas.onmouseup = function(event){
+        dragging = false;        
+    }
+
+    mini3d.canvas.onmousemove = function(event){        
+        let x = event.clientX;
+        let y = event.clientY;
+        if(dragging){
+            let factor = 300/mini3d.canvas.height;
+            let dx = factor * (x-lastX);
+            let dy = factor * (y-lastY);
+            if(onDrag){
+                onDrag(dx, dy);
+            }            
+        }
+        lastX = x;
+        lastY = y;
+    }
+}
+
+export default function main(){    
+    example();
 }
