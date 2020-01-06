@@ -97,6 +97,7 @@ let viewProjMatrix = new mini3d.Matrix4();
 let mvpMatrix = new mini3d.Matrix4();
 let rotX = 0;
 let rotY = 0;
+let rotZ = 0;
 
 function example(){
     let gl = mini3d.gl;
@@ -119,10 +120,15 @@ function example(){
     viewProjMatrix.setPerspective(30.0, mini3d.canvas.width/mini3d.canvas.height, 1.0, 100.0);
     viewProjMatrix.multiply(viewMatrix);
 
-    setupInput(function(dx, dy){
-        rotX = Math.max(Math.min(rotX + dy, 90.0), -90.0);
-        //rotX += dy;
-        rotY += dx;
+    setupInput(function(dx, dy, rotateZ){
+        
+        if(rotateZ){
+            rotZ += dx;
+        } else {
+            rotX = Math.max(Math.min(rotX + dy, 90.0), -90.0);
+            //rotX += dy;
+            rotY += dx;
+        }
         draw(mesh, shader);
     })
     
@@ -137,8 +143,10 @@ function example(){
 
 function draw(mesh, shader){        
     
-    modelMatrix.setRotate(rotX, 1, 0, 0); //rot around x-axis
+    //rotate order: x-y-z
+    modelMatrix.setRotate(rotZ, 0, 0, 1); //rot around z-axis
     modelMatrix.rotate(rotY, 0.0, 1.0, 0.0); //rot around y-axis
+    modelMatrix.rotate(rotX, 1.0, 0.0, 0.0); //rot around x-axis
 
     mvpMatrix.set(viewProjMatrix);
     mvpMatrix.multiply(modelMatrix);
@@ -153,15 +161,17 @@ function draw(mesh, shader){
 function setupInput(onDrag){
     let dragging = false;
     let lastX = -1, lastY = -1;
+    let rotateZ = false;
 
-    mini3d.canvas.onmousedown = function(event){        
+    mini3d.canvas.onmousedown = function(event){             
         let x = event.clientX;
         let y = event.clientY;
         let rect = event.target.getBoundingClientRect();
         if(x>=rect.left && x<rect.right && y>=rect.top && y<rect.bottom){
             lastX = x;
             lastY = y;
-            dragging = true;
+            dragging = true;            
+            rotateZ = event.ctrlKey;            
         }
     }
 
@@ -177,7 +187,7 @@ function setupInput(onDrag){
             let dx = factor * (x-lastX);
             let dy = factor * (y-lastY);
             if(onDrag){
-                onDrag(dx, dy);
+                onDrag(dx, dy, rotateZ);
             }            
         }
         lastX = x;

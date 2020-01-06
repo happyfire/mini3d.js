@@ -59,6 +59,7 @@ var main = (function () {
     var mvpMatrix = new mini3d.Matrix4();
     var rotX = 0;
     var rotY = 0;
+    var rotZ = 0;
 
     function example() {
       var gl = mini3d.gl;
@@ -77,10 +78,15 @@ var main = (function () {
       viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
       viewProjMatrix.setPerspective(30.0, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100.0);
       viewProjMatrix.multiply(viewMatrix);
-      setupInput(function (dx, dy) {
-        rotX = Math.max(Math.min(rotX + dy, 90.0), -90.0); //rotX += dy;
+      setupInput(function (dx, dy, rotateZ) {
+        if (rotateZ) {
+          rotZ += dx;
+        } else {
+          rotX = Math.max(Math.min(rotX + dy, 90.0), -90.0); //rotX += dy;
 
-        rotY += dx;
+          rotY += dx;
+        }
+
         draw(mesh, shader);
       });
       gl.clearColor(0, 0, 0, 1);
@@ -90,9 +96,12 @@ var main = (function () {
     }
 
     function draw(mesh, shader) {
-      modelMatrix.setRotate(rotX, 1, 0, 0); //rot around x-axis
+      //rotate order: x-y-z
+      modelMatrix.setRotate(rotZ, 0, 0, 1); //rot around z-axis
 
       modelMatrix.rotate(rotY, 0.0, 1.0, 0.0); //rot around y-axis
+
+      modelMatrix.rotate(rotX, 1.0, 0.0, 0.0); //rot around x-axis
 
       mvpMatrix.set(viewProjMatrix);
       mvpMatrix.multiply(modelMatrix);
@@ -106,6 +115,7 @@ var main = (function () {
       var dragging = false;
       var lastX = -1,
           lastY = -1;
+      var rotateZ = false;
 
       mini3d.canvas.onmousedown = function (event) {
         var x = event.clientX;
@@ -116,6 +126,7 @@ var main = (function () {
           lastX = x;
           lastY = y;
           dragging = true;
+          rotateZ = event.ctrlKey;
         }
       };
 
@@ -133,7 +144,7 @@ var main = (function () {
           var dy = factor * (y - lastY);
 
           if (onDrag) {
-            onDrag(dx, dy);
+            onDrag(dx, dy, rotateZ);
           }
         }
 
