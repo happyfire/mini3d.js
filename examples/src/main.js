@@ -1,24 +1,6 @@
-let VSHADER_SOURCE=`
-    attribute vec4 a_Position;
-    attribute vec4 a_Color;
-    attribute float a_Custom;    
-    uniform mat4 u_mvpMatrix;
-    varying vec4 v_Color;
-    void main(){
-        gl_Position = u_mvpMatrix * a_Position;
-        v_Color = a_Color;
-    }
-`;
 
-let FSHADER_SOURCE=`
-    #ifdef GL_ES
-    precision mediump float;
-    #endif
-    varying vec4 v_Color;
-    void main(){
-        gl_FragColor = v_Color;
-    }
-`;
+let vs_file = './shaders/basic_color.vs';
+let fs_file = './shaders/basic_color.fs';
 
 function createMesh(){
 
@@ -102,8 +84,11 @@ let rotZ = 0;
 function example(){
     let gl = mini3d.gl;
 
+    let vs = mini3d.assetManager.getAsset(vs_file).data;
+    let fs = mini3d.assetManager.getAsset(fs_file).data;
+
     let shader = new mini3d.Shader();
-    if(!shader.create(VSHADER_SOURCE, FSHADER_SOURCE)){
+    if(!shader.create(vs, fs)){
         console.log("Failed to initialize shaders");
         return;
     }
@@ -195,6 +180,15 @@ function setupInput(onDrag){
     }
 }
 
+
 export default function main(){    
-    example();
+    let assetList = [
+        [vs_file, mini3d.AssetType.Text],
+        [fs_file, mini3d.AssetType.Text]
+    ]
+
+    mini3d.assetManager.loadAssetList(assetList, function(){                
+        example();
+    });
+   
 }

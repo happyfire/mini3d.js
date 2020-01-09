@@ -865,6 +865,124 @@ var mini3d = (function (exports) {
        }
    }
 
+   class ImageAsset{
+       constructor(name, data){
+           this.name = name;
+           this.data = data;        
+       }
+
+       get width(){
+           return this.data.width;
+       }
+
+       get height(){
+           return this.data.height;
+       }
+   }
+
+   class ImageLoader {
+       loadAsset(name, onComplete){
+           let image = new Image();
+           image.onload = function(){
+               let asset = new ImageAsset(name, image);
+               if(onComplete){
+                   onComplete(asset);
+               }            
+           };
+       }
+   }
+
+   class TextAsset{
+       constructor(name, data){
+           this.name = name;
+           this.data = data;        
+       }    
+   }
+
+   class TextLoader {
+       loadAsset(name, onComplete){
+           let request = new XMLHttpRequest();
+           request.onreadystatechange = function(){
+               if(request.readyState === XMLHttpRequest.DONE && request.status !== 404){
+                   let asset = new TextAsset(name, request.responseText);
+                   if(onComplete){
+                       onComplete(asset);
+                   }   
+               }
+           };       
+           request.open('GET', name, true);
+           request.send();
+       }
+   }
+
+   let AssetType = {
+       Text : 'text',
+       Image : 'image'    
+   };
+
+   class AssetManager {
+       
+       constructor(){
+           this._loaders = {};
+           this._assets = {};
+
+           this.addLoader(AssetType.Image, new ImageLoader());
+           this.addLoader(AssetType.Text, new TextLoader());
+       }
+
+       addLoader(assetType, loader){
+           this._loaders[assetType] = loader;
+       }
+
+       loadAsset(name, type, onComplete){
+           if(this._assets[name]){
+               if(onComplete){
+                   onComplete(this._assets[name]);
+               }
+               return;
+           }
+
+           let loader = this._loaders[type];
+           if(loader){
+               loader.loadAsset(name, function(asset){
+                   this._assets[name] = asset;
+                   if(onComplete){
+                       onComplete(asset);
+                   }
+               }.bind(this));
+           } else {
+               console.error("missing loader for asset type "+type);
+           }
+       }
+
+       getAsset(name){
+           return this._assets[name];        
+       }
+
+       //assetList: [[name,type]]
+       loadAssetList(assetList, onAllComplete){
+           let remainCount = assetList.length;
+           for(let listItem of assetList){
+               let name = listItem[0];
+               let type = listItem[1];
+               this.loadAsset(name, type, function(asset){
+                   if(asset){
+                       remainCount--;
+                       if(remainCount===0 && onAllComplete){
+                           onAllComplete();
+                       }
+                   } else {
+                       console.error('fail to load asset '+name);
+                   }
+               });
+           }
+       }
+
+   }
+
+   let assetManager = new AssetManager();
+
+   exports.AssetType = AssetType;
    exports.IndexBuffer = IndexBuffer;
    exports.Matrix4 = Matrix4;
    exports.Mesh = Mesh;
@@ -872,6 +990,7 @@ var mini3d = (function (exports) {
    exports.VertexBuffer = VertexBuffer;
    exports.VertexFormat = VertexFormat;
    exports.VertexSemantic = VertexSemantic;
+   exports.assetManager = assetManager;
    exports.init = init;
 
    return exports;
