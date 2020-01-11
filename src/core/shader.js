@@ -124,6 +124,14 @@ class Shader{
             return;
         }
         switch(info.type){
+            case gl.INT:{
+                if(info.isArray){
+                    gl.uniform1iv(info.location, value);
+                } else {
+                    gl.uniform1i(info.location, value);
+                }
+                break;
+            }
             case gl.FLOAT:{
                 if(info.isArray){
                     gl.uniform1fv(info.location, value);
@@ -142,6 +150,10 @@ class Shader{
             }
             case gl.FLOAT_VEC4:{
                 gl.uniform4fv(info.location, value);
+                break;
+            }
+            case gl.FLOAT_MAT3:{
+                gl.uniformMatrix3fv(info.location, false, value);
                 break;
             }
             case gl.FLOAT_MAT4:{

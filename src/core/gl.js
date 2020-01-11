@@ -28,6 +28,8 @@ function init(canvasId){
     }
     gl = context;
     gl.viewport(0, 0, canvas.width, canvas.height);
+
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); //Flip the image's y axis    
 };
 
 export { init, gl, canvas };

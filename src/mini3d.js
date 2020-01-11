@@ -5,4 +5,6 @@ export {Mesh} from "./core/mesh";
 export {VertexFormat, VertexSemantic} from "./core/vertexFormat";
 export {VertexBuffer} from './core/vertexBuffer';
 export {IndexBuffer} from './core/indexBuffer';
+export {Texture2D} from './core/texture';
 export {AssetType, assetManager} from './assets/assetManager';
+

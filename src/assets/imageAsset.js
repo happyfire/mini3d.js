@@ -21,7 +21,8 @@ class ImageLoader {
             if(onComplete){
                 onComplete(asset);
             }            
-        }
+        };
+        image.src = name;
     }
 }
 

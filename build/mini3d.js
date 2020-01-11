@@ -31,6 +31,8 @@ var mini3d = (function (exports) {
        }
        exports.gl = context;
        exports.gl.viewport(0, 0, exports.canvas.width, exports.canvas.height);
+
+       exports.gl.pixelStorei(exports.gl.UNPACK_FLIP_Y_WEBGL, 1); //Flip the image's y axis    
    }
 
    class Matrix4 {
@@ -542,6 +544,14 @@ var mini3d = (function (exports) {
                return;
            }
            switch(info.type){
+               case exports.gl.INT:{
+                   if(info.isArray){
+                       exports.gl.uniform1iv(info.location, value);
+                   } else {
+                       exports.gl.uniform1i(info.location, value);
+                   }
+                   break;
+               }
                case exports.gl.FLOAT:{
                    if(info.isArray){
                        exports.gl.uniform1fv(info.location, value);
@@ -560,6 +570,10 @@ var mini3d = (function (exports) {
                }
                case exports.gl.FLOAT_VEC4:{
                    exports.gl.uniform4fv(info.location, value);
+                   break;
+               }
+               case exports.gl.FLOAT_MAT3:{
+                   exports.gl.uniformMatrix3fv(info.location, false, value);
                    break;
                }
                case exports.gl.FLOAT_MAT4:{
@@ -865,6 +879,49 @@ var mini3d = (function (exports) {
        }
    }
 
+   class Texture2D {
+       constructor(){
+           this._id = exports.gl.createTexture();
+           if (!this._id) {
+               console.error('Failed to create the texture object');            
+           }
+       }
+
+       destroy(){
+           exports.gl.deleteTexture(this._id);
+           this._id = 0;
+       }
+
+       create(image){
+           // Bind the texture object to the target
+           exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
+           
+           // Set the texture parameters
+           exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.LINEAR);
+           exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_S, exports.gl.CLAMP_TO_EDGE);
+           exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_T, exports.gl.CLAMP_TO_EDGE);
+           
+           // Set the texture image data
+           exports.gl.texImage2D(exports.gl.TEXTURE_2D, 0, exports.gl.RGB, exports.gl.RGB, exports.gl.UNSIGNED_BYTE, image);
+
+           exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
+
+       }
+
+       get id(){
+           return this._id;
+       }
+
+       bind(unit=0){
+           exports.gl.activeTexture(exports.gl.TEXTURE0 + unit);
+           exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
+       }
+
+       unbind(){
+           exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
+       }
+   }
+
    class ImageAsset{
        constructor(name, data){
            this.name = name;
@@ -889,6 +946,7 @@ var mini3d = (function (exports) {
                    onComplete(asset);
                }            
            };
+           image.src = name;
        }
    }
 
@@ -987,6 +1045,7 @@ var mini3d = (function (exports) {
    exports.Matrix4 = Matrix4;
    exports.Mesh = Mesh;
    exports.Shader = Shader;
+   exports.Texture2D = Texture2D;
    exports.VertexBuffer = VertexBuffer;
    exports.VertexFormat = VertexFormat;
    exports.VertexSemantic = VertexSemantic;

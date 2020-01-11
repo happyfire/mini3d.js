@@ -1,12 +1,14 @@
 
-let vs_file = './shaders/basic_color.vs';
-let fs_file = './shaders/basic_color.fs';
+let vs_file = './shaders/tex_color.vs';
+let fs_file = './shaders/tex_color.fs';
+let tex_file = './imgs/cloud.jpg';
 
 function createMesh(){
 
     let format = new mini3d.VertexFormat();
     format.addAttrib(mini3d.VertexSemantic.POSITION, 3);
     format.addAttrib(mini3d.VertexSemantic.COLOR, 3);
+    format.addAttrib(mini3d.VertexSemantic.UV0, 2);
 
     // cube
     //       ^ Y
@@ -55,6 +57,20 @@ function createMesh(){
         //v4-v7-v6-v5 back
         0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0
     ];
+    let uv_data = [
+        //v0-v1-v2-v3 front
+        1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+        //v0-v3-v4-v5 right
+        0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+        //v0-v5-v6-v1 top
+        1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0,
+        //v1-v6-v7-v2 left
+        1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+        //v7-v4-v3-v2 bottom
+        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+        //v4-v7-v6-v5 back
+        0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0
+    ]
 
     let triangels = [
         0,1,2, 0,2,3,       //front
@@ -68,6 +84,7 @@ function createMesh(){
 
     mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);    
     mesh.setVertexData(mini3d.VertexSemantic.COLOR, color_data);   
+    mesh.setVertexData(mini3d.VertexSemantic.UV0, uv_data);
     mesh.setTriangles(triangels);
     mesh.upload();            
 
@@ -95,8 +112,12 @@ function example(){
 
     shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
     shader.mapAttributeSemantic(mini3d.VertexSemantic.COLOR, 'a_Color');    
+    shader.mapAttributeSemantic(mini3d.VertexSemantic.UV0, 'a_TexCoord');
 
-    shader.use();    
+    shader.use();  
+    
+    let texture = new mini3d.Texture2D();
+    texture.create(mini3d.assetManager.getAsset(tex_file).data);
 
     let mesh = createMesh();     
 
@@ -114,7 +135,7 @@ function example(){
             //rotX += dy;
             rotY += dx;
         }
-        draw(mesh, shader);
+        draw(mesh, shader, texture);
     })
     
 
@@ -122,11 +143,11 @@ function example(){
     gl.clearDepth(1.0);
     gl.enable(gl.DEPTH_TEST);
 
-    draw(mesh, shader);
+    draw(mesh, shader, texture);
 }
 
 
-function draw(mesh, shader){        
+function draw(mesh, shader, texture2d){        
     
     //rotate order: x-y-z
     modelMatrix.setRotate(rotZ, 0, 0, 1); //rot around z-axis
@@ -138,9 +159,14 @@ function draw(mesh, shader){
     
     shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
 
+    texture2d.bind();
+    shader.setUniform('u_sampler', texture2d.id);
+
     let gl = mini3d.gl;
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     mesh.render(shader);
+
+    texture2d.unbind();
 }
 
 function setupInput(onDrag){
@@ -184,7 +210,8 @@ function setupInput(onDrag){
 export default function main(){    
     let assetList = [
         [vs_file, mini3d.AssetType.Text],
-        [fs_file, mini3d.AssetType.Text]
+        [fs_file, mini3d.AssetType.Text],
+        [tex_file, mini3d.AssetType.Image]
     ]
 
     mini3d.assetManager.loadAssetList(assetList, function(){                
