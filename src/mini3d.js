@@ -6,5 +6,6 @@ export {VertexFormat, VertexSemantic} from "./core/vertexFormat";
 export {VertexBuffer} from './core/vertexBuffer';
 export {IndexBuffer} from './core/indexBuffer';
 export {Texture2D} from './core/texture';
+export {textureManager} from './core/textureManager';
 export {AssetType, assetManager} from './assets/assetManager';
 

@@ -1,7 +1,7 @@
 
 let vs_file = './shaders/tex_color.vs';
 let fs_file = './shaders/tex_color.fs';
-let tex_file = './imgs/cloud.jpg';
+let tex_file = './imgs/box_diffuse.jpg';
 
 function createMesh(){
 
@@ -116,8 +116,7 @@ function example(){
 
     shader.use();  
     
-    let texture = new mini3d.Texture2D();
-    texture.create(mini3d.assetManager.getAsset(tex_file).data);
+    let texture = mini3d.textureManager.getTexture(tex_file);
 
     let mesh = createMesh();     
 

@@ -553,7 +553,7 @@ var main = (function () {
 
 	var vs_file = './shaders/tex_color.vs';
 	var fs_file = './shaders/tex_color.fs';
-	var tex_file = './imgs/cloud.jpg';
+	var tex_file = './imgs/box_diffuse.jpg';
 
 	function createMesh() {
 	  var format = new mini3d.VertexFormat();
@@ -636,8 +636,7 @@ var main = (function () {
 	  shader.mapAttributeSemantic(mini3d.VertexSemantic.COLOR, 'a_Color');
 	  shader.mapAttributeSemantic(mini3d.VertexSemantic.UV0, 'a_TexCoord');
 	  shader.use();
-	  var texture = new mini3d.Texture2D();
-	  texture.create(mini3d.assetManager.getAsset(tex_file).data);
+	  var texture = mini3d.textureManager.getTexture(tex_file);
 	  var mesh = createMesh();
 	  var viewMatrix = new mini3d.Matrix4();
 	  viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
