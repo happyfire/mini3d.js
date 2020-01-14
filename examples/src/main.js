@@ -159,7 +159,7 @@ function draw(mesh, shader, texture2d){
     shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
 
     texture2d.bind();
-    shader.setUniform('u_sampler', texture2d.id);
+    shader.setUniform('u_sampler', 0);
 
     let gl = mini3d.gl;
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);

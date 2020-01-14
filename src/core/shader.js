@@ -160,6 +160,10 @@ class Shader{
                 gl.uniformMatrix4fv(info.location, false, value);
                 break;
             }
+            case gl.SAMPLER_2D:{
+                gl.uniform1i(info.location, value);
+                break;
+            }
             default:{
                 console.error('uniform type not support', info.type)
                 break;

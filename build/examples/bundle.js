@@ -671,7 +671,7 @@ var main = (function () {
 	  mvpMatrix.multiply(modelMatrix);
 	  shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
 	  texture2d.bind();
-	  shader.setUniform('u_sampler', texture2d.id);
+	  shader.setUniform('u_sampler', 0);
 	  var gl = mini3d.gl;
 	  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	  mesh.render(shader);
