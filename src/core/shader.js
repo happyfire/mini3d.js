@@ -177,7 +177,7 @@ class Shader{
             let location = this._attributes[name];
             return location;
         } else {
-            console.error('Shader: can not find attribute for semantic '+semantic);
+            //console.warn('Shader: can not find attribute for semantic '+semantic);
             return -1;
         }
     }    
