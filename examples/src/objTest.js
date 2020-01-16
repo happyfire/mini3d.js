@@ -1,14 +1,10 @@
-let vs_file = './shaders/basic.vs';
-let fs_file = './shaders/basic.fs';
+let vs_file = './shaders/basic_light.vs';
+let fs_file = './shaders/basic_light.fs';
 let obj_file = './models/bunny.obj';
 
 function createMesh(){
-
-   let objFileString = mini3d.assetManager.getAsset(obj_file).data;
-
-    let mesh = mini3d.objFileLoader.load(objFileString, 0.5);
-             
-
+    let objFileString = mini3d.assetManager.getAsset(obj_file).data;
+    let mesh = mini3d.objFileLoader.load(objFileString, 0.5);             
     return mesh;   
 }
 
@@ -32,10 +28,9 @@ function example(){
     }
 
     shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
+    shader.mapAttributeSemantic(mini3d.VertexSemantic.NORMAL, 'a_Normal');
     
-    shader.use();  
-    
-    //let texture = mini3d.textureManager.getTexture(tex_file);
+    shader.use();        
 
     let mesh = createMesh();     
 
@@ -76,6 +71,9 @@ function draw(mesh, shader){
     mvpMatrix.multiply(modelMatrix);
     
     shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
+    shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
+    let lightDir = [0.5, 3.0, 4.0];
+    shader.setUniform('u_LightDir', lightDir);
 
     let gl = mini3d.gl;
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);

@@ -129,10 +129,7 @@ class ObjFileLoader{
                 }
                     
             }
-        }
-
-        console.log('vertex count '+this._vertices.length);
-        console.log('triangle count '+this._numIndices/3);
+        }       
 
         let mesh = this._toMesh();
         this.reset();
@@ -210,6 +207,9 @@ class ObjFileLoader{
 
         mesh.setTriangles(triangels);
         mesh.upload();
+
+        console.log('vertex count '+this._vertices.length);
+        console.log('triangle count '+triangels.length/3);
 
         return mesh;
     }

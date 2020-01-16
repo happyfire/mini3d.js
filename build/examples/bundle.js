@@ -555,8 +555,8 @@ var main = (function () {
 	var viewProjMatrix = new mini3d.Matrix4();
 	var mvpMatrix = new mini3d.Matrix4();
 
-	var vs_file = './shaders/basic.vs';
-	var fs_file = './shaders/basic.fs';
+	var vs_file = './shaders/basic_light.vs';
+	var fs_file = './shaders/basic_light.fs';
 	var obj_file = './models/bunny.obj';
 
 	function createMesh() {
@@ -584,8 +584,8 @@ var main = (function () {
 	  }
 
 	  shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
-	  shader.use(); //let texture = mini3d.textureManager.getTexture(tex_file);
-
+	  shader.mapAttributeSemantic(mini3d.VertexSemantic.NORMAL, 'a_Normal');
+	  shader.use();
 	  var mesh = createMesh();
 	  var viewMatrix = new mini3d.Matrix4();
 	  viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
@@ -619,6 +619,9 @@ var main = (function () {
 	  mvpMatrix$1.set(viewProjMatrix$1);
 	  mvpMatrix$1.multiply(modelMatrix$1);
 	  shader.setUniform('u_mvpMatrix', mvpMatrix$1.elements);
+	  shader.setUniform('u_LightColor', [1.0, 1.0, 1.0]);
+	  var lightDir = [0.5, 3.0, 4.0];
+	  shader.setUniform('u_LightDir', lightDir);
 	  var gl = mini3d.gl;
 	  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	  mesh.render(shader);
