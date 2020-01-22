@@ -11,6 +11,8 @@ function createMesh(){
 let modelMatrix = new mini3d.Matrix4();
 let viewProjMatrix = new mini3d.Matrix4();
 let mvpMatrix = new mini3d.Matrix4();
+let normalMatrix = new mini3d.Matrix4();
+
 let rotX = 0;
 let rotY = 0;
 let rotZ = 0;
@@ -63,14 +65,22 @@ function example(){
 function draw(mesh, shader){        
     
     //rotate order: x-y-z
-    modelMatrix.setRotate(rotZ, 0, 0, 1); //rot around z-axis
+    modelMatrix.setScale(1.0,1.2,1.0);
+    modelMatrix.rotate(rotZ, 0, 0, 1); //rot around z-axis
     modelMatrix.rotate(rotY, 0.0, 1.0, 0.0); //rot around y-axis
     modelMatrix.rotate(rotX, 1.0, 0.0, 0.0); //rot around x-axis
+    modelMatrix.translate(0, -0.5, 0);
+
+    //https://lxjk.github.io/2017/10/01/Stop-Using-Normal-Matrix.html
+    normalMatrix.set(modelMatrix);
+    normalMatrix.scale(1.0, 1/1.2, 1.0);
+
 
     mvpMatrix.set(viewProjMatrix);
     mvpMatrix.multiply(modelMatrix);
     
     shader.setUniform('u_mvpMatrix', mvpMatrix.elements);
+    shader.setUniform('u_NormalMatrix', normalMatrix.elements);
     shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
     let lightDir = [0.5, 3.0, 4.0];
     shader.setUniform('u_LightDir', lightDir);

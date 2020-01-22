@@ -568,6 +568,7 @@ var main = (function () {
 	var modelMatrix$1 = new mini3d.Matrix4();
 	var viewProjMatrix$1 = new mini3d.Matrix4();
 	var mvpMatrix$1 = new mini3d.Matrix4();
+	var normalMatrix = new mini3d.Matrix4();
 	var rotX = 0;
 	var rotY = 0;
 	var rotZ = 0;
@@ -610,15 +611,21 @@ var main = (function () {
 
 	function draw(mesh, shader) {
 	  //rotate order: x-y-z
-	  modelMatrix$1.setRotate(rotZ, 0, 0, 1); //rot around z-axis
+	  modelMatrix$1.setScale(1.0, 1.2, 1.0);
+	  modelMatrix$1.rotate(rotZ, 0, 0, 1); //rot around z-axis
 
 	  modelMatrix$1.rotate(rotY, 0.0, 1.0, 0.0); //rot around y-axis
 
 	  modelMatrix$1.rotate(rotX, 1.0, 0.0, 0.0); //rot around x-axis
 
+	  modelMatrix$1.translate(0, -0.5, 0); //https://lxjk.github.io/2017/10/01/Stop-Using-Normal-Matrix.html
+
+	  normalMatrix.set(modelMatrix$1);
+	  normalMatrix.scale(1.0, 1 / 1.2, 1.0);
 	  mvpMatrix$1.set(viewProjMatrix$1);
 	  mvpMatrix$1.multiply(modelMatrix$1);
 	  shader.setUniform('u_mvpMatrix', mvpMatrix$1.elements);
+	  shader.setUniform('u_NormalMatrix', normalMatrix.elements);
 	  shader.setUniform('u_LightColor', [1.0, 1.0, 1.0]);
 	  var lightDir = [0.5, 3.0, 4.0];
 	  shader.setUniform('u_LightDir', lightDir);
