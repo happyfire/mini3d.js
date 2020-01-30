@@ -1,5 +1,7 @@
 export {init, gl, canvas} from "./core/gl";
-export {Matrix4} from "./core/matrix";
+export {math} from "./math/math";
+export {Vector3} from "./math/vector3";
+export {Matrix4} from "./math/matrix";
 export {Shader} from "./core/shader";
 export {Mesh} from "./core/mesh";
 export {VertexFormat, VertexSemantic} from "./core/vertexFormat";
