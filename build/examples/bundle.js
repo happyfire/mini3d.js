@@ -618,20 +618,9 @@ var main = (function () {
 
 	  modelMatrix$1.rotate(rotX, 1.0, 0.0, 0.0); //rot around x-axis
 
-	  modelMatrix$1.translate(0, -0.5, 0); //https://lxjk.github.io/2017/10/01/Stop-Using-Normal-Matrix.html
-	  //文中是按行向量左乘矩阵推导的，结论是传入vec3(1/sx,1/sy,1/sz)到shader里面，将法线用这个vec的三个分量缩放，然后再乘以原矩阵
-	  //我把这个vec缩放法线的操作集成到矩阵里面了，这个vec3可以改写成一个缩放矩阵，这个矩阵先变换法线，然后再使用原矩阵变换
-	  //可在shader外面合成出normal变换矩阵，保证先缩放。Matrix_normal = M S。
-	  //其中矩阵S = 
-	  // | 1/sx, 0,    0 |
-	  // |  0,  1/sy,  0 |
-	  // |  0,   0,  1/sz|
-	  // 计算 MS发现，normal矩阵就是消除了M矩阵中的缩放
-	  //ps:这个方法实际上就是消除了缩放因子。但由于不能将最终级联出来的矩阵中的缩放因子消除掉，所以这个方法不能实用。
-
-	  normalMatrix.set(modelMatrix$1);
-	  normalMatrix.scale(1 / 1.0, 1 / 1.2, 1 / 1.0); //TODO:写个Transform类把缩放和法线矩阵封装进去
-
+	  modelMatrix$1.translate(0, -0.5, 0);
+	  normalMatrix.setInverseOf(modelMatrix$1);
+	  normalMatrix.transpose();
 	  mvpMatrix$1.set(viewProjMatrix$1);
 	  mvpMatrix$1.multiply(modelMatrix$1);
 	  shader.setUniform('u_mvpMatrix', mvpMatrix$1.elements);
