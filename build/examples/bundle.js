@@ -569,9 +569,10 @@ var main = (function () {
 	var viewProjMatrix$1 = new mini3d.Matrix4();
 	var mvpMatrix$1 = new mini3d.Matrix4();
 	var normalMatrix = new mini3d.Matrix4();
+	var rotationQuat = new mini3d.Quaternion();
+	var matRot = new mini3d.Matrix4();
 	var rotX = 0;
 	var rotY = 0;
-	var rotZ = 0;
 
 	function example() {
 	  var gl = mini3d.gl;
@@ -592,15 +593,23 @@ var main = (function () {
 	  viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	  viewProjMatrix$1.setPerspective(30.0, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100.0);
 	  viewProjMatrix$1.multiply(viewMatrix);
-	  setupInput(function (dx, dy, rotateZ) {
-	    if (rotateZ) {
-	      rotZ += dx;
-	    } else {
-	      rotX = Math.max(Math.min(rotX + dy, 90.0), -90.0); //rotX += dy;
 
-	      rotY += dx;
-	    }
+	  var clampAngle = function clampAngle(angle, min, max) {
+	    if (angle < -360) angle += 360;
+	    if (angle > 360) angle -= 360;
+	    return Math.max(Math.min(angle, max), min);
+	  };
 
+	  setupInput(function (dx, dy) {
+	    rotX = clampAngle(rotX + dy, -90, 90);
+	    rotY += dx; //先旋转qy,再旋转qx
+
+	    var qx = mini3d.Quaternion.axisAngle(mini3d.Vector3.Right, rotX);
+	    var qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, rotY);
+	    mini3d.Quaternion.multiply(qx, qy, rotationQuat); //欧拉角的约定是先x后y,不是这里要的
+	    //rotationQuat.setFromEulerAngles(new mini3d.Vector3(rotX, rotY, 0));
+
+	    mini3d.Quaternion.toMatrix4(rotationQuat, matRot);
 	    draw(mesh, shader);
 	  });
 	  gl.clearColor(0, 0, 0, 1);
@@ -610,14 +619,8 @@ var main = (function () {
 	}
 
 	function draw(mesh, shader) {
-	  //rotate order: x-y-z
 	  modelMatrix$1.setScale(1.0, 1.2, 1.0);
-	  modelMatrix$1.rotate(rotZ, 0, 0, 1); //rot around z-axis
-
-	  modelMatrix$1.rotate(rotY, 0.0, 1.0, 0.0); //rot around y-axis
-
-	  modelMatrix$1.rotate(rotX, 1.0, 0.0, 0.0); //rot around x-axis
-
+	  modelMatrix$1.multiply(matRot);
 	  modelMatrix$1.translate(0, -0.5, 0);
 	  normalMatrix.setInverseOf(modelMatrix$1);
 	  normalMatrix.transpose();
@@ -637,7 +640,6 @@ var main = (function () {
 	  var dragging = false;
 	  var lastX = -1,
 	      lastY = -1;
-	  var rotateZ = false;
 
 	  mini3d.canvas.onmousedown = function (event) {
 	    var x = event.clientX;
@@ -648,7 +650,6 @@ var main = (function () {
 	      lastX = x;
 	      lastY = y;
 	      dragging = true;
-	      rotateZ = event.ctrlKey;
 	    }
 	  };
 
@@ -666,7 +667,7 @@ var main = (function () {
 	      var dy = factor * (y - lastY);
 
 	      if (onDrag) {
-	        onDrag(dx, dy, rotateZ);
+	        onDrag(dx, dy);
 	      }
 	    }
 

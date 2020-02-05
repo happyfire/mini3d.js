@@ -147,10 +147,10 @@ function example(){
 
 function draw(mesh, shader, texture2d){        
     
-    //rotate order: x-y-z
+    //rotate order: y-x-z
     modelMatrix.setRotate(rotZ, 0, 0, 1); //rot around z-axis
-    modelMatrix.rotate(rotY, 0.0, 1.0, 0.0); //rot around y-axis
     modelMatrix.rotate(rotX, 1.0, 0.0, 0.0); //rot around x-axis
+    modelMatrix.rotate(rotY, 0.0, 1.0, 0.0); //rot around y-axis
 
     mvpMatrix.set(viewProjMatrix);
     mvpMatrix.multiply(modelMatrix);

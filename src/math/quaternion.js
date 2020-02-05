@@ -1,3 +1,6 @@
+import { math } from "./math";
+import { Matrix4 } from "./matrix";
+
 class Quaternion {
     constructor(x=0,y=0,z=0,w=1){        
         this.x = x;
@@ -41,6 +44,17 @@ class Quaternion {
     }
 
     /**
+     * Make this quaternion identity.
+     */
+    identity(){
+        this.x = 0.0;
+        this.y = 0.0;
+        this.z = 0.0;
+        this.w = 1.0;
+        return this;
+    }
+
+    /**
      * Check if the quaternion rhs is equal to this quaternion.
      * @param {Quaternion} rhs 
      */
@@ -57,7 +71,25 @@ class Quaternion {
      * @param {Vector3} eulerAngles 
      */
     setFromEulerAngles(eulerAngles){
+        let ex = math.degToRad(eulerAngles.x*0.5);
+        let ey = math.degToRad(eulerAngles.y*0.5);
+        let ez = math.degToRad(eulerAngles.z*0.5);
 
+        let cx = Math.cos(ex);
+        let sx = Math.sin(ex);
+        let cy = Math.cos(ey);
+        let sy = Math.sin(ey);
+        let cz = Math.cos(ez);
+        let sz = Math.sin(ez);
+
+        let qx = new Quaternion(sx, 0.0, 0.0, cx);
+        let qy = new Quaternion(0.0, sy, 0.0, cy);
+        let qz = new Quaternion(0.0, 0.0, sz, cz);
+
+        // q = (qy * qx) * qz        
+        Quaternion.multiply(qy, qx, this);
+        Quaternion.multiply(this, qz, this);
+        return this;   
     }
 
     /**
@@ -82,7 +114,17 @@ class Quaternion {
      * Normalize this quaternion.
      */
     normalize(){
-
+        let mag = Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z + this.w*this.w);
+        if(mag>0.0){
+            let g = 1.0/mag;
+            this.x *= g;
+            this.y *= g;
+            this.z *= g;
+            this.w *= g;
+        } else {
+            this.identity();
+        }
+        return this;
     }
 
     /**
@@ -100,7 +142,9 @@ class Quaternion {
      * @returns {Quaternion} The rotation quaternion.
      */
     static axisAngle(axis, angle){
-
+        let halfAngle = math.degToRad(angle*0.5);
+        let s = Math.sin(halfAngle);
+        return new Quaternion(s*axis.x, s*axis.y, s*axis.z, Math.cos(halfAngle));
     }
 
     /**
@@ -112,7 +156,26 @@ class Quaternion {
      * @returns {Quaternion} The rotation quaternion.
      */
     static euler(x, y, z){
+        let ex = math.degToRad(x*0.5);
+        let ey = math.degToRad(y*0.5);
+        let ez = math.degToRad(z*0.5);
 
+        let cx = Math.cos(ex);
+        let sx = Math.sin(ex);
+        let cy = Math.cos(ey);
+        let sy = Math.sin(ey);
+        let cz = Math.cos(ez);
+        let sz = Math.sin(ez);
+
+        let qx = new Quaternion(sx, 0.0, 0.0, cx);
+        let qy = new Quaternion(0.0, sy, 0.0, cy);
+        let qz = new Quaternion(0.0, 0.0, sz, cz);
+
+        // q = (qy * qx) * qz    
+        let q = new Quaternion();    
+        Quaternion.multiply(qy, qx, q);
+        Quaternion.multiply(q, qz, q);
+        return q;        
     }
 
     /**
@@ -150,11 +213,19 @@ class Quaternion {
     }
 
     /**
-     * Returns the inverse of rhs.
-     * @param {Quaternion} rhs 
+     * Returns the conjugate of q.
+     * @param {Quaternion} q 
      */
-    static inverse(rhs){
+    static conjugate(q){
+        return new Quaternion(-q.x, -q.y, -q.z, q.w);
+    }
 
+    /**
+     * Returns the inverse of q.
+     * @param {Quaternion} q 
+     */
+    static inverse(q){
+        return Quaternion.conjugate(q);
     }
 
     /**
@@ -174,35 +245,84 @@ class Quaternion {
      * @returns {Number} The dot product.
      */
     static dot(qa, qb){
-
+        return qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
     }
 
     /**
      * Multiply the quaternion qa and qb.
      * @param {Quaternion} qa 
      * @param {Quaternion} qb 
-     * @returns The result quaternion.
+     * @param {Quaternion} dst The result set to dst.
      */
-    static multiply(qa, qb){
-
+    static multiply(qa, qb, dst){
+        dst.set(
+            qa.w*qb.x + qa.x*qb.w + qa.y*qb.z - qa.z*qb.y,
+            qa.w*qb.y + qa.y*qb.w + qa.z*qb.x - qa.x*qb.z,
+            qa.w*qb.z + qa.z*qb.w + qa.x*qb.y - qa.y*qb.x,
+            qa.w*qb.w - qa.x*qb.x - qa.y*qb.y - qa.z*qb.z            
+        );            
     }
 
     /**
      * Rotate the vector by quaternion.
-     * @param {Quaternion} qa 
+     * @param {Quaternion} q
      * @param {Vector3} v 
-     * @returns {Vector3}
+     * @param {Vector3} dst
      */
-    static rotateVector(qa, v){
+    static rotateVector(q, v, dst){
+        // dst = q * v * inv_q
 
+        // t = q * v
+        let tx = q.w * v.x + q.y * v.z - q.z * v.y;
+        let ty = q.w * v.y + q.z * v.x - q.x * v.z;
+        let tz = q.w * v.z + q.x * v.y - q.y * v.x;
+        let tw = -q.x * v.x - q.y * v.y - q.z * v.z; 
+        
+        //  dst = t * inv_q
+        dst.x = tw * -q.x + tx * q.w + ty * -q.z - tz * -q.y;
+        dst.y = tw * -q.y + ty * q.w + tz * -q.x - tx * -q.z;
+        dst.z = tw * -q.z + tz * q.w + tx * -q.y - ty * -q.x;
+        return dst;
     }
 
     /**
      * Convert quaternion to rotatoin matrix.
-     * @returns {Matrix4} The rotation matrix.
+     * @param {Matrix4} matrix The rotation matrix.
      */
-    static toMatrix4(){
+    static toMatrix4(q, matrix){
+        let x = q.x * 2.0;
+        let y = q.y * 2.0;
+        let z = q.z * 2.0;
+        let xx = q.x * x;
+        let yy = q.y * y;
+        let zz = q.z * z;
+        let xy = q.x * y;
+        let xz = q.x * z;
+        let yz = q.y * z;
+        let wx = q.w * x;
+        let wy = q.w * y;
+        let wz = q.w * z;
+        
+        let e = matrix.elements;
+        e[0] = 1.0 - (yy + zz);
+        e[1] = xy + wz;
+        e[2] = xz - wy;
+        e[3] = 0.0;
 
+        e[4] = xy - wz;
+        e[5] = 1.0 - (xx + zz);
+        e[6] = yz + wx;
+        e[7] = 0.0;
+
+        e[8] = xz + wy;
+        e[9] = yz - wx;
+        e[10] = 1.0 - (xx + yy);
+        e[11] = 0.0;
+
+        e[12] = 0.0;
+        e[13] = 0.0;
+        e[14] = 0.0;
+        e[15] = 1.0;
     }
 
     /**
@@ -210,11 +330,25 @@ class Quaternion {
      * This is faster then slerp but looks worse if the rotations are far apart.
      * @param {Quaternion} qa 
      * @param {Quaternion} qb 
-     * @param {Number} t The interpolation factor, clamped to the range [0,1].
+     * @param {Number} t The interpolation factor.
      * @returns The result quaternion.
      */
     static lerp(qa, qb, t){
-
+        let result = new Quaternion();
+        // If dot < 0, qa and qb are more than 360 degrees apart.
+        // The quaternions are 720 degrees of freedom, so negative all components when lerping.
+        if(Quaternion.dot(qa, qb) < 0){
+            result.set(qa.x + t*(-qb.x-qa.x),
+                       qa.y + t*(-qb.y-qa.y),
+                       qa.z + t*(-qb.z-qa.z),
+                       qa.w + t*(-qb.w-qa.w));
+        } else {
+            result.set(qa.x + t*(qb.x-qa.x),
+                       qa.y + t*(qb.y-qa.y),
+                       qa.z + t*(qb.z-qa.z),
+                       qa.w + t*(qb.w-qa.w));
+        }
+        return result;
     }
 
     /**
@@ -223,11 +357,38 @@ class Quaternion {
      * If the value of t is close to 0, the output will be close to qa, if it is close to 1, the output will be close to qb.
      * @param {Quaternion} qa 
      * @param {Quaternion} qb 
-     * @param {Number} t The interpolation factor, clamped to the range [0,1].
+     * @param {Number} t The interpolation factor.
      * @returns The result quaternion.
      */
     static slerp(qa, qb, t){
+        let dot = Quaternion.dot(qa, qb);
+        let result = new Quaternion();
 
+        if(dot < 0.0){
+            dot = -dot;
+            result.set(-qb.x, -qb.y, -qb.z, -qb.w);
+        } else {
+            result.set(qb);
+        }
+
+        let scale0 = 0;
+        let scale1 = 0;
+
+        if(dot < 0.95){
+            let angle = Math.acos(dot);
+            let sin_div = 1.0/Math.sin(angle);
+            scale1 = Math.sin(angle*t)*sin_div;
+            scale0 = Math.sin(angle*(1.0-t))*sin_div;
+        } else {
+            scale0 = 1.0 - t;
+            scale1 = t;
+        }
+
+        result.set( qa.x*scale0 + result.x*scale1,
+                    qa.y*scale0 + result.y*scale1,
+                    qa.z*scale0 + result.z*scale1,
+                    qa.w*scale0 + result.w*scale1);
+        return result;
     }
 
 }
@@ -235,6 +396,6 @@ class Quaternion {
 /**
  * The identity rotation.
  */
-Quaternion.identity = new Quaternion();
+Quaternion.Identity = new Quaternion();
 
 export { Quaternion };
