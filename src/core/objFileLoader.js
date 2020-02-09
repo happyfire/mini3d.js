@@ -1,5 +1,6 @@
 import { Mesh } from "./mesh";
 import { VertexFormat, VertexSemantic } from "./vertexFormat";
+import { Vector3 } from "../math/vector3"
 
 class StringParser{
     constructor(str){
@@ -67,7 +68,7 @@ class Face{
     constructor(){
         this.vIndices = [];
         this.nIndices = [];
-        this.tIndices = [];
+        this.tIndices = [];     
     }
 }
 
@@ -136,84 +137,6 @@ class ObjFileLoader{
         return mesh;
     }
 
-    _toMesh(){
-        let format = new VertexFormat();
-        format.addAttrib(VertexSemantic.POSITION, 3);
-        if(this._normals.length > 0){
-            format.addAttrib(VertexSemantic.NORMAL, 3);
-        }
-        let texsize = 0;
-        if(this._texcoords.length > 0){
-            texsize = this._texcoords[0].length;
-            format.addAttrib(VertexSemantic.UV0, texsize);
-        }
-
-        let mesh = new Mesh(format);        
-
-        let triangels = [];
-        let positions = [];
-        let normals = [];
-        let uvs = [];
-
-        for(let i=0; i<this._vertices.length; i++){
-            let v = this._vertices[i];
-            positions.push(v.x, v.y, v.z);
-        }
-
-        if(this._normals.length > 0){
-            if(this._normals.length !== this._vertices.length){
-                console.warn("obj file normals count not match vertices count");
-            }
-            for(let i=0; i<this._normals.length; i++){
-                let n = this._normals[i];
-                normals.push(n.x, n.y, n.z);
-            }
-        }
-
-        if(this._texcoords.length > 0){
-            if(this._texcoords.length !== this._vertices.length){
-                console.warn("obj file texcoords count not match vertices count");
-            }           
-            for(let i=0; i<this._texcoords.length; i++){
-                let texcoord = this._texcoords[i];
-                for(let j=0; j<texsize; j++){
-                    uvs.push(texcoord[j]);
-                }
-            }            
-        }
-
-        for(let i=0; i<this._faces.length; i++){
-            let face = this._faces[i];
-            for(let j=0; j<face.vIndices.length; j++){    
-                let vIdx = face.vIndices[j];                            
-                triangels.push(vIdx);                
-
-                if(face.nIndices.length > 0){
-                    let nIdx = face.nIndices[j];
-                    if(nIdx !== vIdx){
-                        console.warn('obj file nIdx not match vIdx');
-                    }                  
-                }
-            }            
-        }
-
-        mesh.setVertexData(VertexSemantic.POSITION, positions);
-        if(normals.length>0){
-            mesh.setVertexData(VertexSemantic.NORMAL, normals);
-        }
-        if(uvs.length>0){
-            mesh.setVertexData(VertexSemantic.UV0, uvs);
-        }
-
-        mesh.setTriangles(triangels);
-        mesh.upload();
-
-        console.log('vertex count '+this._vertices.length);
-        console.log('triangle count '+triangels.length/3);
-
-        return mesh;
-    }
-
     parseVertex(sp, scale){
         let x = sp.getFloat() * scale;
         let y = sp.getFloat() * scale;
@@ -256,11 +179,7 @@ class ObjFileLoader{
                     face.tIndices.push(ti-1);
                 }
             }
-        }
-
-        if(face.nIndices.length == 0){
-            //calc face normal
-        }
+        }        
 
         // Devide to triangels if face contains over 3 points.
         // 即使用三角扇表示多边形。n个顶点需要三角形n-2。
@@ -282,9 +201,147 @@ class ObjFileLoader{
             if(face.nIndices.length>0){
                 face.nIndices = newNIndices;    
             }            
-        }
+        }       
 
         return face;
+    }
+
+    calcFaceNormal(p0, p1, p2){
+        let v_10 = new Vector3(p0.x-p1.x, p0.y-p1.y, p0.z-p1.z);
+        let v_12 = new Vector3(p2.x-p1.x, p2.y-p1.y, p2.z-p1.z);
+        let normal = new Vector3();
+        Vector3.cross(v_12, v_10, normal);
+        normal.normalize();
+        return normal;
+    }
+
+    _toMesh(){
+        let format = new VertexFormat();
+        format.addAttrib(VertexSemantic.POSITION, 3);        
+        format.addAttrib(VertexSemantic.NORMAL, 3);
+        
+        let texsize = 0;
+        if(this._texcoords.length > 0){
+            texsize = this._texcoords[0].length;
+            format.addAttrib(VertexSemantic.UV0, texsize);
+        }
+
+        let mesh = new Mesh(format);        
+
+        let triangels = [];
+        let positions = [];
+        let normals = [];
+        let uvs = [];
+
+        for(let i=0; i<this._vertices.length; i++){
+            let v = this._vertices[i];
+            positions.push(v.x, v.y, v.z);
+        }
+       
+        if(this._normals.length > 0){
+            if(this._normals.length !== this._vertices.length){
+                console.warn("obj file normals count not match vertices count");
+            }
+            for(let i=0; i<this._normals.length; i++){
+                let n = this._normals[i];
+                normals.push(n.x, n.y, n.z);
+            }
+        }
+
+        if(this._texcoords.length > 0){
+            if(this._texcoords.length !== this._vertices.length){
+                console.warn("obj file texcoords count not match vertices count");
+            }           
+            for(let i=0; i<this._texcoords.length; i++){
+                let texcoord = this._texcoords[i];
+                for(let j=0; j<texsize; j++){
+                    uvs.push(texcoord[j]);
+                }
+            }            
+        }
+
+        for(let i=0; i<this._faces.length; i++){
+            let face = this._faces[i];
+            for(let j=0; j<face.vIndices.length; j++){    
+                let vIdx = face.vIndices[j];                            
+                triangels.push(vIdx);                
+
+                if(face.nIndices.length > 0){
+                    let nIdx = face.nIndices[j];
+                    if(nIdx !== vIdx){
+                        console.warn('obj file nIdx not match vIdx');
+                    }                  
+                }                
+            }            
+        }
+
+        if(normals.length===0){            
+            let triangleCount = triangels.length/3;
+            let vertexNormals = [];
+            let t = 0;
+            for(let i=0; i<triangleCount; ++i){                
+                let idx0 = triangels[t];
+                let idx1 = triangels[t+1];
+                let idx2 = triangels[t+2];
+                t+=3;
+
+                let p0x = positions[idx0*3];
+                let p0y = positions[idx0*3+1];
+                let p0z = positions[idx0*3+2];
+
+                let p1x = positions[idx1*3];
+                let p1y = positions[idx1*3+1];
+                let p1z = positions[idx1*3+2];
+
+                let p2x = positions[idx2*3];
+                let p2y = positions[idx2*3+1];
+                let p2z = positions[idx2*3+2];
+
+                let faceN = this.calcFaceNormal({x:p0x,y:p0y,z:p0z},
+                    {x:p1x,y:p1y,z:p1z},
+                    {x:p2x,y:p2y,z:p2z});                
+
+                if(vertexNormals[idx0]==null){
+                    vertexNormals[idx0] = [];
+                }
+                vertexNormals[idx0].push(faceN);
+
+                if(vertexNormals[idx1]==null){
+                    vertexNormals[idx1] = [];
+                }
+                vertexNormals[idx1].push(faceN);
+
+                if(vertexNormals[idx2]==null){
+                    vertexNormals[idx2] = [];
+                }
+                vertexNormals[idx2].push(faceN);
+            }
+
+            for(let i=0; i<vertexNormals.length; ++i){
+                let ns = vertexNormals[i];
+                let n = new Vector3();
+                for(let j=0; j<ns.length; ++j){
+                    n.add(ns[j]);
+                }                
+                n.normalize();
+                normals.push(n.x, n.y, n.z);
+            }
+        }
+
+        mesh.setVertexData(VertexSemantic.POSITION, positions);
+        mesh.setVertexData(VertexSemantic.NORMAL, normals);
+        
+        if(uvs.length>0){
+            mesh.setVertexData(VertexSemantic.UV0, uvs);
+        }
+
+        mesh.setTriangles(triangels);
+        mesh.upload();
+
+        console.log('vertex count '+this._vertices.length);
+        console.log('triangle count '+triangels.length/3);
+
+        return mesh;
     }
 
 }

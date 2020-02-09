@@ -1,11 +1,11 @@
 
 let vs_file = './shaders/basic_light.vs';
 let fs_file = './shaders/basic_light.fs';
-let obj_file = './models/bunny.obj';
+let obj_file = './models/cube.obj';
 
 function createMesh(){
     let objFileString = mini3d.assetManager.getAsset(obj_file).data;
-    let mesh = mini3d.objFileLoader.load(objFileString, 0.5);             
+    let mesh = mini3d.objFileLoader.load(objFileString, 1);             
     return mesh;   
 }
 
@@ -76,7 +76,7 @@ function example(){
 
 
 function draw(mesh, shader){                    
-    modelMatrix.setScale(1.0,1.2,1.0);
+    modelMatrix.setScale(1.0,1.0,1.0);
     modelMatrix.multiply(matRot);
     modelMatrix.translate(0, -0.5, 0);
 

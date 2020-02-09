@@ -557,11 +557,11 @@ var main = (function () {
 
 	var vs_file = './shaders/basic_light.vs';
 	var fs_file = './shaders/basic_light.fs';
-	var obj_file = './models/bunny.obj';
+	var obj_file = './models/cube.obj';
 
 	function createMesh() {
 	  var objFileString = mini3d.assetManager.getAsset(obj_file).data;
-	  var mesh = mini3d.objFileLoader.load(objFileString, 0.5);
+	  var mesh = mini3d.objFileLoader.load(objFileString, 1);
 	  return mesh;
 	}
 
@@ -619,7 +619,7 @@ var main = (function () {
 	}
 
 	function draw(mesh, shader) {
-	  modelMatrix$1.setScale(1.0, 1.2, 1.0);
+	  modelMatrix$1.setScale(1.0, 1.0, 1.0);
 	  modelMatrix$1.multiply(matRot);
 	  modelMatrix$1.translate(0, -0.5, 0);
 	  normalMatrix.setInverseOf(modelMatrix$1);
