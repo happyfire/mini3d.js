@@ -1,11 +1,11 @@
 
 let vs_file = './shaders/basic_light.vs';
 let fs_file = './shaders/basic_light.fs';
-let obj_file = './models/cube.obj';
+let obj_file = './models/dragon.obj';
 
 function createMesh(){
     let objFileString = mini3d.assetManager.getAsset(obj_file).data;
-    let mesh = mini3d.objFileLoader.load(objFileString, 1);             
+    let mesh = mini3d.objFileLoader.load(objFileString, 0.2);             
     return mesh;   
 }
 

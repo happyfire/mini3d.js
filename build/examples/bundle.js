@@ -557,11 +557,11 @@ var main = (function () {
 
 	var vs_file = './shaders/basic_light.vs';
 	var fs_file = './shaders/basic_light.fs';
-	var obj_file = './models/cube.obj';
+	var obj_file = './models/dragon.obj';
 
 	function createMesh() {
 	  var objFileString = mini3d.assetManager.getAsset(obj_file).data;
-	  var mesh = mini3d.objFileLoader.load(objFileString, 1);
+	  var mesh = mini3d.objFileLoader.load(objFileString, 0.2);
 	  return mesh;
 	}
 

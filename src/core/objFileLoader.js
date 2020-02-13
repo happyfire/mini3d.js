@@ -206,13 +206,27 @@ class ObjFileLoader{
         return face;
     }
 
-    calcFaceNormal(p0, p1, p2){
+    _calcFaceNormal(p0, p1, p2){
         let v_10 = new Vector3(p0.x-p1.x, p0.y-p1.y, p0.z-p1.z);
         let v_12 = new Vector3(p2.x-p1.x, p2.y-p1.y, p2.z-p1.z);
         let normal = new Vector3();
         Vector3.cross(v_12, v_10, normal);
         normal.normalize();
         return normal;
+    }
+
+    _calcFaceArea(p0, p1, p2){
+        let a = Vector3.distance(p0, p1);
+        let b = Vector3.distance(p1, p2);
+        let c = Vector3.distance(p0, p2);
+        let p = (a+b+c)/2;
+        return Math.sqrt(p*(p-a)*(p-b)*(p-c));
+    }
+
+    _calcAngle(v0, v1){
+        v0.normalize();
+        v1.normalize();
+        return Math.acos(Vector3.dot(v0, v1));
     }
 
     _toMesh(){
@@ -297,32 +311,34 @@ class ObjFileLoader{
                 let p2y = positions[idx2*3+1];
                 let p2z = positions[idx2*3+2];
 
-                let faceN = this.calcFaceNormal({x:p0x,y:p0y,z:p0z},
-                    {x:p1x,y:p1y,z:p1z},
-                    {x:p2x,y:p2y,z:p2z});                
+                let p0 = new Vector3(p0x, p0y, p0z);
+                let p1 = new Vector3(p1x, p1y, p1z);
+                let p2 = new Vector3(p2x, p2y, p2z);
+
+                let faceN = this._calcFaceNormal(p0, p1, p2);          
+                let faceArea = this._calcFaceArea(p0, p1, p2);      
 
                 if(vertexNormals[idx0]==null){
-                    vertexNormals[idx0] = [];
+                    vertexNormals[idx0] = new Vector3();
                 }
-                vertexNormals[idx0].push(faceN);
+                let angle = this._calcAngle(new Vector3(p1x-p0x, p1y-p0y, p1z-p0z), new Vector3(p2x-p0x, p2y-p0y, p2z-p0z));                
+                vertexNormals[idx0].add(Vector3.scaleTo(faceN, angle, new Vector3().scale(faceArea)));
 
                 if(vertexNormals[idx1]==null){
-                    vertexNormals[idx1] = [];
+                    vertexNormals[idx1] = new Vector3();
                 }
-                vertexNormals[idx1].push(faceN);
+                angle = this._calcAngle(new Vector3(p2x-p1x, p2y-p1y, p2z-p1z), new Vector3(p0x-p1x, p0y-p1y, p0z-p1z));                
+                vertexNormals[idx1].add(Vector3.scaleTo(faceN, angle, new Vector3().scale(faceArea)));
 
                 if(vertexNormals[idx2]==null){
-                    vertexNormals[idx2] = [];
+                    vertexNormals[idx2] = new Vector3();
                 }
-                vertexNormals[idx2].push(faceN);
+                angle = this._calcAngle(new Vector3(p0x-p2x, p0y-p2y, p0z-p2z), new Vector3(p1x-p2x, p1y-p2y, p1z-p2z));                
+                vertexNormals[idx2].add(Vector3.scaleTo(faceN, angle, new Vector3().scale(faceArea)));
             }
 
             for(let i=0; i<vertexNormals.length; ++i){
-                let ns = vertexNormals[i];
-                let n = new Vector3();
-                for(let j=0; j<ns.length; ++j){
-                    n.add(ns[j]);
-                }                
+                let n = vertexNormals[i];                                
                 n.normalize();
                 normals.push(n.x, n.y, n.z);
             }
