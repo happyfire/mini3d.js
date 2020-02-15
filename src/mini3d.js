@@ -12,4 +12,6 @@ export {Texture2D} from './core/texture';
 export {textureManager} from './core/textureManager';
 export {objFileLoader} from './core/objFileLoader';
 export {AssetType, assetManager} from './assets/assetManager';
+export {SceneNode} from './scene/sceneNode';
+export {Scene} from './scene/scene';
 

@@ -619,9 +619,9 @@ var main = (function () {
 	}
 
 	function draw(mesh, shader) {
-	  modelMatrix$1.setScale(1.0, 1.0, 1.0);
+	  modelMatrix$1.setTranslate(0, -1.0, 0);
 	  modelMatrix$1.multiply(matRot);
-	  modelMatrix$1.translate(0, -0.5, 0);
+	  modelMatrix$1.scale(1.0, 1.0, 1.0);
 	  normalMatrix.setInverseOf(modelMatrix$1);
 	  normalMatrix.transpose();
 	  mvpMatrix$1.set(viewProjMatrix$1);

@@ -705,6 +705,33 @@ var mini3d = (function (exports) {
 
            return this;
        }
+
+       static multiply(m1,m2,dst){
+           let i, e, a, b, ai0, ai1, ai2, ai3;
+     
+           // Calculate e = a * b
+           e = dst.elements;
+           a = m1.elements;
+           b = m2.elements;
+           
+           // If e equals b, copy b to temporary matrix.
+           if (e === b) {
+               b = new Float32Array(16);
+               for (i = 0; i < 16; ++i) {
+                   b[i] = e[i];
+               }
+           }
+           
+           for (i = 0; i < 4; i++) {
+               ai0=a[i];  ai1=a[i+4];  ai2=a[i+8];  ai3=a[i+12];
+               e[i]    = ai0 * b[0]  + ai1 * b[1]  + ai2 * b[2]  + ai3 * b[3];
+               e[i+4]  = ai0 * b[4]  + ai1 * b[5]  + ai2 * b[6]  + ai3 * b[7];
+               e[i+8]  = ai0 * b[8]  + ai1 * b[9]  + ai2 * b[10] + ai3 * b[11];
+               e[i+12] = ai0 * b[12] + ai1 * b[13] + ai2 * b[14] + ai3 * b[15];
+           }
+           
+           return dst;
+       }
    }
 
    class Quaternion {
@@ -2131,11 +2158,150 @@ var mini3d = (function (exports) {
 
    let objFileLoader = new ObjFileLoader();
 
+   class SceneNode {
+       constructor(){
+           this.position = new Vector3();
+           this.rotation = new Quaternion();
+           this.scale = new Vector3();
+           this.localMatrix = new Matrix4();
+           this.worldMatrix = new Matrix4();
+           this.parent = null;
+           this.children = [];
+
+           this._rotationMatrix = new Matrix4();
+       }
+
+       removeFromParent(){
+           if(this.parent){
+               let idx = this.parent.children.indexOf(this);
+               if(idx>=0){
+                   this.parent.children.splice(idx, 1);
+               }
+               this.parent = null;
+           }
+       }
+
+       setParent(parent){
+           this.removeFromParent();
+           if(parent){
+               parent.children.push(this);
+           }
+           this.parent = parent;
+       }
+
+       addChild(node){
+           node.setParent(this);
+       }
+
+       updateLocalMatrix(){
+           //TODO:local matrix dirty flag
+
+           this.localMatrix.setTranslate(this.position.x, this.position.y, this.position.z);   
+           //TODO:封装rotation操作并cache _rotatoinMatrix
+           Quaternion.toMatrix4(this.rotation, this._rotationMatrix);
+           this.localMatrix.multiply(this._rotationMatrix);        
+           this.localMatrix.scale(this.scale.x, this.scale.y, this.scale.z);      
+       }
+
+       updateWorldMatrix(parentWorldMatrix){
+           if(parentWorldMatrix){
+               Matrix4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
+           } else {
+               this.worldMatrix.set(this.localMatrix);
+           }
+
+           let worldMatrix = this.worldMatrix;
+           this.children.forEach(function(child){
+               child.updateWorldMatrix(worldMatrix);
+           });
+       }
+   }
+
+   class SceneNode$1 {
+       constructor(){
+           this.position = new Vector3();
+           this.rotation = new Quaternion();
+           this.scale = new Vector3();
+           this.localMatrix = new Matrix4();
+           this.worldMatrix = new Matrix4();
+           this.parent = null;
+           this.children = [];
+
+           this._rotationMatrix = new Matrix4();
+       }
+
+       removeFromParent(){
+           if(this.parent){
+               let idx = this.parent.children.indexOf(this);
+               if(idx>=0){
+                   this.parent.children.splice(idx, 1);
+               }
+               this.parent = null;
+           }
+       }
+
+       setParent(parent){
+           this.removeFromParent();
+           if(parent){
+               parent.children.push(this);
+           }
+           this.parent = parent;
+       }
+
+       addChild(node){
+           node.setParent(this);
+       }
+
+       updateLocalMatrix(){
+           //TODO:local matrix dirty flag
+
+           this.localMatrix.setTranslate(this.position.x, this.position.y, this.position.z);   
+           //TODO:封装rotation操作并cache _rotatoinMatrix
+           Quaternion.toMatrix4(this.rotation, this._rotationMatrix);
+           this.localMatrix.multiply(this._rotationMatrix);        
+           this.localMatrix.scale(this.scale.x, this.scale.y, this.scale.z);      
+       }
+
+       updateWorldMatrix(parentWorldMatrix){
+           if(parentWorldMatrix){
+               Matrix4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
+           } else {
+               this.worldMatrix.set(this.localMatrix);
+           }
+
+           let worldMatrix = this.worldMatrix;
+           this.children.forEach(function(child){
+               child.updateWorldMatrix(worldMatrix);
+           });
+       }
+   }
+
+   class Scene{
+       constructor(){
+           this.root = new SceneNode$1();
+
+       }
+
+       getRoot(){
+           return this.root;
+       }
+
+       update(){
+           this.root.updateWorldMatrix();
+       }
+
+       render(){
+           
+       }
+   }
+
    exports.AssetType = AssetType;
    exports.IndexBuffer = IndexBuffer;
    exports.Matrix4 = Matrix4;
    exports.Mesh = Mesh;
    exports.Quaternion = Quaternion;
+   exports.Scene = Scene;
+   exports.SceneNode = SceneNode;
    exports.Shader = Shader;
    exports.Texture2D = Texture2D;
    exports.Vector3 = Vector3;

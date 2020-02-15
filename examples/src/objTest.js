@@ -75,10 +75,10 @@ function example(){
 }
 
 
-function draw(mesh, shader){                    
-    modelMatrix.setScale(1.0,1.0,1.0);
+function draw(mesh, shader){         
+    modelMatrix.setTranslate(0, -1.0, 0);               
     modelMatrix.multiply(matRot);
-    modelMatrix.translate(0, -0.5, 0);
+    modelMatrix.scale(1.0, 1.0, 1.0);
 
     normalMatrix.setInverseOf(modelMatrix)
     normalMatrix.transpose();    
