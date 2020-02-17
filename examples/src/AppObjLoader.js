@@ -133,14 +133,30 @@ function setupInput(onDrag){
     }
 }
 
-export default function objTest(){
-    let assetList = [
-        [vs_file, mini3d.AssetType.Text],
-        [fs_file, mini3d.AssetType.Text],
-        [obj_file, mini3d.AssetType.Text]
-    ]
+class AppObjLoader{
+    constructor(){
 
-    mini3d.assetManager.loadAssetList(assetList, function(){                
-        example();
-    });
+    }
+
+    onInit(){
+        let assetList = [
+            [vs_file, mini3d.AssetType.Text],
+            [fs_file, mini3d.AssetType.Text],
+            [obj_file, mini3d.AssetType.Text]
+        ]
+    
+        mini3d.assetManager.loadAssetList(assetList, function(){                
+            example();
+        });
+    }
+
+    onResize(){
+
+    }
+
+    onUpdate(dt){
+
+    }
 }
+
+export default AppObjLoader;

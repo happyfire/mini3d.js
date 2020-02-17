@@ -551,141 +551,282 @@ var main = (function () {
 	  bind: functionBind
 	});
 
-	var modelMatrix = new mini3d.Matrix4();
-	var viewProjMatrix = new mini3d.Matrix4();
-	var mvpMatrix = new mini3d.Matrix4();
+	function _classCallCheck(instance, Constructor) {
+	  if (!(instance instanceof Constructor)) {
+	    throw new TypeError("Cannot call a class as a function");
+	  }
+	}
 
-	var vs_file = './shaders/basic_light.vs';
-	var fs_file = './shaders/basic_light.fs';
-	var obj_file = './models/dragon.obj';
+	function _defineProperties(target, props) {
+	  for (var i = 0; i < props.length; i++) {
+	    var descriptor = props[i];
+	    descriptor.enumerable = descriptor.enumerable || false;
+	    descriptor.configurable = true;
+	    if ("value" in descriptor) descriptor.writable = true;
+	    Object.defineProperty(target, descriptor.key, descriptor);
+	  }
+	}
+
+	function _createClass(Constructor, protoProps, staticProps) {
+	  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+	  if (staticProps) _defineProperties(Constructor, staticProps);
+	  return Constructor;
+	}
+
+	var vs_file = './shaders/tex_color.vs';
+	var fs_file = './shaders/tex_color.fs';
+	var tex_file = './imgs/box_diffuse.jpg';
 
 	function createMesh() {
-	  var objFileString = mini3d.assetManager.getAsset(obj_file).data;
-	  var mesh = mini3d.objFileLoader.load(objFileString, 0.2);
+	  var format = new mini3d.VertexFormat();
+	  format.addAttrib(mini3d.VertexSemantic.POSITION, 3);
+	  format.addAttrib(mini3d.VertexSemantic.COLOR, 3);
+	  format.addAttrib(mini3d.VertexSemantic.UV0, 2); // cube
+	  //       ^ Y
+	  //       | 
+	  //       |
+	  //       / -------> X 
+	  //      /
+	  //     v
+	  //    Z
+	  //
+	  //    v6----- v5
+	  //   /|      /|
+	  //  v1------v0|
+	  //  | |     | |
+	  //  | |v7---|-|v4
+	  //  |/      |/
+	  //  v2------v3
+
+	  var mesh = new mini3d.Mesh(format); //6个面（12个三角形），24个顶点  
+
+	  var position_data = [//v0-v1-v2-v3 front (0,1,2,3)
+	  1.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, //v0-v3-v4-v5 right (4,5,6,7)
+	  1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, //v0-v5-v6-v1 top (8,9,10,11)
+	  1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, //v1-v6-v7-v2 left (12,13,14,15)
+	  -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, //v7-v4-v3-v2 bottom (16,17,18,19)
+	  -1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, //v4-v7-v6-v5 back (20,21,22,23)
+	  1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0];
+	  var color_data = [//v0-v1-v2-v3 front (blue)
+	  0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, //v0-v3-v4-v5 right (green)
+	  0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, //v0-v5-v6-v1 top (red)
+	  1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, //v1-v6-v7-v2 left (yellow)
+	  1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, //v7-v4-v3-v2 bottom (white)
+	  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, //v4-v7-v6-v5 back
+	  0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
+	  var uv_data = [//v0-v1-v2-v3 front
+	  1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, //v0-v3-v4-v5 right
+	  0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, //v0-v5-v6-v1 top
+	  1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, //v1-v6-v7-v2 left
+	  1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, //v7-v4-v3-v2 bottom
+	  0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, //v4-v7-v6-v5 back
+	  0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
+	  var triangels = [0, 1, 2, 0, 2, 3, //front
+	  4, 5, 6, 4, 6, 7, //right
+	  8, 9, 10, 8, 10, 11, //top
+	  12, 13, 14, 12, 14, 15, //left
+	  16, 17, 18, 16, 18, 19, //bottom
+	  20, 21, 22, 20, 22, 23 //back
+	  ];
+	  mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);
+	  mesh.setVertexData(mini3d.VertexSemantic.COLOR, color_data);
+	  mesh.setVertexData(mini3d.VertexSemantic.UV0, uv_data);
+	  mesh.setTriangles(triangels);
+	  mesh.upload();
 	  return mesh;
 	}
 
-	var modelMatrix$1 = new mini3d.Matrix4();
-	var viewProjMatrix$1 = new mini3d.Matrix4();
-	var mvpMatrix$1 = new mini3d.Matrix4();
+	var AppTexturedCube =
+	/*#__PURE__*/
+	function () {
+	  function AppTexturedCube() {
+	    _classCallCheck(this, AppTexturedCube);
+
+	    this._inited = false;
+	    this._mesh = null;
+	    this._shader = null;
+	    this._texture = null;
+	    this._viewMatrix = new mini3d.Matrix4();
+	    this._modelMatrix = new mini3d.Matrix4();
+	    this._viewProjMatrix = new mini3d.Matrix4();
+	    this._mvpMatrix = new mini3d.Matrix4();
+	    this._rotX = 30;
+	    this._rotY = 30;
+	    this._rotZ = 0;
+	  }
+
+	  _createClass(AppTexturedCube, [{
+	    key: "onInit",
+	    value: function onInit() {
+	      var assetList = [[vs_file, mini3d.AssetType.Text], [fs_file, mini3d.AssetType.Text], [tex_file, mini3d.AssetType.Image]];
+	      mini3d.assetManager.loadAssetList(assetList, function () {
+	        this._inited = true;
+	        this.start();
+	      }.bind(this));
+
+	      this._viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	    }
+	  }, {
+	    key: "onResize",
+	    value: function onResize(width, height) {
+	      this._viewProjMatrix.setPerspective(30.0, width / height, 1.0, 100.0);
+
+	      this._viewProjMatrix.multiply(this._viewMatrix);
+
+	      if (this._inited) {
+	        this.draw();
+	      }
+	    }
+	  }, {
+	    key: "onUpdate",
+	    value: function onUpdate(dt) {}
+	  }, {
+	    key: "start",
+	    value: function start() {
+	      var gl = mini3d.gl;
+	      var vs = mini3d.assetManager.getAsset(vs_file).data;
+	      var fs = mini3d.assetManager.getAsset(fs_file).data;
+	      var shader = new mini3d.Shader();
+
+	      if (!shader.create(vs, fs)) {
+	        console.log("Failed to initialize shaders");
+	        return;
+	      }
+
+	      this._shader = shader;
+
+	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
+
+	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.COLOR, 'a_Color');
+
+	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.UV0, 'a_TexCoord');
+
+	      this._shader.use();
+
+	      this._texture = mini3d.textureManager.getTexture(tex_file);
+	      this._mesh = createMesh();
+	      var that = this;
+	      this.setupInput(function (dx, dy) {
+	        that._rotX = Math.max(Math.min(that._rotX + dy, 90.0), -90.0);
+	        that._rotY += dx;
+	        that.draw();
+	      });
+	      gl.clearColor(0, 0, 0, 1);
+	      gl.clearDepth(1.0);
+	      gl.enable(gl.DEPTH_TEST);
+	      this.draw();
+	    }
+	  }, {
+	    key: "setupInput",
+	    value: function setupInput(onDrag) {
+	      var dragging = false;
+	      var lastX = -1,
+	          lastY = -1;
+
+	      var onTouchStart = function onTouchStart(event) {
+	        var x, y;
+
+	        if (event.touches) {
+	          var touch = event.touches[0];
+	          x = touch.clientX;
+	          y = touch.clientY;
+	        } else {
+	          x = event.clientX;
+	          y = event.clientY;
+	        }
+
+	        var rect = event.target.getBoundingClientRect();
+
+	        if (x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom) {
+	          lastX = x;
+	          lastY = y;
+	          dragging = true;
+	        }
+	      };
+
+	      var onTouchEnd = function onTouchEnd(event) {
+	        dragging = false;
+	      };
+
+	      var onTouchMove = function onTouchMove(event) {
+	        var x, y;
+
+	        if (event.touches) {
+	          var touch = event.touches[0];
+	          x = touch.clientX;
+	          y = touch.clientY;
+	        } else {
+	          x = event.clientX;
+	          y = event.clientY;
+	        }
+
+	        if (dragging) {
+	          var factor = 300 / mini3d.canvas.height;
+	          var dx = factor * (x - lastX);
+	          var dy = factor * (y - lastY);
+
+	          if (onDrag) {
+	            onDrag(dx, dy);
+	          }
+	        }
+
+	        lastX = x;
+	        lastY = y;
+	      };
+
+	      mini3d.canvas.onmousedown = onTouchStart;
+	      mini3d.canvas.onmouseup = onTouchEnd;
+	      mini3d.canvas.onmousemove = onTouchMove;
+	      mini3d.canvas.ontouchstart = onTouchStart;
+	      mini3d.canvas.ontouchend = onTouchEnd;
+	      mini3d.canvas.ontouchmove = onTouchMove;
+	    }
+	  }, {
+	    key: "draw",
+	    value: function draw() {
+	      //rotate order: y-x-z
+	      this._modelMatrix.setRotate(this._rotZ, 0, 0, 1); //rot around z-axis
+
+
+	      this._modelMatrix.rotate(this._rotX, 1.0, 0.0, 0.0); //rot around x-axis
+
+
+	      this._modelMatrix.rotate(this._rotY, 0.0, 1.0, 0.0); //rot around y-axis
+
+
+	      this._mvpMatrix.set(this._viewProjMatrix);
+
+	      this._mvpMatrix.multiply(this._modelMatrix);
+
+	      this._shader.setUniform('u_mvpMatrix', this._mvpMatrix.elements);
+
+	      this._texture.bind();
+
+	      this._shader.setUniform('u_sampler', 0);
+
+	      var gl = mini3d.gl;
+	      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+	      this._mesh.render(this._shader);
+
+	      this._texture.unbind();
+	    }
+	  }]);
+
+	  return AppTexturedCube;
+	}();
+
+	var modelMatrix = new mini3d.Matrix4();
+	var viewProjMatrix = new mini3d.Matrix4();
+	var mvpMatrix = new mini3d.Matrix4();
 	var normalMatrix = new mini3d.Matrix4();
 	var rotationQuat = new mini3d.Quaternion();
 	var matRot = new mini3d.Matrix4();
-	var rotX = 0;
-	var rotY = 0;
-
-	function example() {
-	  var gl = mini3d.gl;
-	  var vs = mini3d.assetManager.getAsset(vs_file).data;
-	  var fs = mini3d.assetManager.getAsset(fs_file).data;
-	  var shader = new mini3d.Shader();
-
-	  if (!shader.create(vs, fs)) {
-	    console.log("Failed to initialize shaders");
-	    return;
-	  }
-
-	  shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
-	  shader.mapAttributeSemantic(mini3d.VertexSemantic.NORMAL, 'a_Normal');
-	  shader.use();
-	  var mesh = createMesh();
-	  var viewMatrix = new mini3d.Matrix4();
-	  viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
-	  viewProjMatrix$1.setPerspective(30.0, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100.0);
-	  viewProjMatrix$1.multiply(viewMatrix);
-
-	  var clampAngle = function clampAngle(angle, min, max) {
-	    if (angle < -360) angle += 360;
-	    if (angle > 360) angle -= 360;
-	    return Math.max(Math.min(angle, max), min);
-	  };
-
-	  setupInput(function (dx, dy) {
-	    rotX = clampAngle(rotX + dy, -90, 90);
-	    rotY += dx; //先旋转qy,再旋转qx
-
-	    var qx = mini3d.Quaternion.axisAngle(mini3d.Vector3.Right, rotX);
-	    var qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, rotY);
-	    mini3d.Quaternion.multiply(qx, qy, rotationQuat); //欧拉角的约定是先x后y,不是这里要的
-	    //rotationQuat.setFromEulerAngles(new mini3d.Vector3(rotX, rotY, 0));
-
-	    mini3d.Quaternion.toMatrix4(rotationQuat, matRot);
-	    draw(mesh, shader);
-	  });
-	  gl.clearColor(0, 0, 0, 1);
-	  gl.clearDepth(1.0);
-	  gl.enable(gl.DEPTH_TEST);
-	  draw(mesh, shader);
-	}
-
-	function draw(mesh, shader) {
-	  modelMatrix$1.setTranslate(0, -1.0, 0);
-	  modelMatrix$1.multiply(matRot);
-	  modelMatrix$1.scale(1.0, 1.0, 1.0);
-	  normalMatrix.setInverseOf(modelMatrix$1);
-	  normalMatrix.transpose();
-	  mvpMatrix$1.set(viewProjMatrix$1);
-	  mvpMatrix$1.multiply(modelMatrix$1);
-	  shader.setUniform('u_mvpMatrix', mvpMatrix$1.elements);
-	  shader.setUniform('u_NormalMatrix', normalMatrix.elements);
-	  shader.setUniform('u_LightColor', [1.0, 1.0, 1.0]);
-	  var lightDir = [0.5, 3.0, 4.0];
-	  shader.setUniform('u_LightDir', lightDir);
-	  var gl = mini3d.gl;
-	  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-	  mesh.render(shader);
-	}
-
-	function setupInput(onDrag) {
-	  var dragging = false;
-	  var lastX = -1,
-	      lastY = -1;
-
-	  mini3d.canvas.onmousedown = function (event) {
-	    var x = event.clientX;
-	    var y = event.clientY;
-	    var rect = event.target.getBoundingClientRect();
-
-	    if (x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom) {
-	      lastX = x;
-	      lastY = y;
-	      dragging = true;
-	    }
-	  };
-
-	  mini3d.canvas.onmouseup = function (event) {
-	    dragging = false;
-	  };
-
-	  mini3d.canvas.onmousemove = function (event) {
-	    var x = event.clientX;
-	    var y = event.clientY;
-
-	    if (dragging) {
-	      var factor = 300 / mini3d.canvas.height;
-	      var dx = factor * (x - lastX);
-	      var dy = factor * (y - lastY);
-
-	      if (onDrag) {
-	        onDrag(dx, dy);
-	      }
-	    }
-
-	    lastX = x;
-	    lastY = y;
-	  };
-	}
-
-	function objTest() {
-	  var assetList = [[vs_file, mini3d.AssetType.Text], [fs_file, mini3d.AssetType.Text], [obj_file, mini3d.AssetType.Text]];
-	  mini3d.assetManager.loadAssetList(assetList, function () {
-	    example();
-	  });
-	}
 
 	function main() {
-	  //basicCube();
-	  objTest();
+	  var app = new AppTexturedCube(); //let app = new AppObjLoader();
+
+	  mini3d.init('webgl', app);
 	}
 
 	return main;

@@ -1,8 +1,11 @@
-import basicCube from "./basicCube";
-import objTest from "./objTest";
+import AppTexturedCube from "./AppTexturedCube";
+import AppObjLoader from "./AppObjLoader";
 
 
-export default function main(){    
-    //basicCube();
-    objTest();
+export default function main(){   
+    
+    let app = new AppTexturedCube();
+    //let app = new AppObjLoader();
+
+    mini3d.init('webgl', app);
 }
