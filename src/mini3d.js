@@ -12,6 +12,9 @@ export {Texture2D} from './core/texture';
 export {textureManager} from './core/textureManager';
 export {objFileLoader} from './core/objFileLoader';
 export {AssetType, assetManager} from './assets/assetManager';
+export {eventManager} from './event/eventManager';
+export {SystemEvent} from './event/systemEvent';
+export {inputManager} from './input/inputManager';
 export {SceneNode} from './scene/sceneNode';
 export {Scene} from './scene/scene';
 

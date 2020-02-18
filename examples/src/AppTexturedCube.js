@@ -155,7 +155,10 @@ class AppTexturedCube{
         this._mesh = createMesh();              
         
         let that = this;
-        this.setupInput(function(dx, dy){                        
+        mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function(event, data){      
+            let factor = 300/mini3d.canvas.width;      
+            let dx = data.dx * factor;
+            let dy = data.dy * factor;                        
             that._rotX = Math.max(Math.min(that._rotX + dy, 90.0), -90.0);            
             that._rotY += dx;            
             that.draw();
@@ -168,65 +171,6 @@ class AppTexturedCube{
 
         this.draw();
     }    
-
-    setupInput(onDrag){
-        let dragging = false;
-        let lastX = -1, lastY = -1;                  
-    
-        let onTouchStart = function(event){   
-            let x,y;
-            if(event.touches){
-                let touch = event.touches[0];
-                x = touch.clientX;
-                y = touch.clientY;
-            } else {
-                x = event.clientX;
-                y = event.clientY;
-            }          
-                        
-            let rect = event.target.getBoundingClientRect();
-            if(x>=rect.left && x<rect.right && y>=rect.top && y<rect.bottom){
-                lastX = x;
-                lastY = y;
-                dragging = true;                       
-            }
-        }
-    
-        let onTouchEnd = function(event){
-            dragging = false;        
-        }
-    
-        let onTouchMove = function(event){        
-            let x,y;
-            if(event.touches){
-                let touch = event.touches[0];
-                x = touch.clientX;
-                y = touch.clientY;
-            } else {
-                x = event.clientX;
-                y = event.clientY;
-            } 
-            
-            if(dragging){
-                let factor = 300/mini3d.canvas.height;
-                let dx = factor * (x-lastX);
-                let dy = factor * (y-lastY);
-                if(onDrag){
-                    onDrag(dx, dy);
-                }            
-            }
-            lastX = x;
-            lastY = y;
-        }
-
-        mini3d.canvas.onmousedown = onTouchStart;
-        mini3d.canvas.onmouseup = onTouchEnd;
-        mini3d.canvas.onmousemove = onTouchMove;
-
-        mini3d.canvas.ontouchstart = onTouchStart;
-        mini3d.canvas.ontouchend = onTouchEnd;
-        mini3d.canvas.ontouchmove = onTouchMove;
-    }
 
     draw(){        
     

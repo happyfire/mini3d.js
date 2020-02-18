@@ -706,7 +706,10 @@ var main = (function () {
 	      this._texture = mini3d.textureManager.getTexture(tex_file);
 	      this._mesh = createMesh();
 	      var that = this;
-	      this.setupInput(function (dx, dy) {
+	      mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
+	        var factor = 300 / mini3d.canvas.width;
+	        var dx = data.dx * factor;
+	        var dy = data.dy * factor;
 	        that._rotX = Math.max(Math.min(that._rotX + dy, 90.0), -90.0);
 	        that._rotY += dx;
 	        that.draw();
@@ -715,71 +718,6 @@ var main = (function () {
 	      gl.clearDepth(1.0);
 	      gl.enable(gl.DEPTH_TEST);
 	      this.draw();
-	    }
-	  }, {
-	    key: "setupInput",
-	    value: function setupInput(onDrag) {
-	      var dragging = false;
-	      var lastX = -1,
-	          lastY = -1;
-
-	      var onTouchStart = function onTouchStart(event) {
-	        var x, y;
-
-	        if (event.touches) {
-	          var touch = event.touches[0];
-	          x = touch.clientX;
-	          y = touch.clientY;
-	        } else {
-	          x = event.clientX;
-	          y = event.clientY;
-	        }
-
-	        var rect = event.target.getBoundingClientRect();
-
-	        if (x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom) {
-	          lastX = x;
-	          lastY = y;
-	          dragging = true;
-	        }
-	      };
-
-	      var onTouchEnd = function onTouchEnd(event) {
-	        dragging = false;
-	      };
-
-	      var onTouchMove = function onTouchMove(event) {
-	        var x, y;
-
-	        if (event.touches) {
-	          var touch = event.touches[0];
-	          x = touch.clientX;
-	          y = touch.clientY;
-	        } else {
-	          x = event.clientX;
-	          y = event.clientY;
-	        }
-
-	        if (dragging) {
-	          var factor = 300 / mini3d.canvas.height;
-	          var dx = factor * (x - lastX);
-	          var dy = factor * (y - lastY);
-
-	          if (onDrag) {
-	            onDrag(dx, dy);
-	          }
-	        }
-
-	        lastX = x;
-	        lastY = y;
-	      };
-
-	      mini3d.canvas.onmousedown = onTouchStart;
-	      mini3d.canvas.onmouseup = onTouchEnd;
-	      mini3d.canvas.onmousemove = onTouchMove;
-	      mini3d.canvas.ontouchstart = onTouchStart;
-	      mini3d.canvas.ontouchend = onTouchEnd;
-	      mini3d.canvas.ontouchmove = onTouchMove;
 	    }
 	  }, {
 	    key: "draw",

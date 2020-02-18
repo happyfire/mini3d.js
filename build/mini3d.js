@@ -1,6 +1,122 @@
 var mini3d = (function (exports) {
     'use strict';
 
+    class EventManager{
+        constructor(){
+            this._eventHandlers = {};
+        }
+
+        addEventHandler(event, handler){
+            let handlers = this._eventHandlers[event];
+            if(handlers==null){
+                this._eventHandlers[event] = [];
+                handlers = this._eventHandlers[event];
+            }
+
+            handlers.push(handler);
+        }
+
+        removeEventHandler(event, handler){
+            let handlers = this._eventHandlers[event];
+            if(handlers!=null && handlers.length>0){
+                let idx = handlers.indexOf(handler);
+                if(idx>=0){
+                    handlers.splice(idx, 1);
+                }
+            }
+        }
+
+        removeAllEventHandlers(event){
+            this._eventHandlers[event] = null;
+        }
+
+        emitEvent(event, data){        
+            let handlers = this._eventHandlers[event];
+            if(handlers!=null && handlers.length>0){
+                for(let handler of handlers){
+                    handler(event, data);
+                }
+            }
+        }
+    }
+
+    let eventManager = new EventManager();
+
+    let SystemEvent = {
+        touchStart:'touchStart',
+        touchMove:'touchMove',
+        touchEnd:'touchEnd',
+        touchOut:'touchOut'
+    };
+
+    class InputManager{
+        constructor(){        
+        }
+
+        init(canvas){
+            let dragging = false;
+            let lastX = -1, lastY = -1;                  
+        
+            let onTouchStart = function(event){   
+                let x,y;
+                if(event.touches){
+                    let touch = event.touches[0];
+                    x = touch.clientX;
+                    y = touch.clientY;
+                } else {
+                    x = event.clientX;
+                    y = event.clientY;
+                }          
+                            
+                let rect = event.target.getBoundingClientRect();
+                if(x>=rect.left && x<rect.right && y>=rect.top && y<rect.bottom){
+                    lastX = x;
+                    lastY = y;
+                    dragging = true;  
+                    
+                    eventManager.emitEvent(SystemEvent.touchStart, {x:x,y:y});
+                }
+            };
+        
+            let onTouchEnd = function(event){
+                dragging = false;  
+                eventManager.emitEvent(SystemEvent.touchEnd);      
+            };
+        
+            let onTouchMove = function(event){        
+                let x,y;
+                if(event.touches){
+                    let touch = event.touches[0];
+                    x = touch.clientX;
+                    y = touch.clientY;
+                } else {
+                    x = event.clientX;
+                    y = event.clientY;
+                } 
+                
+                if(dragging){                
+                    let dx = (x-lastX);
+                    let dy = (y-lastY);
+                    eventManager.emitEvent(SystemEvent.touchMove, {x:x,y:y,dx:dx,dy:dy});                         
+                }
+                lastX = x;
+                lastY = y;
+            };
+
+            canvas.onmousedown = onTouchStart;
+            canvas.onmouseup = onTouchEnd;
+            canvas.onmousemove = onTouchMove;
+
+            canvas.ontouchstart = onTouchStart;
+            canvas.ontouchend = onTouchEnd;
+            canvas.ontouchmove = onTouchMove;
+        }
+
+
+    }
+
+    let inputManager = new InputManager();
+
     exports.gl = null;
     exports.canvas = null;
     let _app = null;
@@ -32,6 +148,8 @@ var mini3d = (function (exports) {
         exports.gl.pixelStorei(exports.gl.UNPACK_FLIP_Y_WEBGL, 1); //Flip the image's y axis    
 
         _app = app;
+
+        inputManager.init(exports.canvas);
 
         if(_app){
             _app.onInit();    
@@ -2341,13 +2459,16 @@ var mini3d = (function (exports) {
     exports.Scene = Scene;
     exports.SceneNode = SceneNode;
     exports.Shader = Shader;
+    exports.SystemEvent = SystemEvent;
     exports.Texture2D = Texture2D;
     exports.Vector3 = Vector3;
     exports.VertexBuffer = VertexBuffer;
     exports.VertexFormat = VertexFormat;
     exports.VertexSemantic = VertexSemantic;
     exports.assetManager = assetManager;
+    exports.eventManager = eventManager;
     exports.init = init;
+    exports.inputManager = inputManager;
     exports.isMobile = isMobile;
     exports.math = math;
     exports.objFileLoader = objFileLoader;

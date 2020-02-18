@@ -1,3 +1,5 @@
+import { inputManager } from "../input/inputManager";
+
 let gl = null;
 let canvas = null;
 let _app = null;
@@ -29,6 +31,8 @@ function init(canvasId, app){
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); //Flip the image's y axis    
 
     _app = app;
+
+    inputManager.init(canvas);
 
     if(_app){
         _app.onInit();    
