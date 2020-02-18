@@ -36,7 +36,7 @@ class InputManager{
             eventManager.emitEvent(SystemEvent.touchEnd);      
         }
     
-        let onTouchMove = function(event){        
+        let onTouchMove = function(event){            
             let x,y;
             if(event.touches){
                 let touch = event.touches[0];

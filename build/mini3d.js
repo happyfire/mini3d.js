@@ -13,6 +13,11 @@ var mini3d = (function (exports) {
                 handlers = this._eventHandlers[event];
             }
 
+            if(handlers.indexOf(handler)!==-1){
+                console.warn("event hander already added.");
+                return;
+            }
+            
             handlers.push(handler);
         }
 
@@ -83,7 +88,7 @@ var mini3d = (function (exports) {
                 eventManager.emitEvent(SystemEvent.touchEnd);      
             };
         
-            let onTouchMove = function(event){        
+            let onTouchMove = function(event){            
                 let x,y;
                 if(event.touches){
                     let touch = event.touches[0];

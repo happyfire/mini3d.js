@@ -669,7 +669,7 @@ var main = (function () {
 	  }, {
 	    key: "onResize",
 	    value: function onResize(width, height) {
-	      this._viewProjMatrix.setPerspective(30.0, width / height, 1.0, 100.0);
+	      this._viewProjMatrix.setPerspective(60.0, width / height, 1.0, 100.0);
 
 	      this._viewProjMatrix.multiply(this._viewMatrix);
 
@@ -710,7 +710,14 @@ var main = (function () {
 	        var factor = 300 / mini3d.canvas.width;
 	        var dx = data.dx * factor;
 	        var dy = data.dy * factor;
-	        that._rotX = Math.max(Math.min(that._rotX + dy, 90.0), -90.0);
+
+	        var clampAngle = function clampAngle(angle, min, max) {
+	          if (angle < -360) angle += 360;
+	          if (angle > 360) angle -= 360;
+	          return Math.max(Math.min(angle, max), min);
+	        };
+
+	        that._rotX = clampAngle(that._rotX + dy, -90.0, 90.0);
 	        that._rotY += dx;
 	        that.draw();
 	      });
@@ -753,13 +760,6 @@ var main = (function () {
 
 	  return AppTexturedCube;
 	}();
-
-	var modelMatrix = new mini3d.Matrix4();
-	var viewProjMatrix = new mini3d.Matrix4();
-	var mvpMatrix = new mini3d.Matrix4();
-	var normalMatrix = new mini3d.Matrix4();
-	var rotationQuat = new mini3d.Quaternion();
-	var matRot = new mini3d.Matrix4();
 
 	function main() {
 	  var app = new AppTexturedCube(); //let app = new AppObjLoader();

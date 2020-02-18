@@ -121,7 +121,7 @@ class AppTexturedCube{
     }
 
     onResize(width, height){                
-        this._viewProjMatrix.setPerspective(30.0, width/height, 1.0, 100.0);
+        this._viewProjMatrix.setPerspective(60.0, width/height, 1.0, 100.0);
         this._viewProjMatrix.multiply(this._viewMatrix);   
         
         if(this._inited){            
@@ -159,7 +159,13 @@ class AppTexturedCube{
             let factor = 300/mini3d.canvas.width;      
             let dx = data.dx * factor;
             let dy = data.dy * factor;                        
-            that._rotX = Math.max(Math.min(that._rotX + dy, 90.0), -90.0);            
+            
+            let clampAngle = function(angle, min, max){
+                if(angle<-360) angle+=360;
+                if(angle>360) angle-=360;
+                return Math.max(Math.min(angle, max), min);
+            }
+            that._rotX = clampAngle(that._rotX + dy, -90.0, 90.0);
             that._rotY += dx;            
             that.draw();
         });

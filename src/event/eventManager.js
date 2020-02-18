@@ -11,6 +11,11 @@ class EventManager{
             handlers = this._eventHandlers[event];
         }
 
+        if(handlers.indexOf(handler)!==-1){
+            console.warn("event hander already added.");
+            return;
+        }
+        
         handlers.push(handler);
     }
 
