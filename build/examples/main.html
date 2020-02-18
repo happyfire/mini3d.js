@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+    <style type="text/css">
+        html, body{
+            padding: 0;
+            margin: 0;
+            overflow: hidden;      
+            background: gray;      
+        }
+
+        #webgl{
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%,-50%);
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+    <head>
+        <meta charset="utf-8"/>
+        <title id="_title">Mini3d Examples</title>
+    </head>
+
+    <body onload="onLoad()">
+        <canvas id="webgl">
+            Please use the browser support canvas.
+        </canvas>
+
+        <script src="../mini3d.js"></script>
+        <script src="bundle.js"></script>
+        <script>
+            function GetQueryString(name) { 
+                var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)","i"); 
+                var r = window.location.search.substr(1).match(reg); 
+                if (r!=null) return (r[2]); return null; 
+            }
+
+            function onLoad(){       
+                console.log(window.location.search);                     
+                var examples = main();                
+                var idx = GetQueryString('idx');
+                if(idx!=null){
+                    document.getElementById("_title").textContent = examples[idx].name + " - Mini3d.js Example";
+                    examples[idx].entry();
+                } else {
+                    window.alert("Can not find example");
+                }
+                
+            }
+        </script> 
+    </body>
+</html>
