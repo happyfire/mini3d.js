@@ -2,31 +2,77 @@
 <html lang="en">
     <style type="text/css">
         html, body{                  
-            background: black;      
+            background: gray;      
         }
+
+        .container{
+            display: flex;
+            width: 100%;
+            flex-direction: column;            
+            background-color: transparent;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .item{
+            margin: 20px;
+            border: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;              
+            background-color: black;         
+        }
+
+        .title{
+            margin: 20px;
+            color:#eee;
+        }
+
+        .head-text{
+            color:white;
+            font-size: large;
+            margin: 25px;
+        }
+
     </style>
     <head>
         <meta charset="utf-8"/>
-        <title>Mini3d Examples</title>
+        <title>Examples - mini3d.js</title>
     </head>
 
-    <body onload="onLoad()">        
+    <body onload="onLoad()">    
+        <div class="container">
+            <b class='head-text'><a href="https://github.com/happyfire/mini3d.js" target="_blank">mini3d.js</a> Examples</b>
+        </div>    
         <script src="./examples/bundle.js"></script>
         <script>
             function onLoad(){              
                 let examples = main();
-                window._examples = examples;               
+                window._examples = examples;      
+
+                let container = document.getElementsByClassName('container')[0];         
 
                 for(let idx in examples){
                     let div = document.createElement("div");
-                    document.body.appendChild(div);
+                    div.className = "item";                    
+                    container.appendChild(div);                   
 
                     let e = examples[idx];
-                    let item = document.createElement("a"); 
-                    item.text = e.name;                    
-                    item.href = "./examples/main?idx="+idx.toString();                 
+                    let item = document.createElement("a");                                        
+                    item.href = "./examples/main?idx="+idx;                 
                     item.target = "_blank";
+
+                    let preview = document.createElement("img");
+                    let t = parseInt(idx)+1;
+                    preview.src = "./examples/previews/ex"+t+".png";
+                    preview.width = 256;                   
+                    item.appendChild(preview);
                     
+                    let title = document.createElement("p");
+                    title.textContent = e.name;   
+                    title.className = 'title';                 
+                    
+                    div.appendChild(title);
                     div.appendChild(item); 
                 }
             }
