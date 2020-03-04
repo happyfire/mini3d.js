@@ -17,4 +17,6 @@ export {SystemEvent} from './event/systemEvent';
 export {inputManager} from './input/inputManager';
 export {SceneNode} from './scene/sceneNode';
 export {Scene} from './scene/scene';
+export {SystemComponents} from './scene/systemComps';
+export {MeshRenderer} from './scene/components/meshRenderer';
 

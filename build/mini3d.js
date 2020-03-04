@@ -2319,17 +2319,24 @@ var mini3d = (function (exports) {
 
     let objFileLoader = new ObjFileLoader();
 
+    let SystemComponents = {
+        Renderer:'renderer',
+        Mesh:'mesh'
+    };
+
     class SceneNode {
         constructor(){
             this.position = new Vector3();
             this.rotation = new Quaternion();
-            this.scale = new Vector3();
+            this.scale = new Vector3(1,1,1);
             this.localMatrix = new Matrix4();
             this.worldMatrix = new Matrix4();
             this.parent = null;
             this.children = [];
 
             this._rotationMatrix = new Matrix4();
+
+            this.components = {};
         }
 
         removeFromParent(){
@@ -2365,6 +2372,8 @@ var mini3d = (function (exports) {
         }
 
         updateWorldMatrix(parentWorldMatrix){
+            this.updateLocalMatrix();
+
             if(parentWorldMatrix){
                 Matrix4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
             } else {
@@ -2375,6 +2384,17 @@ var mini3d = (function (exports) {
             this.children.forEach(function(child){
                 child.updateWorldMatrix(worldMatrix);
             });
+        }
+
+        addComponent(type, component){
+            this.components[type] = component;
+        }
+
+        render(){
+            let renderer = this.components[SystemComponents.Renderer];
+            if(renderer){
+                renderer.render();
+            }
         }
     }
 
@@ -2382,13 +2402,15 @@ var mini3d = (function (exports) {
         constructor(){
             this.position = new Vector3();
             this.rotation = new Quaternion();
-            this.scale = new Vector3();
+            this.scale = new Vector3(1,1,1);
             this.localMatrix = new Matrix4();
             this.worldMatrix = new Matrix4();
             this.parent = null;
             this.children = [];
 
             this._rotationMatrix = new Matrix4();
+
+            this.components = {};
         }
 
         removeFromParent(){
@@ -2424,6 +2446,8 @@ var mini3d = (function (exports) {
         }
 
         updateWorldMatrix(parentWorldMatrix){
+            this.updateLocalMatrix();
+
             if(parentWorldMatrix){
                 Matrix4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
             } else {
@@ -2434,6 +2458,17 @@ var mini3d = (function (exports) {
             this.children.forEach(function(child){
                 child.updateWorldMatrix(worldMatrix);
             });
+        }
+
+        addComponent(type, component){
+            this.components[type] = component;
+        }
+
+        render(){
+            let renderer = this.components[SystemComponents.Renderer];
+            if(renderer){
+                renderer.render();
+            }
         }
     }
 
@@ -2447,23 +2482,57 @@ var mini3d = (function (exports) {
             return this.root;
         }
 
+        addChild(child){
+            this.root.addChild(child);
+        }
+
         update(){
             this.root.updateWorldMatrix();
         }
 
         render(){
-            
+            //TODO: 找出camera, 灯光和可渲染结点，逐camera进行forward rendering
+            //1. camera frustum culling
+            //2. 逐队列渲染
+            //   2-1. 不透明物体队列，按材质实例将node分组，然后排序（从前往后）
+            //   2-2, 透明物体队列，按z序从后往前排列
+
+            for(let c of this.root.children){
+                c.render();
+            }
         }
+    }
+
+    class MeshRenderer{
+        constructor(){
+            this.mesh = null;
+            this.shader = null;
+        }
+
+        setShader(shader){
+            this.shader = shader;
+        }
+
+        setMesh(mesh){
+            this.mesh = mesh;
+        }
+
+        render(){
+            this.mesh.render(this.shader);
+        }
+
     }
 
     exports.AssetType = AssetType;
     exports.IndexBuffer = IndexBuffer;
     exports.Matrix4 = Matrix4;
     exports.Mesh = Mesh;
+    exports.MeshRenderer = MeshRenderer;
     exports.Quaternion = Quaternion;
     exports.Scene = Scene;
     exports.SceneNode = SceneNode;
     exports.Shader = Shader;
+    exports.SystemComponents = SystemComponents;
     exports.SystemEvent = SystemEvent;
     exports.Texture2D = Texture2D;
     exports.Vector3 = Vector3;

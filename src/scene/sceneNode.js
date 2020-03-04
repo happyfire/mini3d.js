@@ -1,18 +1,21 @@
 import { Vector3 } from "../math/vector3";
 import { Quaternion } from "../math/quaternion";
 import { Matrix4 } from "../math/matrix";
+import { SystemComponents } from "./systemComps";
 
 class SceneNode {
     constructor(){
         this.position = new Vector3();
         this.rotation = new Quaternion();
-        this.scale = new Vector3();
+        this.scale = new Vector3(1,1,1);
         this.localMatrix = new Matrix4();
         this.worldMatrix = new Matrix4();
         this.parent = null;
         this.children = [];
 
         this._rotationMatrix = new Matrix4();
+
+        this.components = {};
     }
 
     removeFromParent(){
@@ -48,6 +51,8 @@ class SceneNode {
     }
 
     updateWorldMatrix(parentWorldMatrix){
+        this.updateLocalMatrix();
+
         if(parentWorldMatrix){
             Matrix4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
         } else {
@@ -58,6 +63,17 @@ class SceneNode {
         this.children.forEach(function(child){
             child.updateWorldMatrix(worldMatrix);
         });
+    }
+
+    addComponent(type, component){
+        this.components[type] = component;
+    }
+
+    render(){
+        let renderer = this.components[SystemComponents.Renderer];
+        if(renderer){
+            renderer.render();
+        }
     }
 }
 
