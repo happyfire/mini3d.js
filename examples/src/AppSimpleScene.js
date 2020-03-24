@@ -7,18 +7,11 @@ let obj_file = './models/dragon.obj';
 class AppSimpleScene{
     constructor(){
         this._inited = false;        
-        this._shader = null;       
-        
-        this._viewMatrix = new mini3d.Matrix4();
-        this._viewProjMatrix = new mini3d.Matrix4();
-        this._mvpMatrix = new mini3d.Matrix4();
-        this._normalMatrix = new mini3d.Matrix4();
+        this._shader = null;                       
         
         this._rotX = 0;
-        this._rotY = 0;
-
-        this._scene = new mini3d.Scene();
-        this._modelNode = new mini3d.SceneNode();
+        this._rotY = 0;        
+        this._rotDegree = 0;
     }
 
     onInit(){
@@ -31,14 +24,13 @@ class AppSimpleScene{
         mini3d.assetManager.loadAssetList(assetList, function(){                
             this._inited = true;
             this.start();
-        }.bind(this));
-
-        this._viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+        }.bind(this));        
     }
 
-    onResize(width, height){
-        this._viewProjMatrix.setPerspective(60.0, width/height, 1.0, 100.0);
-        this._viewProjMatrix.multiply(this._viewMatrix);
+    onResize(width, height){        
+        if(this._scene){
+            this._scene.onScreenResize(width, height);
+        }
 
         if(this._inited){            
             this.draw();
@@ -46,12 +38,18 @@ class AppSimpleScene{
     }
 
     onUpdate(dt){
+        if(this._scene){
 
+            this._mesh2.rotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
+            this._rotDegree += dt*100/1000;
+            this._rotDegree %= 360;
+
+            this._scene.update();                                   
+            this._scene.render();
+        }
     }
 
-    start(){
-        let gl = mini3d.gl;
-    
+    start(){    
         let vs = mini3d.assetManager.getAsset(vs_file).data;
         let fs = mini3d.assetManager.getAsset(fs_file).data;
     
@@ -66,17 +64,7 @@ class AppSimpleScene{
         this._shader.mapAttributeSemantic(mini3d.VertexSemantic.NORMAL, 'a_Normal');
         this._shader.use();        
     
-        let objFileString = mini3d.assetManager.getAsset(obj_file).data;
-        let mesh = mini3d.objFileLoader.load(objFileString, 0.3);    
-        
-        let meshRenderer = new mini3d.MeshRenderer();
-        meshRenderer.setMesh(mesh);
-        meshRenderer.setShader(this._shader);
-        this._modelNode.addComponent(mini3d.SystemComponents.Renderer, meshRenderer);
-
-        this._modelNode.position.set(0, -1.0, 0);
-        this._modelNode.scale.set(0.5,0.5,0.5);
-        this._scene.addChild(this._modelNode);
+        this.createWorld();
         
         let that = this;
         mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function(event, data){                           
@@ -96,39 +84,52 @@ class AppSimpleScene{
             let qx = mini3d.Quaternion.axisAngle(mini3d.Vector3.Right, that._rotX);
             let qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, that._rotY);
             mini3d.Quaternion.multiply(qx, qy, that._modelNode.rotation);
-            
-            that.draw();
+                       
         })
+                    
+    
         
-    
-        gl.clearColor(0, 0, 0, 1);
-        gl.clearDepth(1.0);
-        gl.enable(gl.DEPTH_TEST);
-    
-        this.draw();
     }
 
-    draw(){         
-        
-        this._scene.update();
+    createWorld(){               
+        this._scene = new mini3d.Scene();
 
-        this._normalMatrix.setInverseOf(this._modelNode.worldMatrix);
-        this._normalMatrix.transpose();    
-    
-        this._mvpMatrix.set(this._viewProjMatrix);
-        this._mvpMatrix.multiply(this._modelNode.worldMatrix);
+        let objFileString = mini3d.assetManager.getAsset(obj_file).data;
+        let mesh = mini3d.objFileLoader.load(objFileString, 0.3);    
         
-        this._shader.setUniform('u_mvpMatrix', this._mvpMatrix.elements);
-        this._shader.setUniform('u_NormalMatrix', this._normalMatrix.elements);
-        this._shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
-        let lightDir = [0.5, 3.0, 4.0];
-        this._shader.setUniform('u_LightDir', lightDir);
+        let meshRenderer = new mini3d.MeshRenderer();
+        meshRenderer.setMesh(mesh);
+        meshRenderer.setShader(this._shader);
+
+        let mesh1 = new mini3d.SceneNode();
+        mesh1.addComponent(mini3d.SystemComponents.Renderer, meshRenderer);
+        this._scene.addChild(mesh1);
+
+        mesh1.position.set(0, -1.0, 0);
+        mesh1.scale.set(0.5,0.5,0.5);
+
+        this._modelNode = mesh1;
+
+        let mesh2 = new mini3d.SceneNode();
+        let meshRenderer2 = new mini3d.MeshRenderer();
+        meshRenderer2.setMesh(mesh);
+        meshRenderer2.setShader(this._shader);
+        mesh2.addComponent(mini3d.SystemComponents.Renderer, meshRenderer2);
+        this._scene.addChild(mesh2);
     
-        let gl = mini3d.gl;
-        gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);        
+        mesh2.position.set(0, 3.0, 0);
+        mesh2.scale.set(0.3,0.3,0.3);
+        //mesh2.rotation.setFromEulerAngles(new mini3d.Vector3(0, 45, 0));
+        this._mesh2 = mesh2;
         
-        this._scene.render();
-    
+
+        let camera = new mini3d.Camera();
+        camera.setPerspective(60, mini3d.canvas.width/mini3d.canvas.height, 1.0, 100);
+        this._cameraNode = new mini3d.SceneNode();
+        this._cameraNode.addComponent(mini3d.SystemComponents.Camera, camera);
+        this._cameraNode.position.set(0, 0, 8);
+        this._cameraNode.lookAt(new mini3d.Vector3(0,0,0));
+        this._scene.addChild(this._cameraNode);
     }
 }
 

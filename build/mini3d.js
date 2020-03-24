@@ -2331,6 +2331,8 @@ var mini3d = (function (exports) {
             this.scale = new Vector3(1,1,1);
             this.localMatrix = new Matrix4();
             this.worldMatrix = new Matrix4();
+            this.worldPosition = new Vector3();
+
             this.parent = null;
             this.children = [];
 
@@ -2361,6 +2363,14 @@ var mini3d = (function (exports) {
             node.setParent(this);
         }
 
+        lookAt(worldPos){
+
+        }
+
+        lookAtNode(targetNode){
+            
+        }
+
         updateLocalMatrix(){
             //TODO:local matrix dirty flag
 
@@ -2368,7 +2378,9 @@ var mini3d = (function (exports) {
             //TODO:封装rotation操作并cache _rotatoinMatrix
             Quaternion.toMatrix4(this.rotation, this._rotationMatrix);
             this.localMatrix.multiply(this._rotationMatrix);        
-            this.localMatrix.scale(this.scale.x, this.scale.y, this.scale.z);      
+            this.localMatrix.scale(this.scale.x, this.scale.y, this.scale.z);   
+            
+            //TODO:此处可优化，避免矩阵乘法，Matrix4增加fromTRS(pos, rot, scale)方法
         }
 
         updateWorldMatrix(parentWorldMatrix){
@@ -2380,20 +2392,30 @@ var mini3d = (function (exports) {
                 this.worldMatrix.set(this.localMatrix);
             }
 
+            //TODO:从world matrix中提取出worldPosition
+
+
             let worldMatrix = this.worldMatrix;
             this.children.forEach(function(child){
                 child.updateWorldMatrix(worldMatrix);
             });
+
+            
         }
 
         addComponent(type, component){
             this.components[type] = component;
+            component.setNode(this);
         }
 
-        render(){
+        getComponent(type){
+            return this.components[type];
+        }
+
+        render(camera){
             let renderer = this.components[SystemComponents.Renderer];
             if(renderer){
-                renderer.render();
+                renderer.render(camera);
             }
         }
     }
@@ -2405,6 +2427,8 @@ var mini3d = (function (exports) {
             this.scale = new Vector3(1,1,1);
             this.localMatrix = new Matrix4();
             this.worldMatrix = new Matrix4();
+            this.worldPosition = new Vector3();
+
             this.parent = null;
             this.children = [];
 
@@ -2435,6 +2459,14 @@ var mini3d = (function (exports) {
             node.setParent(this);
         }
 
+        lookAt(worldPos){
+
+        }
+
+        lookAtNode(targetNode){
+            
+        }
+
         updateLocalMatrix(){
             //TODO:local matrix dirty flag
 
@@ -2442,7 +2474,9 @@ var mini3d = (function (exports) {
             //TODO:封装rotation操作并cache _rotatoinMatrix
             Quaternion.toMatrix4(this.rotation, this._rotationMatrix);
             this.localMatrix.multiply(this._rotationMatrix);        
-            this.localMatrix.scale(this.scale.x, this.scale.y, this.scale.z);      
+            this.localMatrix.scale(this.scale.x, this.scale.y, this.scale.z);   
+            
+            //TODO:此处可优化，避免矩阵乘法，Matrix4增加fromTRS(pos, rot, scale)方法
         }
 
         updateWorldMatrix(parentWorldMatrix){
@@ -2454,20 +2488,30 @@ var mini3d = (function (exports) {
                 this.worldMatrix.set(this.localMatrix);
             }
 
+            //TODO:从world matrix中提取出worldPosition
+
+
             let worldMatrix = this.worldMatrix;
             this.children.forEach(function(child){
                 child.updateWorldMatrix(worldMatrix);
             });
+
+            
         }
 
         addComponent(type, component){
             this.components[type] = component;
+            component.setNode(this);
         }
 
-        render(){
+        getComponent(type){
+            return this.components[type];
+        }
+
+        render(camera){
             let renderer = this.components[SystemComponents.Renderer];
             if(renderer){
-                renderer.render();
+                renderer.render(camera);
             }
         }
     }
@@ -2475,15 +2519,27 @@ var mini3d = (function (exports) {
     class Scene{
         constructor(){
             this.root = new SceneNode$1();
-
+            this.cameras = [];
         }
 
         getRoot(){
             return this.root;
         }
 
-        addChild(child){
+        addChild(child){ 
             this.root.addChild(child);
+
+            //TODO: camera 应该可以加到任意节点上，因此不能在这儿获取。应该有个专门的方法
+            let camera = child.getComponent(SystemComponents.Camera);
+            if(camera!=null){
+                this.cameras.push(camera);
+            }
+        }
+
+        onScreenResize(width, height){
+            for(let camera of this.cameras){
+                camera.onScreenResize(width, height); //TODO:渲染目前如果是texture则不需要执行
+            }
         }
 
         update(){
@@ -2497,16 +2553,33 @@ var mini3d = (function (exports) {
             //   2-1. 不透明物体队列，按材质实例将node分组，然后排序（从前往后）
             //   2-2, 透明物体队列，按z序从后往前排列
 
-            for(let c of this.root.children){
-                c.render();
+            //TODO: camera需要排序，按指定顺序渲染
+            for(let camera of this.cameras){
+                camera.beforeRender();
+
+                for(let c of this.root.children){
+                    c.render(camera);
+                }
+
+                camera.afterRender();
             }
+
+            
         }
+
     }
 
     class MeshRenderer{
         constructor(){
             this.mesh = null;
             this.shader = null;
+
+            this._mvpMatrix = new mini3d.Matrix4();
+            this._normalMatrix = new mini3d.Matrix4();
+        }
+
+        setNode(node){
+            this.node = node;
         }
 
         setShader(shader){
@@ -2517,13 +2590,92 @@ var mini3d = (function (exports) {
             this.mesh = mesh;
         }
 
-        render(){
+        render(camera){
+
+            this._normalMatrix.setInverseOf(this.node.worldMatrix);
+            this._normalMatrix.transpose();    
+        
+            this._mvpMatrix.set(camera.getViewProjMatrix());
+            this._mvpMatrix.multiply(this.node.worldMatrix);
+            
+            this.shader.setUniform('u_mvpMatrix', this._mvpMatrix.elements);
+            this.shader.setUniform('u_NormalMatrix', this._normalMatrix.elements);
+            this.shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
+            let lightDir = [0.5, 3.0, 4.0];
+            this.shader.setUniform('u_LightDir', lightDir);
+
             this.mesh.render(this.shader);
         }
 
     }
 
+    class Camera{
+        constructor(){
+            this._fovy = 75;
+            this._aspect = 0.75;
+            this._near = 0.1;
+            this._far = 100.0;
+            this._projMatrix = new Matrix4();
+            this._viewMatrix = new Matrix4();
+            this._viewProjMatrix = new Matrix4();
+        }
+
+        setNode(node){
+            this.node = node;
+        }
+
+        getViewProjMatrix(){
+            return this._viewProjMatrix;
+        }
+
+        setPerspective(fovy, aspect, near, far){
+            this._fovy = fovy;
+            this._aspect = aspect;
+            this._near = near;
+            this._far = far; 
+            this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);
+        }
+
+        setLookAt(){
+            this._viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+        }
+
+        onScreenResize(width, height){
+            this._aspect = width/height;
+            this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);     
+            
+        }
+
+        _updateViewProjMatrix(){
+            this._viewProjMatrix.set(this._projMatrix);   
+            this._viewProjMatrix.multiply(this._viewMatrix);
+        }
+
+        beforeRender(){
+            //this._viewMatrix.setInverseOf(this.node.localMatrix); //TODO: use this, when look at done.
+            this.setLookAt();
+            this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
+
+            let gl = mini3d.gl;
+
+            //TODO:每个camera设置自己的clear color，并且在gl层缓存，避免重复设置相同的值
+            gl.clearColor(0, 0, 0, 1);
+            gl.clearDepth(1.0);
+            gl.enable(gl.DEPTH_TEST);
+
+            gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+            
+        }
+
+        afterRender(){
+
+        }
+
+
+    }
+
     exports.AssetType = AssetType;
+    exports.Camera = Camera;
     exports.IndexBuffer = IndexBuffer;
     exports.Matrix4 = Matrix4;
     exports.Mesh = Mesh;
