@@ -212,7 +212,7 @@ class Matrix4 {
      * @param upX, upY, upZ The direction of the up vector.
      * @return this
      */
-    setLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
+    setViewByLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
         // N = eye - target
         let nx, ny, nz;
         nx = eyeX - targetX;

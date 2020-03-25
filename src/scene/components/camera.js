@@ -1,4 +1,4 @@
-import { Matrix4 } from '../../math/matrix'
+import { Matrix4 } from '../../math/matrix4'
 
 class Camera{
     constructor(){
@@ -28,7 +28,7 @@ class Camera{
     }
 
     setLookAt(){
-        this._viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+        this._viewMatrix.setViewByLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
     }
 
     onScreenResize(width, height){
@@ -43,8 +43,8 @@ class Camera{
     }
 
     beforeRender(){
-        //this._viewMatrix.setInverseOf(this.node.localMatrix); //TODO: use this, when look at done.
-        this.setLookAt();
+        this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
+        //this.setLookAt();
         this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
 
         let gl = mini3d.gl;

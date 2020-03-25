@@ -30,11 +30,7 @@ class AppSimpleScene{
     onResize(width, height){        
         if(this._scene){
             this._scene.onScreenResize(width, height);
-        }
-
-        if(this._inited){            
-            this.draw();
-        }  
+        }         
     }
 
     onUpdate(dt){
@@ -127,9 +123,11 @@ class AppSimpleScene{
         camera.setPerspective(60, mini3d.canvas.width/mini3d.canvas.height, 1.0, 100);
         this._cameraNode = new mini3d.SceneNode();
         this._cameraNode.addComponent(mini3d.SystemComponents.Camera, camera);
-        this._cameraNode.position.set(0, 0, 8);
+        this._cameraNode.position.set(0, 2, 8);
         this._cameraNode.lookAt(new mini3d.Vector3(0,0,0));
         this._scene.addChild(this._cameraNode);
+
+
     }
 }
 

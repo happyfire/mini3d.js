@@ -34,7 +34,7 @@ class AppObjLoader{
             this.start();
         }.bind(this));
 
-        this._viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+        this._viewMatrix.setViewByLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
     }
 
     onResize(width, height){

@@ -1,8 +1,11 @@
 import { math } from "./math";
-import { Matrix4 } from "./matrix";
+import { Matrix4 } from "./matrix4";
+import { Matrix3 } from "./matrix3";
+
+let _tmpMatrix3 = new Matrix3();
 
 class Quaternion {
-    constructor(x=0,y=0,z=0,w=1){        
+    constructor(x = 0, y = 0, z = 0, w = 1) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -12,7 +15,7 @@ class Quaternion {
     /**
      * Return a clone of this quaternion.
      */
-    clone(){
+    clone() {
         return new Quaternion(this.x, this.y, this.z, this.w);
     }
 
@@ -23,7 +26,7 @@ class Quaternion {
      * @param {Number} z 
      * @param {Number} w 
      */
-    set(x,y,z,w){
+    set(x, y, z, w) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -35,7 +38,7 @@ class Quaternion {
      * Copy the x,y,z,w from rhs to this quaternion.
      * @param {Quaternion} rhs 
      */
-    copyFrom(rhs){
+    copyFrom(rhs) {
         this.x = rhs.x;
         this.y = rhs.y;
         this.z = rhs.z;
@@ -46,7 +49,7 @@ class Quaternion {
     /**
      * Make this quaternion identity.
      */
-    identity(){
+    identity() {
         this.x = 0.0;
         this.y = 0.0;
         this.z = 0.0;
@@ -58,22 +61,22 @@ class Quaternion {
      * Check if the quaternion rhs is equal to this quaternion.
      * @param {Quaternion} rhs 
      */
-    equals(rhs){
+    equals(rhs) {
         let eps = math.Epsilon;
         return (this.x > rhs.x - eps && this.x < rhs.x + eps &&
-                this.y > rhs.y - eps && this.y < rhs.y + eps &&
-                this.z > rhs.z - eps && this.z < rhs.z + eps &&
-                this.w > rhs.w - eps && this.w < rhs.w + eps);
+            this.y > rhs.y - eps && this.y < rhs.y + eps &&
+            this.z > rhs.z - eps && this.z < rhs.z + eps &&
+            this.w > rhs.w - eps && this.w < rhs.w + eps);
     }
 
     /**
      * Sets the euler angle representation of the rotation.
      * @param {Vector3} eulerAngles 
      */
-    setFromEulerAngles(eulerAngles){
-        let ex = math.degToRad(eulerAngles.x*0.5);
-        let ey = math.degToRad(eulerAngles.y*0.5);
-        let ez = math.degToRad(eulerAngles.z*0.5);
+    setFromEulerAngles(eulerAngles) {
+        let ex = math.degToRad(eulerAngles.x * 0.5);
+        let ey = math.degToRad(eulerAngles.y * 0.5);
+        let ez = math.degToRad(eulerAngles.z * 0.5);
 
         let cx = Math.cos(ex);
         let sx = Math.sin(ex);
@@ -89,7 +92,54 @@ class Quaternion {
         // q = (qy * qx) * qz        
         Quaternion.multiply(qy, qx, this);
         Quaternion.multiply(this, qz, this);
-        return this;   
+        return this;
+    }
+
+    /**
+     * Set the quaternion from a 3X3 rotation matrix.
+     * @param {Matrix3} matrix3 
+     */
+    setFromRotationMatrix(matrix3) {
+        let e = matrix3.elements;
+        let m00 = e[0]; let m01 = e[3]; let m02 = e[6];
+        let m10 = e[1]; let m11 = e[4]; let m12 = e[7];
+        let m20 = e[2]; let m21 = e[5]; let m22 = e[8];
+
+        let trace = m00 + m11 + m22;
+        if (trace > 0) {
+            let s = 0.5 / Math.sqrt(trace + 1.0);
+
+            this.w = 0.25 / s;
+            this.x = (m21 - m12) * s;
+            this.y = (m02 - m20) * s;
+            this.z = (m10 - m01) * s;
+
+        } else if ((m00 > m11) && (m00 > m22)) {
+            let s = 2.0 * Math.sqrt(1.0 + m00 - m11 - m22);
+
+            this.w = (m21 - m12) / s;
+            this.x = 0.25 * s;
+            this.y = (m01 + m10) / s;
+            this.z = (m02 + m20) / s;
+
+        } else if (m11 > m22) {
+            let s = 2.0 * Math.sqrt(1.0 + m11 - m00 - m22);
+
+            this.w = (m02 - m20) / s;
+            this.x = (m01 + m10) / s;
+            this.y = 0.25 * s;
+            this.z = (m12 + m21) / s;
+
+        } else {
+            let s = 2.0 * Math.sqrt(1.0 + m22 - m00 - m11);
+
+            this.w = (m10 - m01) / s;
+            this.x = (m02 + m20) / s;
+            this.y = (m12 + m21) / s;
+            this.z = 0.25 * s;
+        }
+
+        return this;
     }
 
     /**
@@ -97,7 +147,7 @@ class Quaternion {
      * @param {Vector3} fromDir 
      * @param {Vector3} toDir 
      */
-    setFromToRotation(fromDir, toDir){
+    setFromToRotation(fromDir, toDir) {
 
     }
 
@@ -106,17 +156,19 @@ class Quaternion {
      * @param {Vector3} forward The direction to look in.
      * @param {Vector3} upwards The up direction.
      */
-    setLookRotation(forward, upwards){
-
+    setLookRotation(forward, upwards) {
+        _tmpMatrix3.setLookAt(0, 0, 0, forward.x, forward.y, forward.z, upwards.x, upwards.y, upwards.z);
+        this.setFromRotationMatrix(_tmpMatrix3);
+        this.normalize();
     }
 
     /**
      * Normalize this quaternion.
      */
-    normalize(){
-        let mag = Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z + this.w*this.w);
-        if(mag>0.0){
-            let g = 1.0/mag;
+    normalize() {
+        let mag = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+        if (mag > 0.0) {
+            let g = 1.0 / mag;
             this.x *= g;
             this.y *= g;
             this.z *= g;
@@ -131,7 +183,7 @@ class Quaternion {
      * Converts a rotation to angle-axis representation. (angeles in degrees)
      * @returns { angle:Number, axis:[x,y,z]}
      */
-    toAngleAxis(){
+    toAngleAxis() {
 
     }
 
@@ -141,10 +193,10 @@ class Quaternion {
      * @param {Number} angle Rotation angle in degrees.
      * @returns {Quaternion} The rotation quaternion.
      */
-    static axisAngle(axis, angle){
-        let halfAngle = math.degToRad(angle*0.5);
+    static axisAngle(axis, angle) {
+        let halfAngle = math.degToRad(angle * 0.5);
         let s = Math.sin(halfAngle);
-        return new Quaternion(s*axis.x, s*axis.y, s*axis.z, Math.cos(halfAngle));
+        return new Quaternion(s * axis.x, s * axis.y, s * axis.z, Math.cos(halfAngle));
     }
 
     /**
@@ -155,10 +207,10 @@ class Quaternion {
      * @param {Number} z 
      * @returns {Quaternion} The rotation quaternion.
      */
-    static euler(x, y, z){
-        let ex = math.degToRad(x*0.5);
-        let ey = math.degToRad(y*0.5);
-        let ez = math.degToRad(z*0.5);
+    static euler(x, y, z) {
+        let ex = math.degToRad(x * 0.5);
+        let ey = math.degToRad(y * 0.5);
+        let ez = math.degToRad(z * 0.5);
 
         let cx = Math.cos(ex);
         let sx = Math.sin(ex);
@@ -172,10 +224,10 @@ class Quaternion {
         let qz = new Quaternion(0.0, 0.0, sz, cz);
 
         // q = (qy * qx) * qz    
-        let q = new Quaternion();    
+        let q = new Quaternion();
         Quaternion.multiply(qy, qx, q);
         Quaternion.multiply(q, qz, q);
-        return q;        
+        return q;
     }
 
     /**
@@ -184,7 +236,7 @@ class Quaternion {
      * @param {Vector3} toDir 
      * @returns {Quaternion} The rotation quaternion.
      */
-    static fromToRotation(fromDir, toDir){
+    static fromToRotation(fromDir, toDir) {
 
     }
 
@@ -195,7 +247,7 @@ class Quaternion {
      * @returns {Quaternion} The rotation quaternion. 
      *  Returns identity if forward or upwards magnitude is zero or forward and upwards are colinear.
      */
-    static lookRotation(forward, upwards){
+    static lookRotation(forward, upwards) {
 
     }
 
@@ -208,7 +260,7 @@ class Quaternion {
      * @param {Number} maxDegreesDelta 
      * @returns The rotatoin quaternion.
      */
-    static rotateTowards(from, to, maxDegreesDelta){
+    static rotateTowards(from, to, maxDegreesDelta) {
 
     }
 
@@ -216,7 +268,7 @@ class Quaternion {
      * Returns the conjugate of q.
      * @param {Quaternion} q 
      */
-    static conjugate(q){
+    static conjugate(q) {
         return new Quaternion(-q.x, -q.y, -q.z, q.w);
     }
 
@@ -224,7 +276,7 @@ class Quaternion {
      * Returns the inverse of q.
      * @param {Quaternion} q 
      */
-    static inverse(q){
+    static inverse(q) {
         return Quaternion.conjugate(q);
     }
 
@@ -233,8 +285,8 @@ class Quaternion {
      * @param {Quaternion} qa 
      * @param {Quaternion} ab
      * @returns {Number} The angle in degrees.
-     */    
-    static angleBetween(qa, ab){
+     */
+    static angleBetween(qa, ab) {
 
     }
 
@@ -244,7 +296,7 @@ class Quaternion {
      * @param {Quaternion} qb 
      * @returns {Number} The dot product.
      */
-    static dot(qa, qb){
+    static dot(qa, qb) {
         return qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
     }
 
@@ -254,13 +306,13 @@ class Quaternion {
      * @param {Quaternion} qb 
      * @param {Quaternion} dst The result set to dst.
      */
-    static multiply(qa, qb, dst){
+    static multiply(qa, qb, dst) {
         dst.set(
-            qa.w*qb.x + qa.x*qb.w + qa.y*qb.z - qa.z*qb.y,
-            qa.w*qb.y + qa.y*qb.w + qa.z*qb.x - qa.x*qb.z,
-            qa.w*qb.z + qa.z*qb.w + qa.x*qb.y - qa.y*qb.x,
-            qa.w*qb.w - qa.x*qb.x - qa.y*qb.y - qa.z*qb.z            
-        );            
+            qa.w * qb.x + qa.x * qb.w + qa.y * qb.z - qa.z * qb.y,
+            qa.w * qb.y + qa.y * qb.w + qa.z * qb.x - qa.x * qb.z,
+            qa.w * qb.z + qa.z * qb.w + qa.x * qb.y - qa.y * qb.x,
+            qa.w * qb.w - qa.x * qb.x - qa.y * qb.y - qa.z * qb.z
+        );
     }
 
     /**
@@ -269,15 +321,15 @@ class Quaternion {
      * @param {Vector3} v 
      * @param {Vector3} dst
      */
-    static rotateVector(q, v, dst){
+    static rotateVector(q, v, dst) {
         // dst = q * v * inv_q
 
         // t = q * v
         let tx = q.w * v.x + q.y * v.z - q.z * v.y;
         let ty = q.w * v.y + q.z * v.x - q.x * v.z;
         let tz = q.w * v.z + q.x * v.y - q.y * v.x;
-        let tw = -q.x * v.x - q.y * v.y - q.z * v.z; 
-        
+        let tw = -q.x * v.x - q.y * v.y - q.z * v.z;
+
         //  dst = t * inv_q
         dst.x = tw * -q.x + tx * q.w + ty * -q.z - tz * -q.y;
         dst.y = tw * -q.y + ty * q.w + tz * -q.x - tx * -q.z;
@@ -289,7 +341,7 @@ class Quaternion {
      * Convert quaternion to rotatoin matrix.
      * @param {Matrix4} matrix The rotation matrix.
      */
-    static toMatrix4(q, matrix){
+    static toMatrix4(q, matrix) {
         let x = q.x * 2.0;
         let y = q.y * 2.0;
         let z = q.z * 2.0;
@@ -302,7 +354,7 @@ class Quaternion {
         let wx = q.w * x;
         let wy = q.w * y;
         let wz = q.w * z;
-        
+
         let e = matrix.elements;
         e[0] = 1.0 - (yy + zz);
         e[1] = xy + wz;
@@ -333,20 +385,20 @@ class Quaternion {
      * @param {Number} t The interpolation factor.
      * @returns The result quaternion.
      */
-    static lerp(qa, qb, t){
+    static lerp(qa, qb, t) {
         let result = new Quaternion();
         // If dot < 0, qa and qb are more than 360 degrees apart.
         // The quaternions are 720 degrees of freedom, so negative all components when lerping.
-        if(Quaternion.dot(qa, qb) < 0){
-            result.set(qa.x + t*(-qb.x-qa.x),
-                       qa.y + t*(-qb.y-qa.y),
-                       qa.z + t*(-qb.z-qa.z),
-                       qa.w + t*(-qb.w-qa.w));
+        if (Quaternion.dot(qa, qb) < 0) {
+            result.set(qa.x + t * (-qb.x - qa.x),
+                qa.y + t * (-qb.y - qa.y),
+                qa.z + t * (-qb.z - qa.z),
+                qa.w + t * (-qb.w - qa.w));
         } else {
-            result.set(qa.x + t*(qb.x-qa.x),
-                       qa.y + t*(qb.y-qa.y),
-                       qa.z + t*(qb.z-qa.z),
-                       qa.w + t*(qb.w-qa.w));
+            result.set(qa.x + t * (qb.x - qa.x),
+                qa.y + t * (qb.y - qa.y),
+                qa.z + t * (qb.z - qa.z),
+                qa.w + t * (qb.w - qa.w));
         }
         return result;
     }
@@ -360,11 +412,11 @@ class Quaternion {
      * @param {Number} t The interpolation factor.
      * @returns The result quaternion.
      */
-    static slerp(qa, qb, t){
+    static slerp(qa, qb, t) {
         let dot = Quaternion.dot(qa, qb);
         let result = new Quaternion();
 
-        if(dot < 0.0){
+        if (dot < 0.0) {
             dot = -dot;
             result.set(-qb.x, -qb.y, -qb.z, -qb.w);
         } else {
@@ -374,20 +426,20 @@ class Quaternion {
         let scale0 = 0;
         let scale1 = 0;
 
-        if(dot < 0.95){
+        if (dot < 0.95) {
             let angle = Math.acos(dot);
-            let sin_div = 1.0/Math.sin(angle);
-            scale1 = Math.sin(angle*t)*sin_div;
-            scale0 = Math.sin(angle*(1.0-t))*sin_div;
+            let sin_div = 1.0 / Math.sin(angle);
+            scale1 = Math.sin(angle * t) * sin_div;
+            scale0 = Math.sin(angle * (1.0 - t)) * sin_div;
         } else {
             scale0 = 1.0 - t;
             scale1 = t;
         }
 
-        result.set( qa.x*scale0 + result.x*scale1,
-                    qa.y*scale0 + result.y*scale1,
-                    qa.z*scale0 + result.z*scale1,
-                    qa.w*scale0 + result.w*scale1);
+        result.set(qa.x * scale0 + result.x * scale1,
+            qa.y * scale0 + result.y * scale1,
+            qa.z * scale0 + result.z * scale1,
+            qa.w * scale0 + result.w * scale1);
         return result;
     }
 

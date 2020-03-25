@@ -1,7 +1,8 @@
 export {init, gl, canvas, isMobile} from "./core/gl";
 export {math} from "./math/math";
 export {Vector3} from "./math/vector3";
-export {Matrix4} from "./math/matrix";
+export {Matrix4} from "./math/matrix4";
+export {Matrix3} from "./math/matrix3";
 export {Quaternion} from "./math/quaternion";
 export {Shader} from "./core/shader";
 export {Mesh} from "./core/mesh";

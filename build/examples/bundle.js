@@ -664,7 +664,7 @@ var main = (function () {
 	        this.start();
 	      }.bind(this));
 
-	      this._viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	      this._viewMatrix.setViewByLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	    }
 	  }, {
 	    key: "onResize",
@@ -794,7 +794,7 @@ var main = (function () {
 	        this.start();
 	      }.bind(this));
 
-	      this._viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	      this._viewMatrix.setViewByLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 	    }
 	  }, {
 	    key: "onResize",
@@ -930,10 +930,6 @@ var main = (function () {
 	      if (this._scene) {
 	        this._scene.onScreenResize(width, height);
 	      }
-
-	      if (this._inited) {
-	        this.draw();
-	      }
 	    }
 	  }, {
 	    key: "onUpdate",
@@ -1025,7 +1021,7 @@ var main = (function () {
 
 	      this._cameraNode.addComponent(mini3d.SystemComponents.Camera, camera);
 
-	      this._cameraNode.position.set(0, 0, 8);
+	      this._cameraNode.position.set(0, 2, 8);
 
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 0, 0));
 

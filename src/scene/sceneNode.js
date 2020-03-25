@@ -1,6 +1,6 @@
 import { Vector3 } from "../math/vector3";
 import { Quaternion } from "../math/quaternion";
-import { Matrix4 } from "../math/matrix";
+import { Matrix4 } from "../math/matrix4";
 import { SystemComponents } from "./systemComps";
 
 class SceneNode {
@@ -42,12 +42,9 @@ class SceneNode {
         node.setParent(this);
     }
 
-    lookAt(worldPos){
-
-    }
-
-    lookAtNode(targetNode){
-        
+    lookAt(target, up){
+        up = up || Vector3.Up;
+        //this.rotation.setLookRotation()
     }
 
     updateLocalMatrix(){

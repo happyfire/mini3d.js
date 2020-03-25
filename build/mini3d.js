@@ -602,7 +602,7 @@ var mini3d = (function (exports) {
          * @param upX, upY, upZ The direction of the up vector.
          * @return this
          */
-        setLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
+        setViewByLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
             // N = eye - target
             let nx, ny, nz;
             nx = eyeX - targetX;
@@ -895,8 +895,244 @@ var mini3d = (function (exports) {
         }
     }
 
+    class Matrix3 {
+        constructor(){
+            this.elements = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
+        }
+
+        /**
+         * Set the identity matrix.
+         */
+        setIdentity(){
+            let e = this.elements;
+            e[0] = 1; e[3] = 0; e[6] = 0;
+            e[1] = 0; e[4] = 1; e[7] = 0;
+            e[2] = 0; e[5] = 0; e[8] = 1;        
+            return this;
+        }
+
+        setValue(m0, m1, m2, m3, m4, m5, m6, m7, m8){
+            let e = this.elements;
+            e[0] = m0; e[3] = m3; e[6] = m6;
+            e[1] = m1; e[4] = m4; e[7] = m7;
+            e[2] = m2; e[5] = m5; e[8] = m8;        
+            return this;
+        }
+
+        /**
+         * Copy matrix.
+         */
+        set(other){
+            let src = other.elements;
+            let dst = this.elements;
+            if(src === dst){
+                return this;
+            }
+
+            for(let i=0; i<9; i++){
+                dst[i] = src[i];
+            }
+
+            return this;
+        }
+
+        /**
+         * Set value from Matrix4
+         * @param {Matrix4} mat4 
+         */
+        setFromMatrix4(mat4){
+            let src = mat4.elements;
+            let e = this.elements;
+            e[0] = src[0];  e[3] = src[4]; e[6] = src[8];
+            e[1] = src[1];  e[4] = src[5]; e[7] = src[9];
+            e[2] = src[2];  e[5] = src[6]; e[8] = src[10];  
+            return this;
+        }
+
+        /**
+         * Multiply the matrix from the right.
+         * @param {Matrix3} other The multiply matrix
+         * @returns this 
+         */
+        multiply(other){
+            let i, e, a, b, ai0, ai1, ai2;
+      
+            // Calculate e = a * b
+            e = this.elements;
+            a = this.elements;
+            b = other.elements;
+            
+            // If e equals b, copy b to temporary matrix.
+            if (e === b) {
+                b = new Float32Array(9);
+                for (i = 0; i < 9; ++i) {
+                    b[i] = e[i];
+                }
+            }
+            
+            for (i = 0; i < 3; i++) {
+                ai0=a[i];  ai1=a[i+3];  ai2=a[i+6];
+                e[i]    = ai0 * b[0]  + ai1 * b[1]  + ai2 * b[2];
+                e[i+3]  = ai0 * b[3]  + ai1 * b[4]  + ai2 * b[5];
+                e[i+6]  = ai0 * b[6]  + ai1 * b[7]  + ai2 * b[8];
+            }
+            
+            return this;
+        }
+
+        
+        /**
+         * Set the Look at matrix.
+         * @param eyeX, eyeY, eyeZ The position of the eye point.
+         * @param targetX, targetY, targetZ The position of the target point.
+         * @param upX, upY, upZ The direction of the up vector.
+         * @return this
+         */
+        setLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
+            // N = eye - target
+            let nx, ny, nz;
+            nx = eyeX - targetX;
+            ny = eyeY - targetY;
+            nz = eyeZ - targetZ;
+            let rl = 1/Math.sqrt(nx*nx+ny*ny+nz*nz);
+            nx *= rl;
+            ny *= rl;
+            nz *= rl;
+            // U = UP cross N
+            let ux, uy, uz;
+            ux = upY * nz - upZ * ny;
+            uy = upZ * nx - upX * nz;
+            uz = upX * ny - upY * nx;
+            rl = 1/Math.sqrt(ux*ux+uy*uy+uz*uz);
+            ux *= rl;
+            uy *= rl;
+            uz *= rl;
+            // V = N cross U
+            let vx, vy, vz;
+            vx = ny * uz - nz * uy;
+            vy = nz * ux - nx * uz;
+            vz = nx * uy - ny * ux;
+            rl = 1/Math.sqrt(vx*vx+vy*vy+vz*vz);
+            vx *= rl;
+            vy *= rl;
+            vz *= rl;
+        
+            let e = this.elements;
+            e[0] = ux;
+            e[1] = vx;
+            e[2] = nx;       
+        
+            e[3] = uy;
+            e[4] = vy;
+            e[5] = ny;        
+        
+            e[6] = uz;
+            e[7] = vz;
+            e[8] = nz;        
+        }
+
+       
+
+        /**
+         * Calculate the inverse matrix of source matrix, and set to this.
+         * @param {Matrix3} source The source matrix.
+         * @returns this
+         */
+        setInverseOf(source){        
+            let s = source.elements;
+            let d = this.elements;
+            let inv = new Float32Array(9);
+
+            //使用标准伴随阵法计算逆矩阵：
+            //标准伴随阵 = 方阵的代数余子式组成的矩阵的转置矩阵
+            //逆矩阵 = 标准伴随阵/方阵的行列式
+
+            //计算代数余子式并转置后放入inv矩阵中（先计算第一列的代数余子式，因为计算det要用）
+            inv[0] = s[4]*s[8] - s[5]*s[7];  
+            inv[3] = -(s[3]*s[8] - s[5]*s[6]);
+            inv[6] = s[3]*s[7] - s[4]*s[6];        
+            
+            //计算行列式，选择方阵的第一列，对该列中的三个元素S[0],s[1],s[2]分别乘以对应的代数余子式，然后相加
+            let det = s[0]*inv[0] + s[1]*inv[3] + s[2]*inv[6];
+            //注：选择任意一行，例如第一行，也是可以的        
+            
+            if(det===0){
+                return this;
+            }
+
+            //继续计算其他列的代数余子式
+            inv[1] = -(s[1]*s[8] - s[2]*s[7]);
+            inv[4] = s[0]*s[8] - s[2]*s[6];
+            inv[7] = -(s[0]*s[7] - s[1]*s[6]);
+
+            inv[2] = s[1]*s[5] - s[2]*s[4];
+            inv[5] = -(s[0]*s[5] - s[2]*s[3]);
+            inv[8] = s[0]*s[4] - s[1]*s[3];
+
+
+            det = 1 / det;
+            for(let i=0; i<9; ++i){
+                d[i] = inv[i] * det;
+            }
+
+            return this;
+        }
+
+        /**
+         * Invert this matrix
+         * @returns this
+         */
+        invert(){
+            return this.setInverseOf(this);
+        }
+
+        /**
+         * Transpose this matrix.
+         * @returns this
+         */
+        transpose(){
+            let e = this.elements;
+
+            //转置3x3矩阵，分别交换 1,3; 2,6; 5,7
+            let t;
+            t = e[1]; e[1] = e[3]; e[3] = t;
+            t = e[2]; e[2] = e[6]; e[6] = t;
+            t = e[5]; e[5] = e[7]; e[7] = t;                
+
+            return this;
+        }
+
+        static multiply(m1,m2,dst){
+            let i, e, a, b, ai0, ai1, ai2;
+      
+            // Calculate e = a * b
+            e = dst.elements;
+            a = m1.elements;
+            b = m2.elements;
+            
+            // If e equals b, copy b to temporary matrix.
+            if (e === b) {
+                b = new Float32Array(9);
+                for (i = 0; i < 9; ++i) {
+                    b[i] = e[i];
+                }
+            }
+
+            for (i = 0; i < 3; i++) {
+                ai0=a[i];  ai1=a[i+3];  ai2=a[i+6];
+                e[i]    = ai0 * b[0]  + ai1 * b[1]  + ai2 * b[2];
+                e[i+3]  = ai0 * b[3]  + ai1 * b[4]  + ai2 * b[5];
+                e[i+6]  = ai0 * b[6]  + ai1 * b[7]  + ai2 * b[8];
+            }               
+            
+            return dst;
+        }
+    }
+
+    let _tmpMatrix3 = new Matrix3();
+
     class Quaternion {
-        constructor(x=0,y=0,z=0,w=1){        
+        constructor(x = 0, y = 0, z = 0, w = 1) {
             this.x = x;
             this.y = y;
             this.z = z;
@@ -906,7 +1142,7 @@ var mini3d = (function (exports) {
         /**
          * Return a clone of this quaternion.
          */
-        clone(){
+        clone() {
             return new Quaternion(this.x, this.y, this.z, this.w);
         }
 
@@ -917,7 +1153,7 @@ var mini3d = (function (exports) {
          * @param {Number} z 
          * @param {Number} w 
          */
-        set(x,y,z,w){
+        set(x, y, z, w) {
             this.x = x;
             this.y = y;
             this.z = z;
@@ -929,7 +1165,7 @@ var mini3d = (function (exports) {
          * Copy the x,y,z,w from rhs to this quaternion.
          * @param {Quaternion} rhs 
          */
-        copyFrom(rhs){
+        copyFrom(rhs) {
             this.x = rhs.x;
             this.y = rhs.y;
             this.z = rhs.z;
@@ -940,7 +1176,7 @@ var mini3d = (function (exports) {
         /**
          * Make this quaternion identity.
          */
-        identity(){
+        identity() {
             this.x = 0.0;
             this.y = 0.0;
             this.z = 0.0;
@@ -952,22 +1188,22 @@ var mini3d = (function (exports) {
          * Check if the quaternion rhs is equal to this quaternion.
          * @param {Quaternion} rhs 
          */
-        equals(rhs){
+        equals(rhs) {
             let eps = math.Epsilon;
             return (this.x > rhs.x - eps && this.x < rhs.x + eps &&
-                    this.y > rhs.y - eps && this.y < rhs.y + eps &&
-                    this.z > rhs.z - eps && this.z < rhs.z + eps &&
-                    this.w > rhs.w - eps && this.w < rhs.w + eps);
+                this.y > rhs.y - eps && this.y < rhs.y + eps &&
+                this.z > rhs.z - eps && this.z < rhs.z + eps &&
+                this.w > rhs.w - eps && this.w < rhs.w + eps);
         }
 
         /**
          * Sets the euler angle representation of the rotation.
          * @param {Vector3} eulerAngles 
          */
-        setFromEulerAngles(eulerAngles){
-            let ex = math.degToRad(eulerAngles.x*0.5);
-            let ey = math.degToRad(eulerAngles.y*0.5);
-            let ez = math.degToRad(eulerAngles.z*0.5);
+        setFromEulerAngles(eulerAngles) {
+            let ex = math.degToRad(eulerAngles.x * 0.5);
+            let ey = math.degToRad(eulerAngles.y * 0.5);
+            let ez = math.degToRad(eulerAngles.z * 0.5);
 
             let cx = Math.cos(ex);
             let sx = Math.sin(ex);
@@ -983,7 +1219,54 @@ var mini3d = (function (exports) {
             // q = (qy * qx) * qz        
             Quaternion.multiply(qy, qx, this);
             Quaternion.multiply(this, qz, this);
-            return this;   
+            return this;
+        }
+
+        /**
+         * Set the quaternion from a 3X3 rotation matrix.
+         * @param {Matrix3} matrix3 
+         */
+        setFromRotationMatrix(matrix3) {
+            let e = matrix3.elements;
+            let m00 = e[0]; let m01 = e[3]; let m02 = e[6];
+            let m10 = e[1]; let m11 = e[4]; let m12 = e[7];
+            let m20 = e[2]; let m21 = e[5]; let m22 = e[8];
+
+            let trace = m00 + m11 + m22;
+            if (trace > 0) {
+                let s = 0.5 / Math.sqrt(trace + 1.0);
+
+                this.w = 0.25 / s;
+                this.x = (m21 - m12) * s;
+                this.y = (m02 - m20) * s;
+                this.z = (m10 - m01) * s;
+
+            } else if ((m00 > m11) && (m00 > m22)) {
+                let s = 2.0 * Math.sqrt(1.0 + m00 - m11 - m22);
+
+                this.w = (m21 - m12) / s;
+                this.x = 0.25 * s;
+                this.y = (m01 + m10) / s;
+                this.z = (m02 + m20) / s;
+
+            } else if (m11 > m22) {
+                let s = 2.0 * Math.sqrt(1.0 + m11 - m00 - m22);
+
+                this.w = (m02 - m20) / s;
+                this.x = (m01 + m10) / s;
+                this.y = 0.25 * s;
+                this.z = (m12 + m21) / s;
+
+            } else {
+                let s = 2.0 * Math.sqrt(1.0 + m22 - m00 - m11);
+
+                this.w = (m10 - m01) / s;
+                this.x = (m02 + m20) / s;
+                this.y = (m12 + m21) / s;
+                this.z = 0.25 * s;
+            }
+
+            return this;
         }
 
         /**
@@ -991,7 +1274,7 @@ var mini3d = (function (exports) {
          * @param {Vector3} fromDir 
          * @param {Vector3} toDir 
          */
-        setFromToRotation(fromDir, toDir){
+        setFromToRotation(fromDir, toDir) {
 
         }
 
@@ -1000,17 +1283,19 @@ var mini3d = (function (exports) {
          * @param {Vector3} forward The direction to look in.
          * @param {Vector3} upwards The up direction.
          */
-        setLookRotation(forward, upwards){
-
+        setLookRotation(forward, upwards) {
+            _tmpMatrix3.setLookAt(0, 0, 0, forward.x, forward.y, forward.z, upwards.x, upwards.y, upwards.z);
+            this.setFromRotationMatrix(_tmpMatrix3);
+            this.normalize();
         }
 
         /**
          * Normalize this quaternion.
          */
-        normalize(){
-            let mag = Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z + this.w*this.w);
-            if(mag>0.0){
-                let g = 1.0/mag;
+        normalize() {
+            let mag = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+            if (mag > 0.0) {
+                let g = 1.0 / mag;
                 this.x *= g;
                 this.y *= g;
                 this.z *= g;
@@ -1025,7 +1310,7 @@ var mini3d = (function (exports) {
          * Converts a rotation to angle-axis representation. (angeles in degrees)
          * @returns { angle:Number, axis:[x,y,z]}
          */
-        toAngleAxis(){
+        toAngleAxis() {
 
         }
 
@@ -1035,10 +1320,10 @@ var mini3d = (function (exports) {
          * @param {Number} angle Rotation angle in degrees.
          * @returns {Quaternion} The rotation quaternion.
          */
-        static axisAngle(axis, angle){
-            let halfAngle = math.degToRad(angle*0.5);
+        static axisAngle(axis, angle) {
+            let halfAngle = math.degToRad(angle * 0.5);
             let s = Math.sin(halfAngle);
-            return new Quaternion(s*axis.x, s*axis.y, s*axis.z, Math.cos(halfAngle));
+            return new Quaternion(s * axis.x, s * axis.y, s * axis.z, Math.cos(halfAngle));
         }
 
         /**
@@ -1049,10 +1334,10 @@ var mini3d = (function (exports) {
          * @param {Number} z 
          * @returns {Quaternion} The rotation quaternion.
          */
-        static euler(x, y, z){
-            let ex = math.degToRad(x*0.5);
-            let ey = math.degToRad(y*0.5);
-            let ez = math.degToRad(z*0.5);
+        static euler(x, y, z) {
+            let ex = math.degToRad(x * 0.5);
+            let ey = math.degToRad(y * 0.5);
+            let ez = math.degToRad(z * 0.5);
 
             let cx = Math.cos(ex);
             let sx = Math.sin(ex);
@@ -1066,10 +1351,10 @@ var mini3d = (function (exports) {
             let qz = new Quaternion(0.0, 0.0, sz, cz);
 
             // q = (qy * qx) * qz    
-            let q = new Quaternion();    
+            let q = new Quaternion();
             Quaternion.multiply(qy, qx, q);
             Quaternion.multiply(q, qz, q);
-            return q;        
+            return q;
         }
 
         /**
@@ -1078,7 +1363,7 @@ var mini3d = (function (exports) {
          * @param {Vector3} toDir 
          * @returns {Quaternion} The rotation quaternion.
          */
-        static fromToRotation(fromDir, toDir){
+        static fromToRotation(fromDir, toDir) {
 
         }
 
@@ -1089,7 +1374,7 @@ var mini3d = (function (exports) {
          * @returns {Quaternion} The rotation quaternion. 
          *  Returns identity if forward or upwards magnitude is zero or forward and upwards are colinear.
          */
-        static lookRotation(forward, upwards){
+        static lookRotation(forward, upwards) {
 
         }
 
@@ -1102,7 +1387,7 @@ var mini3d = (function (exports) {
          * @param {Number} maxDegreesDelta 
          * @returns The rotatoin quaternion.
          */
-        static rotateTowards(from, to, maxDegreesDelta){
+        static rotateTowards(from, to, maxDegreesDelta) {
 
         }
 
@@ -1110,7 +1395,7 @@ var mini3d = (function (exports) {
          * Returns the conjugate of q.
          * @param {Quaternion} q 
          */
-        static conjugate(q){
+        static conjugate(q) {
             return new Quaternion(-q.x, -q.y, -q.z, q.w);
         }
 
@@ -1118,7 +1403,7 @@ var mini3d = (function (exports) {
          * Returns the inverse of q.
          * @param {Quaternion} q 
          */
-        static inverse(q){
+        static inverse(q) {
             return Quaternion.conjugate(q);
         }
 
@@ -1127,8 +1412,8 @@ var mini3d = (function (exports) {
          * @param {Quaternion} qa 
          * @param {Quaternion} ab
          * @returns {Number} The angle in degrees.
-         */    
-        static angleBetween(qa, ab){
+         */
+        static angleBetween(qa, ab) {
 
         }
 
@@ -1138,7 +1423,7 @@ var mini3d = (function (exports) {
          * @param {Quaternion} qb 
          * @returns {Number} The dot product.
          */
-        static dot(qa, qb){
+        static dot(qa, qb) {
             return qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w;
         }
 
@@ -1148,13 +1433,13 @@ var mini3d = (function (exports) {
          * @param {Quaternion} qb 
          * @param {Quaternion} dst The result set to dst.
          */
-        static multiply(qa, qb, dst){
+        static multiply(qa, qb, dst) {
             dst.set(
-                qa.w*qb.x + qa.x*qb.w + qa.y*qb.z - qa.z*qb.y,
-                qa.w*qb.y + qa.y*qb.w + qa.z*qb.x - qa.x*qb.z,
-                qa.w*qb.z + qa.z*qb.w + qa.x*qb.y - qa.y*qb.x,
-                qa.w*qb.w - qa.x*qb.x - qa.y*qb.y - qa.z*qb.z            
-            );            
+                qa.w * qb.x + qa.x * qb.w + qa.y * qb.z - qa.z * qb.y,
+                qa.w * qb.y + qa.y * qb.w + qa.z * qb.x - qa.x * qb.z,
+                qa.w * qb.z + qa.z * qb.w + qa.x * qb.y - qa.y * qb.x,
+                qa.w * qb.w - qa.x * qb.x - qa.y * qb.y - qa.z * qb.z
+            );
         }
 
         /**
@@ -1163,15 +1448,15 @@ var mini3d = (function (exports) {
          * @param {Vector3} v 
          * @param {Vector3} dst
          */
-        static rotateVector(q, v, dst){
+        static rotateVector(q, v, dst) {
             // dst = q * v * inv_q
 
             // t = q * v
             let tx = q.w * v.x + q.y * v.z - q.z * v.y;
             let ty = q.w * v.y + q.z * v.x - q.x * v.z;
             let tz = q.w * v.z + q.x * v.y - q.y * v.x;
-            let tw = -q.x * v.x - q.y * v.y - q.z * v.z; 
-            
+            let tw = -q.x * v.x - q.y * v.y - q.z * v.z;
+
             //  dst = t * inv_q
             dst.x = tw * -q.x + tx * q.w + ty * -q.z - tz * -q.y;
             dst.y = tw * -q.y + ty * q.w + tz * -q.x - tx * -q.z;
@@ -1183,7 +1468,7 @@ var mini3d = (function (exports) {
          * Convert quaternion to rotatoin matrix.
          * @param {Matrix4} matrix The rotation matrix.
          */
-        static toMatrix4(q, matrix){
+        static toMatrix4(q, matrix) {
             let x = q.x * 2.0;
             let y = q.y * 2.0;
             let z = q.z * 2.0;
@@ -1196,7 +1481,7 @@ var mini3d = (function (exports) {
             let wx = q.w * x;
             let wy = q.w * y;
             let wz = q.w * z;
-            
+
             let e = matrix.elements;
             e[0] = 1.0 - (yy + zz);
             e[1] = xy + wz;
@@ -1227,20 +1512,20 @@ var mini3d = (function (exports) {
          * @param {Number} t The interpolation factor.
          * @returns The result quaternion.
          */
-        static lerp(qa, qb, t){
+        static lerp(qa, qb, t) {
             let result = new Quaternion();
             // If dot < 0, qa and qb are more than 360 degrees apart.
             // The quaternions are 720 degrees of freedom, so negative all components when lerping.
-            if(Quaternion.dot(qa, qb) < 0){
-                result.set(qa.x + t*(-qb.x-qa.x),
-                           qa.y + t*(-qb.y-qa.y),
-                           qa.z + t*(-qb.z-qa.z),
-                           qa.w + t*(-qb.w-qa.w));
+            if (Quaternion.dot(qa, qb) < 0) {
+                result.set(qa.x + t * (-qb.x - qa.x),
+                    qa.y + t * (-qb.y - qa.y),
+                    qa.z + t * (-qb.z - qa.z),
+                    qa.w + t * (-qb.w - qa.w));
             } else {
-                result.set(qa.x + t*(qb.x-qa.x),
-                           qa.y + t*(qb.y-qa.y),
-                           qa.z + t*(qb.z-qa.z),
-                           qa.w + t*(qb.w-qa.w));
+                result.set(qa.x + t * (qb.x - qa.x),
+                    qa.y + t * (qb.y - qa.y),
+                    qa.z + t * (qb.z - qa.z),
+                    qa.w + t * (qb.w - qa.w));
             }
             return result;
         }
@@ -1254,11 +1539,11 @@ var mini3d = (function (exports) {
          * @param {Number} t The interpolation factor.
          * @returns The result quaternion.
          */
-        static slerp(qa, qb, t){
+        static slerp(qa, qb, t) {
             let dot = Quaternion.dot(qa, qb);
             let result = new Quaternion();
 
-            if(dot < 0.0){
+            if (dot < 0.0) {
                 dot = -dot;
                 result.set(-qb.x, -qb.y, -qb.z, -qb.w);
             } else {
@@ -1268,20 +1553,20 @@ var mini3d = (function (exports) {
             let scale0 = 0;
             let scale1 = 0;
 
-            if(dot < 0.95){
+            if (dot < 0.95) {
                 let angle = Math.acos(dot);
-                let sin_div = 1.0/Math.sin(angle);
-                scale1 = Math.sin(angle*t)*sin_div;
-                scale0 = Math.sin(angle*(1.0-t))*sin_div;
+                let sin_div = 1.0 / Math.sin(angle);
+                scale1 = Math.sin(angle * t) * sin_div;
+                scale0 = Math.sin(angle * (1.0 - t)) * sin_div;
             } else {
                 scale0 = 1.0 - t;
                 scale1 = t;
             }
 
-            result.set( qa.x*scale0 + result.x*scale1,
-                        qa.y*scale0 + result.y*scale1,
-                        qa.z*scale0 + result.z*scale1,
-                        qa.w*scale0 + result.w*scale1);
+            result.set(qa.x * scale0 + result.x * scale1,
+                qa.y * scale0 + result.y * scale1,
+                qa.z * scale0 + result.z * scale1,
+                qa.w * scale0 + result.w * scale1);
             return result;
         }
 
@@ -2363,12 +2648,8 @@ var mini3d = (function (exports) {
             node.setParent(this);
         }
 
-        lookAt(worldPos){
-
-        }
-
-        lookAtNode(targetNode){
-            
+        lookAt(target, up){
+            //this.rotation.setLookRotation()
         }
 
         updateLocalMatrix(){
@@ -2459,12 +2740,8 @@ var mini3d = (function (exports) {
             node.setParent(this);
         }
 
-        lookAt(worldPos){
-
-        }
-
-        lookAtNode(targetNode){
-            
+        lookAt(target, up){
+            //this.rotation.setLookRotation()
         }
 
         updateLocalMatrix(){
@@ -2637,7 +2914,7 @@ var mini3d = (function (exports) {
         }
 
         setLookAt(){
-            this._viewMatrix.setLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+            this._viewMatrix.setViewByLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
         }
 
         onScreenResize(width, height){
@@ -2652,8 +2929,8 @@ var mini3d = (function (exports) {
         }
 
         beforeRender(){
-            //this._viewMatrix.setInverseOf(this.node.localMatrix); //TODO: use this, when look at done.
-            this.setLookAt();
+            this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
+            //this.setLookAt();
             this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
 
             let gl = mini3d.gl;
@@ -2677,6 +2954,7 @@ var mini3d = (function (exports) {
     exports.AssetType = AssetType;
     exports.Camera = Camera;
     exports.IndexBuffer = IndexBuffer;
+    exports.Matrix3 = Matrix3;
     exports.Matrix4 = Matrix4;
     exports.Mesh = Mesh;
     exports.MeshRenderer = MeshRenderer;
