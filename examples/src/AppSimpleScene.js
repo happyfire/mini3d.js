@@ -1,4 +1,3 @@
-
 let vs_file = './shaders/basic_light.vs';
 let fs_file = './shaders/basic_light.fs';
 let obj_file = './models/dragon.obj';
@@ -12,6 +11,7 @@ class AppSimpleScene{
         this._rotX = 0;
         this._rotY = 0;        
         this._rotDegree = 0;
+        this._tempQuat = new mini3d.Quaternion();
     }
 
     onInit(){
@@ -36,9 +36,14 @@ class AppSimpleScene{
     onUpdate(dt){
         if(this._scene){
 
-            this._mesh2.rotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
-            this._rotDegree += dt*100/1000;
-            this._rotDegree %= 360;
+            //this._mesh2.localRotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
+            //this._rotDegree += dt*100/1000;
+            //this._rotDegree %= 360;                       
+            
+
+            this._mesh1.lookAt(this._mesh2.position, mini3d.Vector3.Up, 0.1);
+
+            this._cameraNode.lookAt(this._mesh1.position);
 
             this._scene.update();                                   
             this._scene.render();
@@ -77,9 +82,12 @@ class AppSimpleScene{
             that._rotY += dx;  
     
             //先旋转qy,再旋转qx
-            let qx = mini3d.Quaternion.axisAngle(mini3d.Vector3.Right, that._rotX);
-            let qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, that._rotY);
-            mini3d.Quaternion.multiply(qx, qy, that._modelNode.rotation);
+            //let qx = mini3d.Quaternion.axisAngle(mini3d.Vector3.Right, that._rotX);
+            //let qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, that._rotY);
+            //mini3d.Quaternion.multiply(qx, qy, that._mesh1.localRotation);
+
+            that._mesh2.localPosition.y -= 0.05*dy;
+            that._mesh2.localPosition.x += 0.05*dx;
                        
         })
                     
@@ -101,10 +109,10 @@ class AppSimpleScene{
         mesh1.addComponent(mini3d.SystemComponents.Renderer, meshRenderer);
         this._scene.addChild(mesh1);
 
-        mesh1.position.set(0, -1.0, 0);
-        mesh1.scale.set(0.5,0.5,0.5);
+        mesh1.localPosition.set(-2, 0, 0);
+        mesh1.localScale.set(0.5,0.5,0.5);
 
-        this._modelNode = mesh1;
+        this._mesh1 = mesh1;
 
         let mesh2 = new mini3d.SceneNode();
         let meshRenderer2 = new mini3d.MeshRenderer();
@@ -113,9 +121,8 @@ class AppSimpleScene{
         mesh2.addComponent(mini3d.SystemComponents.Renderer, meshRenderer2);
         this._scene.addChild(mesh2);
     
-        mesh2.position.set(0, 3.0, 0);
-        mesh2.scale.set(0.3,0.3,0.3);
-        //mesh2.rotation.setFromEulerAngles(new mini3d.Vector3(0, 45, 0));
+        mesh2.localPosition.set(2, 3.0, 0);
+        mesh2.localScale.set(0.3,0.3,0.3);
         this._mesh2 = mesh2;
         
 
@@ -123,9 +130,10 @@ class AppSimpleScene{
         camera.setPerspective(60, mini3d.canvas.width/mini3d.canvas.height, 1.0, 100);
         this._cameraNode = new mini3d.SceneNode();
         this._cameraNode.addComponent(mini3d.SystemComponents.Camera, camera);
-        this._cameraNode.position.set(0, 2, 8);
-        this._cameraNode.lookAt(new mini3d.Vector3(0,0,0));
         this._scene.addChild(this._cameraNode);
+        
+        this._cameraNode.localPosition.set(0, 0, 8);                
+        this._cameraNode.lookAt(new mini3d.Vector3(0,3,0));
 
 
     }

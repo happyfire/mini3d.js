@@ -86,6 +86,8 @@ class Matrix3 {
     
     /**
      * Set the Look at matrix.
+     * 根据lookAt和up方向构建旋转矩阵。注意此矩阵不是camera的lookAt view matrix。
+     * 它是一个UVN矩阵。而camera的lookAt矩阵是camera世界矩阵的逆矩阵。
      * @param eyeX, eyeY, eyeZ The position of the eye point.
      * @param targetX, targetY, targetZ The position of the target point.
      * @param upX, upY, upZ The direction of the up vector.
@@ -94,9 +96,9 @@ class Matrix3 {
     setLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
         // N = eye - target
         let nx, ny, nz;
-        nx = eyeX - targetX;
-        ny = eyeY - targetY;
-        nz = eyeZ - targetZ;
+        nx = targetX - eyeX;
+        ny = targetY - eyeY;
+        nz = targetZ - eyeZ;
         let rl = 1/Math.sqrt(nx*nx+ny*ny+nz*nz);
         nx *= rl;
         ny *= rl;
@@ -122,15 +124,15 @@ class Matrix3 {
     
         let e = this.elements;
         e[0] = ux;
-        e[1] = vx;
-        e[2] = nx;       
+        e[1] = uy;
+        e[2] = uz;       
     
-        e[3] = uy;
+        e[3] = vx;
         e[4] = vy;
-        e[5] = ny;        
+        e[5] = vz;        
     
-        e[6] = uz;
-        e[7] = vz;
+        e[6] = nx;
+        e[7] = ny;
         e[8] = nz;        
     }
 

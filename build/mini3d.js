@@ -983,6 +983,8 @@ var mini3d = (function (exports) {
         
         /**
          * Set the Look at matrix.
+         * 根据lookAt和up方向构建旋转矩阵。注意此矩阵不是camera的lookAt view matrix。
+         * 它是一个UVN矩阵。而camera的lookAt矩阵是camera世界矩阵的逆矩阵。
          * @param eyeX, eyeY, eyeZ The position of the eye point.
          * @param targetX, targetY, targetZ The position of the target point.
          * @param upX, upY, upZ The direction of the up vector.
@@ -991,9 +993,9 @@ var mini3d = (function (exports) {
         setLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
             // N = eye - target
             let nx, ny, nz;
-            nx = eyeX - targetX;
-            ny = eyeY - targetY;
-            nz = eyeZ - targetZ;
+            nx = targetX - eyeX;
+            ny = targetY - eyeY;
+            nz = targetZ - eyeZ;
             let rl = 1/Math.sqrt(nx*nx+ny*ny+nz*nz);
             nx *= rl;
             ny *= rl;
@@ -1019,15 +1021,15 @@ var mini3d = (function (exports) {
         
             let e = this.elements;
             e[0] = ux;
-            e[1] = vx;
-            e[2] = nx;       
+            e[1] = uy;
+            e[2] = uz;       
         
-            e[3] = uy;
+            e[3] = vx;
             e[4] = vy;
-            e[5] = ny;        
+            e[5] = vz;        
         
-            e[6] = uz;
-            e[7] = vz;
+            e[6] = nx;
+            e[7] = ny;
             e[8] = nz;        
         }
 
@@ -1280,11 +1282,12 @@ var mini3d = (function (exports) {
 
         /**
          * Create a rotation which looks in forward and the up direction is upwards.
-         * @param {Vector3} forward The direction to look in.
+         * @param {Vector3} eye The eye position.
+         * @param {Vector3} target The target position to look in.
          * @param {Vector3} upwards The up direction.
          */
-        setLookRotation(forward, upwards) {
-            _tmpMatrix3.setLookAt(0, 0, 0, forward.x, forward.y, forward.z, upwards.x, upwards.y, upwards.z);
+        setLookRotation(eye, target, upwards) {
+            _tmpMatrix3.setLookAt(eye.x, eye.y, eye.z, target.x, target.y, target.z, upwards.x, upwards.y, upwards.z);
             this.setFromRotationMatrix(_tmpMatrix3);
             this.normalize();
         }
@@ -1312,6 +1315,12 @@ var mini3d = (function (exports) {
          */
         toAngleAxis() {
 
+        }
+
+        invert(){
+            this.x *=-1;
+            this.y *=-1;
+            this.z *=-1;         
         }
 
         /**
@@ -1547,7 +1556,7 @@ var mini3d = (function (exports) {
                 dot = -dot;
                 result.set(-qb.x, -qb.y, -qb.z, -qb.w);
             } else {
-                result.set(qb);
+                result.copyFrom(qb);
             }
 
             let scale0 = 0;
@@ -2606,25 +2615,64 @@ var mini3d = (function (exports) {
 
     let SystemComponents = {
         Renderer:'renderer',
-        Mesh:'mesh'
+        Mesh:'mesh',
+        Camera:'camera'
     };
+
+    let _tempQuat = new Quaternion();
+    let _tempMat4 = new Matrix4();
 
     class SceneNode {
         constructor(){
-            this.position = new Vector3();
-            this.rotation = new Quaternion();
-            this.scale = new Vector3(1,1,1);
+            this._isStatic = false;
+            this.localPosition = new Vector3();
+            this.localRotation = new Quaternion();
+            this.localScale = new Vector3(1,1,1);
+
+            this._worldPosition = new Vector3();
+            this._worldRotation = new Quaternion();
+
             this.localMatrix = new Matrix4();
             this.worldMatrix = new Matrix4();
-            this.worldPosition = new Vector3();
 
             this.parent = null;
             this.children = [];
 
-            this._rotationMatrix = new Matrix4();
-
             this.components = {};
         }
+
+        isStatic(){
+            return this._isStatic;
+        }
+        
+        setStatic(isStatic){
+            this._isStatic = isStatic;
+        }
+
+        get position(){
+            if(this.parent==null || this.parent.parent==null){
+                return this.localPosition;
+            }        
+        }
+
+        set position(v){
+            if(this.parent==null || this.parent.parent==null){
+                this.localPosition.copyFrom(v);
+            }
+        }
+
+        get rotation(){
+            if(this.parent==null || this.parent.parent==null){
+                return this.localRotation;
+            } 
+        }
+
+        setWorldRotation(v){
+            if(this.parent==null || this.parent.parent==null){
+                this.localRotation.copyFrom(v);
+            }
+        }
+        
 
         removeFromParent(){
             if(this.parent){
@@ -2648,24 +2696,44 @@ var mini3d = (function (exports) {
             node.setParent(this);
         }
 
-        lookAt(target, up){
-            //this.rotation.setLookRotation()
+        lookAt(target, up, smoothFactor){
+            up = up || Vector3.Up;
+            let worldPos = this.position;
+            if(Math.abs(worldPos.x-target.x)<math.ZeroEpsilon 
+                && Math.abs(worldPos.y-target.y)<math.ZeroEpsilon 
+                && Math.abs(worldPos.z-target.z)<math.ZeroEpsilon){
+                    return;
+            }
+
+            if(this.getComponent(SystemComponents.Camera)){
+                _tempQuat.setLookRotation(target, worldPos, up);//因为对于OpenGL的camera来说，LookAt是让局部的-z轴指向target，因此这儿对调一下。
+            } else {
+                _tempQuat.setLookRotation(worldPos, target, up);
+            }
+
+            if(smoothFactor != null){
+                this.setWorldRotation( Quaternion.slerp(this.rotation, _tempQuat, smoothFactor) );
+            } else {
+                this.setWorldRotation(_tempQuat);
+            }
+                           
+            
         }
 
-        updateLocalMatrix(){
-            //TODO:local matrix dirty flag
-
-            this.localMatrix.setTranslate(this.position.x, this.position.y, this.position.z);   
-            //TODO:封装rotation操作并cache _rotatoinMatrix
-            Quaternion.toMatrix4(this.rotation, this._rotationMatrix);
-            this.localMatrix.multiply(this._rotationMatrix);        
-            this.localMatrix.scale(this.scale.x, this.scale.y, this.scale.z);   
+        updateLocalMatrix(){        
+            this.localMatrix.setTranslate(this.localPosition.x, this.localPosition.y, this.localPosition.z);           
+            Quaternion.toMatrix4(this.localRotation, _tempMat4);
+            this.localMatrix.multiply(_tempMat4);        
+            this.localMatrix.scale(this.localScale.x, this.localScale.y, this.localScale.z);   
             
             //TODO:此处可优化，避免矩阵乘法，Matrix4增加fromTRS(pos, rot, scale)方法
         }
 
         updateWorldMatrix(parentWorldMatrix){
-            this.updateLocalMatrix();
+            if(!this._isStatic){
+                this.updateLocalMatrix();
+            }
+            
 
             if(parentWorldMatrix){
                 Matrix4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
@@ -2701,22 +2769,60 @@ var mini3d = (function (exports) {
         }
     }
 
+    let _tempQuat$1 = new Quaternion();
+    let _tempMat4$1 = new Matrix4();
+
     class SceneNode$1 {
         constructor(){
-            this.position = new Vector3();
-            this.rotation = new Quaternion();
-            this.scale = new Vector3(1,1,1);
+            this._isStatic = false;
+            this.localPosition = new Vector3();
+            this.localRotation = new Quaternion();
+            this.localScale = new Vector3(1,1,1);
+
+            this._worldPosition = new Vector3();
+            this._worldRotation = new Quaternion();
+
             this.localMatrix = new Matrix4();
             this.worldMatrix = new Matrix4();
-            this.worldPosition = new Vector3();
 
             this.parent = null;
             this.children = [];
 
-            this._rotationMatrix = new Matrix4();
-
             this.components = {};
         }
+
+        isStatic(){
+            return this._isStatic;
+        }
+        
+        setStatic(isStatic){
+            this._isStatic = isStatic;
+        }
+
+        get position(){
+            if(this.parent==null || this.parent.parent==null){
+                return this.localPosition;
+            }        
+        }
+
+        set position(v){
+            if(this.parent==null || this.parent.parent==null){
+                this.localPosition.copyFrom(v);
+            }
+        }
+
+        get rotation(){
+            if(this.parent==null || this.parent.parent==null){
+                return this.localRotation;
+            } 
+        }
+
+        setWorldRotation(v){
+            if(this.parent==null || this.parent.parent==null){
+                this.localRotation.copyFrom(v);
+            }
+        }
+        
 
         removeFromParent(){
             if(this.parent){
@@ -2740,24 +2846,44 @@ var mini3d = (function (exports) {
             node.setParent(this);
         }
 
-        lookAt(target, up){
-            //this.rotation.setLookRotation()
+        lookAt(target, up, smoothFactor){
+            up = up || Vector3.Up;
+            let worldPos = this.position;
+            if(Math.abs(worldPos.x-target.x)<math.ZeroEpsilon 
+                && Math.abs(worldPos.y-target.y)<math.ZeroEpsilon 
+                && Math.abs(worldPos.z-target.z)<math.ZeroEpsilon){
+                    return;
+            }
+
+            if(this.getComponent(SystemComponents.Camera)){
+                _tempQuat$1.setLookRotation(target, worldPos, up);//因为对于OpenGL的camera来说，LookAt是让局部的-z轴指向target，因此这儿对调一下。
+            } else {
+                _tempQuat$1.setLookRotation(worldPos, target, up);
+            }
+
+            if(smoothFactor != null){
+                this.setWorldRotation( Quaternion.slerp(this.rotation, _tempQuat$1, smoothFactor) );
+            } else {
+                this.setWorldRotation(_tempQuat$1);
+            }
+                           
+            
         }
 
-        updateLocalMatrix(){
-            //TODO:local matrix dirty flag
-
-            this.localMatrix.setTranslate(this.position.x, this.position.y, this.position.z);   
-            //TODO:封装rotation操作并cache _rotatoinMatrix
-            Quaternion.toMatrix4(this.rotation, this._rotationMatrix);
-            this.localMatrix.multiply(this._rotationMatrix);        
-            this.localMatrix.scale(this.scale.x, this.scale.y, this.scale.z);   
+        updateLocalMatrix(){        
+            this.localMatrix.setTranslate(this.localPosition.x, this.localPosition.y, this.localPosition.z);           
+            Quaternion.toMatrix4(this.localRotation, _tempMat4$1);
+            this.localMatrix.multiply(_tempMat4$1);        
+            this.localMatrix.scale(this.localScale.x, this.localScale.y, this.localScale.z);   
             
             //TODO:此处可优化，避免矩阵乘法，Matrix4增加fromTRS(pos, rot, scale)方法
         }
 
         updateWorldMatrix(parentWorldMatrix){
-            this.updateLocalMatrix();
+            if(!this._isStatic){
+                this.updateLocalMatrix();
+            }
+            
 
             if(parentWorldMatrix){
                 Matrix4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
@@ -2913,10 +3039,6 @@ var mini3d = (function (exports) {
             this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);
         }
 
-        setLookAt(){
-            this._viewMatrix.setViewByLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
-        }
-
         onScreenResize(width, height){
             this._aspect = width/height;
             this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);     
@@ -2930,7 +3052,7 @@ var mini3d = (function (exports) {
 
         beforeRender(){
             this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
-            //this.setLookAt();
+            
             this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
 
             let gl = mini3d.gl;

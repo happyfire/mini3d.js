@@ -1,6 +1,7 @@
 import { math } from "./math";
 import { Matrix4 } from "./matrix4";
 import { Matrix3 } from "./matrix3";
+import { Vector3 } from "./vector3";
 
 let _tmpMatrix3 = new Matrix3();
 
@@ -153,11 +154,12 @@ class Quaternion {
 
     /**
      * Create a rotation which looks in forward and the up direction is upwards.
-     * @param {Vector3} forward The direction to look in.
+     * @param {Vector3} eye The eye position.
+     * @param {Vector3} target The target position to look in.
      * @param {Vector3} upwards The up direction.
      */
-    setLookRotation(forward, upwards) {
-        _tmpMatrix3.setLookAt(0, 0, 0, forward.x, forward.y, forward.z, upwards.x, upwards.y, upwards.z);
+    setLookRotation(eye, target, upwards) {
+        _tmpMatrix3.setLookAt(eye.x, eye.y, eye.z, target.x, target.y, target.z, upwards.x, upwards.y, upwards.z);
         this.setFromRotationMatrix(_tmpMatrix3);
         this.normalize();
     }
@@ -185,6 +187,12 @@ class Quaternion {
      */
     toAngleAxis() {
 
+    }
+
+    invert(){
+        this.x *=-1;
+        this.y *=-1;
+        this.z *=-1;         
     }
 
     /**
@@ -420,7 +428,7 @@ class Quaternion {
             dot = -dot;
             result.set(-qb.x, -qb.y, -qb.z, -qb.w);
         } else {
-            result.set(qb);
+            result.copyFrom(qb);
         }
 
         let scale0 = 0;
