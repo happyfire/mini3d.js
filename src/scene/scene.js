@@ -4,7 +4,10 @@ import { SystemComponents } from "./systemComps";
 class Scene{
     constructor(){
         this.root = new SceneNode();
+        this.root._scene = this;
         this.cameras = [];
+        this.lights = [];
+        this.renderNodes = [];
     }
 
     getRoot(){
@@ -12,13 +15,32 @@ class Scene{
     }
 
     addChild(child){ 
-        this.root.addChild(child);
+        this.root.addChild(child);               
+    }
 
-        //TODO: camera 应该可以加到任意节点上，因此不能在这儿获取。应该有个专门的方法
-        let camera = child.getComponent(SystemComponents.Camera);
+    onAddNode(node){
+        let camera = node.getComponent(SystemComponents.Camera);
         if(camera!=null){
             this.cameras.push(camera);
+        } else {
+            this.renderNodes.push(node);
         }
+    }
+
+    onRemoveNode(node){
+        let camera = node.getComponent(SystemComponents.Camera);
+        if(camera!=null){
+            let idx = this.cameras.indexOf(camera);
+            if(idx>=0){
+                this.cameras.splice(idx, 1);
+            }
+        } else {
+            let idx = this.renderNodes.indexOf(node);
+            if(idx>=0){
+                this.renderNodes.splice(idx, 1);
+            }
+        }
+        
     }
 
     onScreenResize(width, height){
@@ -42,8 +64,8 @@ class Scene{
         for(let camera of this.cameras){
             camera.beforeRender();
 
-            for(let c of this.root.children){
-                c.render(camera);
+            for(let rnode of this.renderNodes){
+                rnode.render(camera);
             }
 
             camera.afterRender();

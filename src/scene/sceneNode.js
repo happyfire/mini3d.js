@@ -28,6 +28,8 @@ class SceneNode {
         this.components = {};
 
         this._worldDirty = true;
+
+        this._scene = null;
     }
 
     isStatic(){
@@ -86,30 +88,30 @@ class SceneNode {
     }
 
     set worldPosition(v){
-        if(this.parent==null || this.parent.parent==null){
+        if(this.parent==null){
             this.localPosition = v;
         } else {            
             _tempMat4.setInverseOf(this.parent.worldMatrix);//TODO:缓存逆矩阵?
             Matrix4.transformPoint(_tempMat4, v, _tempVec3);
-            this.localPosition = _tempVec3;
+            this.localPosition = _tempVec3.clone();
         }        
     }
 
     get worldRotation(){
         if(this._worldDirty){
             this.updateWorldMatrix();
-        }        
+        }
 
         return this._worldRotation;
     }
 
     set worldRotation(v){
-        if(this.parent==null || this.parent.parent==null){
+        if(this.parent==null){
             this.localRotation = v;
         } else {            
             _tempQuat.setInverseOf(this.parent.worldRotation);
             Quaternion.multiply(_tempQuat, v, _tempQuat2);
-            this.localRotation = _tempQuat2;
+            this.localRotation = _tempQuat2.clone();
         }
     }
     
@@ -121,6 +123,8 @@ class SceneNode {
                 this.parent.children.splice(idx, 1);
             }
             this.parent = null;
+            this._scene.onRemoveNode(this);
+            this._scene = null;
         }
     }
 
@@ -130,6 +134,8 @@ class SceneNode {
             parent.children.push(this);
         }
         this.parent = parent;
+        this._scene = parent._scene;
+        this._scene.onAddNode(this);
     }
 
     addChild(node){
@@ -152,9 +158,9 @@ class SceneNode {
         }
 
         if(smoothFactor != null){
-            this.worldRotation = Quaternion.slerp(this.worldRotation, _tempQuat, smoothFactor);
+            this.worldRotation = Quaternion.slerp(this.worldRotation, _tempQuat.clone(), smoothFactor);
         } else {
-            this.worldRotation = _tempQuat;
+            this.worldRotation = _tempQuat.clone();
         }
                        
         
@@ -185,7 +191,7 @@ class SceneNode {
             let worldMat = this.worldMatrix.elements;
             this._worldPosition.set(worldMat[12], worldMat[13], worldMat[14]);
     
-            //独立计算rotation, 而不是从矩阵中解出，防止矩阵蠕动带来的错误数据
+            //计算world rotation （或许可以像three.js的decompose那样从矩阵解出来）
             if(this.parent==null){
                 this._worldRotation.copyFrom(this._localRotation);
             } else {

@@ -1231,6 +1231,12 @@ var mini3d = (function (exports) {
                 this.w > rhs.w - eps && this.w < rhs.w + eps);
         }
 
+        setFromAxisAngle(axis, angle) {
+            let halfAngle = math.degToRad(angle * 0.5);
+            let s = Math.sin(halfAngle);
+            return this.set(s * axis.x, s * axis.y, s * axis.z, Math.cos(halfAngle));
+        }
+
         /**
          * Sets the euler angle representation of the rotation.
          * @param {Vector3} eulerAngles 
@@ -2683,6 +2689,8 @@ var mini3d = (function (exports) {
             this.components = {};
 
             this._worldDirty = true;
+
+            this._scene = null;
         }
 
         isStatic(){
@@ -2741,30 +2749,30 @@ var mini3d = (function (exports) {
         }
 
         set worldPosition(v){
-            if(this.parent==null || this.parent.parent==null){
+            if(this.parent==null){
                 this.localPosition = v;
             } else {            
                 _tempMat4.setInverseOf(this.parent.worldMatrix);//TODO:缓存逆矩阵?
                 Matrix4.transformPoint(_tempMat4, v, _tempVec3);
-                this.localPosition = _tempVec3;
+                this.localPosition = _tempVec3.clone();
             }        
         }
 
         get worldRotation(){
             if(this._worldDirty){
                 this.updateWorldMatrix();
-            }        
+            }
 
             return this._worldRotation;
         }
 
         set worldRotation(v){
-            if(this.parent==null || this.parent.parent==null){
+            if(this.parent==null){
                 this.localRotation = v;
             } else {            
                 _tempQuat.setInverseOf(this.parent.worldRotation);
                 Quaternion.multiply(_tempQuat, v, _tempQuat2);
-                this.localRotation = _tempQuat2;
+                this.localRotation = _tempQuat2.clone();
             }
         }
         
@@ -2776,6 +2784,8 @@ var mini3d = (function (exports) {
                     this.parent.children.splice(idx, 1);
                 }
                 this.parent = null;
+                this._scene.onRemoveNode(this);
+                this._scene = null;
             }
         }
 
@@ -2785,6 +2795,8 @@ var mini3d = (function (exports) {
                 parent.children.push(this);
             }
             this.parent = parent;
+            this._scene = parent._scene;
+            this._scene.onAddNode(this);
         }
 
         addChild(node){
@@ -2807,9 +2819,9 @@ var mini3d = (function (exports) {
             }
 
             if(smoothFactor != null){
-                this.worldRotation = Quaternion.slerp(this.worldRotation, _tempQuat, smoothFactor);
+                this.worldRotation = Quaternion.slerp(this.worldRotation, _tempQuat.clone(), smoothFactor);
             } else {
-                this.worldRotation = _tempQuat;
+                this.worldRotation = _tempQuat.clone();
             }
                            
             
@@ -2840,7 +2852,7 @@ var mini3d = (function (exports) {
                 let worldMat = this.worldMatrix.elements;
                 this._worldPosition.set(worldMat[12], worldMat[13], worldMat[14]);
         
-                //独立计算rotation, 而不是从矩阵中解出，防止矩阵蠕动带来的错误数据
+                //计算world rotation （或许可以像three.js的decompose那样从矩阵解出来）
                 if(this.parent==null){
                     this._worldRotation.copyFrom(this._localRotation);
                 } else {
@@ -2897,6 +2909,8 @@ var mini3d = (function (exports) {
             this.components = {};
 
             this._worldDirty = true;
+
+            this._scene = null;
         }
 
         isStatic(){
@@ -2955,30 +2969,30 @@ var mini3d = (function (exports) {
         }
 
         set worldPosition(v){
-            if(this.parent==null || this.parent.parent==null){
+            if(this.parent==null){
                 this.localPosition = v;
             } else {            
                 _tempMat4$1.setInverseOf(this.parent.worldMatrix);//TODO:缓存逆矩阵?
                 Matrix4.transformPoint(_tempMat4$1, v, _tempVec3$1);
-                this.localPosition = _tempVec3$1;
+                this.localPosition = _tempVec3$1.clone();
             }        
         }
 
         get worldRotation(){
             if(this._worldDirty){
                 this.updateWorldMatrix();
-            }        
+            }
 
             return this._worldRotation;
         }
 
         set worldRotation(v){
-            if(this.parent==null || this.parent.parent==null){
+            if(this.parent==null){
                 this.localRotation = v;
             } else {            
                 _tempQuat$1.setInverseOf(this.parent.worldRotation);
                 Quaternion.multiply(_tempQuat$1, v, _tempQuat2$1);
-                this.localRotation = _tempQuat2$1;
+                this.localRotation = _tempQuat2$1.clone();
             }
         }
         
@@ -2990,6 +3004,8 @@ var mini3d = (function (exports) {
                     this.parent.children.splice(idx, 1);
                 }
                 this.parent = null;
+                this._scene.onRemoveNode(this);
+                this._scene = null;
             }
         }
 
@@ -2999,6 +3015,8 @@ var mini3d = (function (exports) {
                 parent.children.push(this);
             }
             this.parent = parent;
+            this._scene = parent._scene;
+            this._scene.onAddNode(this);
         }
 
         addChild(node){
@@ -3021,9 +3039,9 @@ var mini3d = (function (exports) {
             }
 
             if(smoothFactor != null){
-                this.worldRotation = Quaternion.slerp(this.worldRotation, _tempQuat$1, smoothFactor);
+                this.worldRotation = Quaternion.slerp(this.worldRotation, _tempQuat$1.clone(), smoothFactor);
             } else {
-                this.worldRotation = _tempQuat$1;
+                this.worldRotation = _tempQuat$1.clone();
             }
                            
             
@@ -3054,7 +3072,7 @@ var mini3d = (function (exports) {
                 let worldMat = this.worldMatrix.elements;
                 this._worldPosition.set(worldMat[12], worldMat[13], worldMat[14]);
         
-                //独立计算rotation, 而不是从矩阵中解出，防止矩阵蠕动带来的错误数据
+                //计算world rotation （或许可以像three.js的decompose那样从矩阵解出来）
                 if(this.parent==null){
                     this._worldRotation.copyFrom(this._localRotation);
                 } else {
@@ -3090,7 +3108,10 @@ var mini3d = (function (exports) {
     class Scene{
         constructor(){
             this.root = new SceneNode$1();
+            this.root._scene = this;
             this.cameras = [];
+            this.lights = [];
+            this.renderNodes = [];
         }
 
         getRoot(){
@@ -3098,13 +3119,32 @@ var mini3d = (function (exports) {
         }
 
         addChild(child){ 
-            this.root.addChild(child);
+            this.root.addChild(child);               
+        }
 
-            //TODO: camera 应该可以加到任意节点上，因此不能在这儿获取。应该有个专门的方法
-            let camera = child.getComponent(SystemComponents.Camera);
+        onAddNode(node){
+            let camera = node.getComponent(SystemComponents.Camera);
             if(camera!=null){
                 this.cameras.push(camera);
+            } else {
+                this.renderNodes.push(node);
             }
+        }
+
+        onRemoveNode(node){
+            let camera = node.getComponent(SystemComponents.Camera);
+            if(camera!=null){
+                let idx = this.cameras.indexOf(camera);
+                if(idx>=0){
+                    this.cameras.splice(idx, 1);
+                }
+            } else {
+                let idx = this.renderNodes.indexOf(node);
+                if(idx>=0){
+                    this.renderNodes.splice(idx, 1);
+                }
+            }
+            
         }
 
         onScreenResize(width, height){
@@ -3128,8 +3168,8 @@ var mini3d = (function (exports) {
             for(let camera of this.cameras){
                 camera.beforeRender();
 
-                for(let c of this.root.children){
-                    c.render(camera);
+                for(let rnode of this.renderNodes){
+                    rnode.render(camera);
                 }
 
                 camera.afterRender();

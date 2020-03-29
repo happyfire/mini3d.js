@@ -70,6 +70,12 @@ class Quaternion {
             this.w > rhs.w - eps && this.w < rhs.w + eps);
     }
 
+    setFromAxisAngle(axis, angle) {
+        let halfAngle = math.degToRad(angle * 0.5);
+        let s = Math.sin(halfAngle);
+        return this.set(s * axis.x, s * axis.y, s * axis.z, Math.cos(halfAngle));
+    }
+
     /**
      * Sets the euler angle representation of the rotation.
      * @param {Vector3} eulerAngles 

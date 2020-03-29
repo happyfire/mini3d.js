@@ -937,14 +937,14 @@ var main = (function () {
 	    key: "onUpdate",
 	    value: function onUpdate(dt) {
 	      if (this._scene) {
-	        //this._mesh2.localRotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
+	        this._scene.update(); //this._mesh2.localRotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
 	        //this._rotDegree += dt*100/1000;
 	        //this._rotDegree %= 360;                       
+
+
 	        this._mesh1.lookAt(this._mesh2.worldPosition, mini3d.Vector3.Up, 0.1);
 
 	        this._cameraNode.lookAt(this._mesh1.worldPosition);
-
-	        this._scene.update();
 
 	        this._scene.render();
 	      }
@@ -1008,10 +1008,12 @@ var main = (function () {
 
 	      this._scene.addChild(meshRoot);
 
+	      meshRoot.localPosition.set(-1, 1, 1);
+	      meshRoot.localScale.set(0.8, 1, 1);
+	      meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
 	      var mesh1 = new mini3d.SceneNode();
-	      mesh1.addComponent(mini3d.SystemComponents.Renderer, meshRenderer); //meshRoot.addChild(mesh1);
-
-	      this._scene.addChild(mesh1);
+	      mesh1.addComponent(mini3d.SystemComponents.Renderer, meshRenderer);
+	      meshRoot.addChild(mesh1); //this._scene.addChild(mesh1);
 
 	      mesh1.localPosition.set(-2, 0, 0);
 	      mesh1.localScale.set(0.5, 0.5, 0.5);
