@@ -914,6 +914,7 @@ var main = (function () {
 	    this._rotY = 0;
 	    this._rotDegree = 0;
 	    this._tempQuat = new mini3d.Quaternion();
+	    this._tempVec3 = new mini3d.Vector3();
 	  }
 
 	  _createClass(AppSimpleScene, [{
@@ -939,9 +940,9 @@ var main = (function () {
 	        //this._mesh2.localRotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
 	        //this._rotDegree += dt*100/1000;
 	        //this._rotDegree %= 360;                       
-	        this._mesh1.lookAt(this._mesh2.position, mini3d.Vector3.Up, 0.1);
+	        this._mesh1.lookAt(this._mesh2.worldPosition, mini3d.Vector3.Up, 0.1);
 
-	        this._cameraNode.lookAt(this._mesh1.position);
+	        this._cameraNode.lookAt(this._mesh1.worldPosition);
 
 	        this._scene.update();
 
@@ -987,8 +988,11 @@ var main = (function () {
 	        //let qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, that._rotY);
 	        //mini3d.Quaternion.multiply(qx, qy, that._mesh1.localRotation);
 
-	        that._mesh2.localPosition.y -= 0.05 * dy;
-	        that._mesh2.localPosition.x += 0.05 * dx;
+	        that._tempVec3.copyFrom(that._mesh2.localPosition);
+
+	        that._tempVec3.y -= 0.05 * dy;
+	        that._tempVec3.x += 0.05 * dx;
+	        that._mesh2.localPosition = that._tempVec3;
 	      });
 	    }
 	  }, {
@@ -1000,8 +1004,12 @@ var main = (function () {
 	      var meshRenderer = new mini3d.MeshRenderer();
 	      meshRenderer.setMesh(mesh);
 	      meshRenderer.setShader(this._shader);
+	      var meshRoot = new mini3d.SceneNode();
+
+	      this._scene.addChild(meshRoot);
+
 	      var mesh1 = new mini3d.SceneNode();
-	      mesh1.addComponent(mini3d.SystemComponents.Renderer, meshRenderer);
+	      mesh1.addComponent(mini3d.SystemComponents.Renderer, meshRenderer); //meshRoot.addChild(mesh1);
 
 	      this._scene.addChild(mesh1);
 

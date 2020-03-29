@@ -1,3 +1,5 @@
+import { Vector3 } from "./vector3";
+
 class Matrix4 {
     constructor(){
         this.elements = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
@@ -502,6 +504,39 @@ class Matrix4 {
         }
         
         return dst;
+    }
+
+    static transformVec4(mat4, vec4){
+        let i, ai0, ai1, ai2, ai3;
+        let a = mat4.elements;
+        let dst = [];
+
+        for(i=0; i<4; ++i){
+            ai0=a[i];  ai1=a[i+4];  ai2=a[i+8];  ai3=a[i+12];
+            dst[i] = ai0 * vec4[0] + ai1 * vec4[1] + ai2 * vec4[2] + ai3 * vec4[3];
+        }
+
+        return dst;
+    }
+
+    static transformPoint(mat4, vec3, dstVec3){
+        let vec4 = [vec3.x, vec3.y, vec3.z, 1];
+        let dst = Matrix4.transformVec4(mat4, vec4);
+        if(dstVec3==null){
+            dstVec3 = new Vector3();
+        }
+        dstVec3.set(dst[0], dst[1], dst[2]);
+        return dstVec3;
+    }
+
+    static transformDirection(mat4, vec3, dstVec3){
+        let vec4 = [vec3.x, vec3.y, vec3.z, 0];
+        let dst = Matrix4.transformVec4(mat4, vec4);
+        if(dstVec3==null){
+            dstVec3 = new Vector3();
+        }
+        dstVec3.set(dst[0], dst[1], dst[2]);
+        return dstVec3;
     }
 }
 

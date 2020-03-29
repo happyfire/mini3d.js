@@ -2,7 +2,6 @@ let vs_file = './shaders/basic_light.vs';
 let fs_file = './shaders/basic_light.fs';
 let obj_file = './models/dragon.obj';
 
-
 class AppSimpleScene{
     constructor(){
         this._inited = false;        
@@ -12,6 +11,7 @@ class AppSimpleScene{
         this._rotY = 0;        
         this._rotDegree = 0;
         this._tempQuat = new mini3d.Quaternion();
+        this._tempVec3 = new mini3d.Vector3();
     }
 
     onInit(){
@@ -40,10 +40,8 @@ class AppSimpleScene{
             //this._rotDegree += dt*100/1000;
             //this._rotDegree %= 360;                       
             
-
-            this._mesh1.lookAt(this._mesh2.position, mini3d.Vector3.Up, 0.1);
-
-            this._cameraNode.lookAt(this._mesh1.position);
+            this._mesh1.lookAt(this._mesh2.worldPosition, mini3d.Vector3.Up, 0.1);
+            this._cameraNode.lookAt(this._mesh1.worldPosition);                        
 
             this._scene.update();                                   
             this._scene.render();
@@ -86,8 +84,10 @@ class AppSimpleScene{
             //let qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, that._rotY);
             //mini3d.Quaternion.multiply(qx, qy, that._mesh1.localRotation);
 
-            that._mesh2.localPosition.y -= 0.05*dy;
-            that._mesh2.localPosition.x += 0.05*dx;
+            that._tempVec3.copyFrom(that._mesh2.localPosition);
+            that._tempVec3.y -= 0.05*dy;
+            that._tempVec3.x += 0.05*dx;
+            that._mesh2.localPosition = that._tempVec3;            
                        
         })
                     
@@ -105,12 +105,16 @@ class AppSimpleScene{
         meshRenderer.setMesh(mesh);
         meshRenderer.setShader(this._shader);
 
+        let meshRoot = new mini3d.SceneNode();
+        this._scene.addChild(meshRoot);
+
         let mesh1 = new mini3d.SceneNode();
         mesh1.addComponent(mini3d.SystemComponents.Renderer, meshRenderer);
+        //meshRoot.addChild(mesh1);
         this._scene.addChild(mesh1);
 
         mesh1.localPosition.set(-2, 0, 0);
-        mesh1.localScale.set(0.5,0.5,0.5);
+        mesh1.localScale.set(0.5,0.5,0.5);        
 
         this._mesh1 = mesh1;
 
@@ -122,7 +126,7 @@ class AppSimpleScene{
         this._scene.addChild(mesh2);
     
         mesh2.localPosition.set(2, 3.0, 0);
-        mesh2.localScale.set(0.3,0.3,0.3);
+        mesh2.localScale.set(0.3,0.3,0.3);        
         this._mesh2 = mesh2;
         
 
@@ -132,9 +136,8 @@ class AppSimpleScene{
         this._cameraNode.addComponent(mini3d.SystemComponents.Camera, camera);
         this._scene.addChild(this._cameraNode);
         
-        this._cameraNode.localPosition.set(0, 0, 8);                
-        this._cameraNode.lookAt(new mini3d.Vector3(0,3,0));
-
+        this._cameraNode.localPosition.set(0, 0, 8);       
+        this._cameraNode.lookAt(new mini3d.Vector3(0,3,0));         
 
     }
 }

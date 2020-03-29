@@ -195,6 +195,13 @@ class Quaternion {
         this.z *=-1;         
     }
 
+    setInverseOf(source){ 
+        this.x = -source.x;
+        this.y = -source.y;
+        this.z = -source.z;
+        this.w = source.w;
+    }
+
     /**
      * Create a rotation which rotates angle degrees around axis.
      * @param {Vector3} axis The rotation axis.

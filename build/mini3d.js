@@ -893,6 +893,39 @@ var mini3d = (function (exports) {
             
             return dst;
         }
+
+        static transformVec4(mat4, vec4){
+            let i, ai0, ai1, ai2, ai3;
+            let a = mat4.elements;
+            let dst = [];
+
+            for(i=0; i<4; ++i){
+                ai0=a[i];  ai1=a[i+4];  ai2=a[i+8];  ai3=a[i+12];
+                dst[i] = ai0 * vec4[0] + ai1 * vec4[1] + ai2 * vec4[2] + ai3 * vec4[3];
+            }
+
+            return dst;
+        }
+
+        static transformPoint(mat4, vec3, dstVec3){
+            let vec4 = [vec3.x, vec3.y, vec3.z, 1];
+            let dst = Matrix4.transformVec4(mat4, vec4);
+            if(dstVec3==null){
+                dstVec3 = new Vector3();
+            }
+            dstVec3.set(dst[0], dst[1], dst[2]);
+            return dstVec3;
+        }
+
+        static transformDirection(mat4, vec3, dstVec3){
+            let vec4 = [vec3.x, vec3.y, vec3.z, 0];
+            let dst = Matrix4.transformVec4(mat4, vec4);
+            if(dstVec3==null){
+                dstVec3 = new Vector3();
+            }
+            dstVec3.set(dst[0], dst[1], dst[2]);
+            return dstVec3;
+        }
     }
 
     class Matrix3 {
@@ -1321,6 +1354,13 @@ var mini3d = (function (exports) {
             this.x *=-1;
             this.y *=-1;
             this.z *=-1;         
+        }
+
+        setInverseOf(source){ 
+            this.x = -source.x;
+            this.y = -source.y;
+            this.z = -source.z;
+            this.w = source.w;
         }
 
         /**
@@ -2619,15 +2659,17 @@ var mini3d = (function (exports) {
         Camera:'camera'
     };
 
+    let _tempVec3 = new Vector3();
     let _tempQuat = new Quaternion();
+    let _tempQuat2 = new Quaternion();
     let _tempMat4 = new Matrix4();
 
     class SceneNode {
         constructor(){
             this._isStatic = false;
-            this.localPosition = new Vector3();
-            this.localRotation = new Quaternion();
-            this.localScale = new Vector3(1,1,1);
+            this._localPosition = new Vector3();
+            this._localRotation = new Quaternion();
+            this._localScale = new Vector3(1,1,1);
 
             this._worldPosition = new Vector3();
             this._worldRotation = new Quaternion();
@@ -2639,6 +2681,8 @@ var mini3d = (function (exports) {
             this.children = [];
 
             this.components = {};
+
+            this._worldDirty = true;
         }
 
         isStatic(){
@@ -2649,27 +2693,78 @@ var mini3d = (function (exports) {
             this._isStatic = isStatic;
         }
 
-        get position(){
+        setTransformDirty(){
+            this._worldDirty = true;
+        }
+
+        //注意：所有 local 的 getter 方法，调用会直接获取相应的local成员，如果直接修改这些成员，需要调用 setTransformDirty() 通知Node更新世界矩阵
+        //建议如果要修改local属性，调用 setter方法
+
+        get localPosition(){
+            return this._localPosition;
+        }
+
+        set localPosition(v){
+            this._localPosition.copyFrom(v);
+            this.setTransformDirty();
+        }
+
+        get localRotation(){
+            return this._localRotation;
+        }
+
+        set localRotation(v){
+            this._localRotation.copyFrom(v);
+            this.setTransformDirty();
+        }
+
+        get localScale(){
+            return this._localScale;
+        }
+
+        set localScale(v){
+            this._localScale.copyFrom(v);
+            this.setTransformDirty();
+        }
+
+
+
+        //注意：所有的world属性，如果要修改必须调用setter
+        //调用getter只能用来获取值，在getter的结果上修改是错误的 （可惜js没有const&)
+
+        get worldPosition(){        
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }
+
+            return this._worldPosition;
+        }
+
+        set worldPosition(v){
             if(this.parent==null || this.parent.parent==null){
-                return this.localPosition;
+                this.localPosition = v;
+            } else {            
+                _tempMat4.setInverseOf(this.parent.worldMatrix);//TODO:缓存逆矩阵?
+                Matrix4.transformPoint(_tempMat4, v, _tempVec3);
+                this.localPosition = _tempVec3;
             }        
         }
 
-        set position(v){
-            if(this.parent==null || this.parent.parent==null){
-                this.localPosition.copyFrom(v);
-            }
+        get worldRotation(){
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }        
+
+            return this._worldRotation;
         }
 
-        get rotation(){
+        set worldRotation(v){
             if(this.parent==null || this.parent.parent==null){
-                return this.localRotation;
-            } 
-        }
-
-        setWorldRotation(v){
-            if(this.parent==null || this.parent.parent==null){
-                this.localRotation.copyFrom(v);
+                this.localRotation = v;
+            } else {            
+                _tempQuat.setInverseOf(this.parent.worldRotation);
+                Quaternion.multiply(_tempQuat, v, _tempQuat2);
+                this.localRotation = _tempQuat2;
             }
         }
         
@@ -2698,7 +2793,7 @@ var mini3d = (function (exports) {
 
         lookAt(target, up, smoothFactor){
             up = up || Vector3.Up;
-            let worldPos = this.position;
+            let worldPos = this.worldPosition;
             if(Math.abs(worldPos.x-target.x)<math.ZeroEpsilon 
                 && Math.abs(worldPos.y-target.y)<math.ZeroEpsilon 
                 && Math.abs(worldPos.z-target.z)<math.ZeroEpsilon){
@@ -2712,44 +2807,53 @@ var mini3d = (function (exports) {
             }
 
             if(smoothFactor != null){
-                this.setWorldRotation( Quaternion.slerp(this.rotation, _tempQuat, smoothFactor) );
+                this.worldRotation = Quaternion.slerp(this.worldRotation, _tempQuat, smoothFactor);
             } else {
-                this.setWorldRotation(_tempQuat);
+                this.worldRotation = _tempQuat;
             }
                            
             
         }
 
         updateLocalMatrix(){        
-            this.localMatrix.setTranslate(this.localPosition.x, this.localPosition.y, this.localPosition.z);           
-            Quaternion.toMatrix4(this.localRotation, _tempMat4);
+            this.localMatrix.setTranslate(this._localPosition.x, this._localPosition.y, this._localPosition.z);           
+            Quaternion.toMatrix4(this._localRotation, _tempMat4);
             this.localMatrix.multiply(_tempMat4);        
-            this.localMatrix.scale(this.localScale.x, this.localScale.y, this.localScale.z);   
+            this.localMatrix.scale(this._localScale.x, this._localScale.y, this._localScale.z);   
             
             //TODO:此处可优化，避免矩阵乘法，Matrix4增加fromTRS(pos, rot, scale)方法
         }
 
-        updateWorldMatrix(parentWorldMatrix){
-            if(!this._isStatic){
-                this.updateLocalMatrix();
+        updateWorldMatrix(){        
+            if(this._worldDirty){
+                if(!this._isStatic){
+                    this.updateLocalMatrix();
+                }
+        
+                if(this.parent==null){
+                    this.worldMatrix.set(this.localMatrix);
+                } else {
+                    Matrix4.multiply(this.parent.worldMatrix, this.localMatrix, this.worldMatrix);
+                }
+        
+                //从world matrix中提取出worldPosition
+                let worldMat = this.worldMatrix.elements;
+                this._worldPosition.set(worldMat[12], worldMat[13], worldMat[14]);
+        
+                //独立计算rotation, 而不是从矩阵中解出，防止矩阵蠕动带来的错误数据
+                if(this.parent==null){
+                    this._worldRotation.copyFrom(this._localRotation);
+                } else {
+                    Quaternion.multiply(this.parent._worldRotation, this._localRotation, this._worldRotation);
+                }
+
+                this._worldDirty = false;
             }
+
             
-
-            if(parentWorldMatrix){
-                Matrix4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
-            } else {
-                this.worldMatrix.set(this.localMatrix);
-            }
-
-            //TODO:从world matrix中提取出worldPosition
-
-
-            let worldMatrix = this.worldMatrix;
             this.children.forEach(function(child){
-                child.updateWorldMatrix(worldMatrix);
-            });
-
-            
+                child.updateWorldMatrix();
+            });        
         }
 
         addComponent(type, component){
@@ -2769,15 +2873,17 @@ var mini3d = (function (exports) {
         }
     }
 
+    let _tempVec3$1 = new Vector3();
     let _tempQuat$1 = new Quaternion();
+    let _tempQuat2$1 = new Quaternion();
     let _tempMat4$1 = new Matrix4();
 
     class SceneNode$1 {
         constructor(){
             this._isStatic = false;
-            this.localPosition = new Vector3();
-            this.localRotation = new Quaternion();
-            this.localScale = new Vector3(1,1,1);
+            this._localPosition = new Vector3();
+            this._localRotation = new Quaternion();
+            this._localScale = new Vector3(1,1,1);
 
             this._worldPosition = new Vector3();
             this._worldRotation = new Quaternion();
@@ -2789,6 +2895,8 @@ var mini3d = (function (exports) {
             this.children = [];
 
             this.components = {};
+
+            this._worldDirty = true;
         }
 
         isStatic(){
@@ -2799,27 +2907,78 @@ var mini3d = (function (exports) {
             this._isStatic = isStatic;
         }
 
-        get position(){
+        setTransformDirty(){
+            this._worldDirty = true;
+        }
+
+        //注意：所有 local 的 getter 方法，调用会直接获取相应的local成员，如果直接修改这些成员，需要调用 setTransformDirty() 通知Node更新世界矩阵
+        //建议如果要修改local属性，调用 setter方法
+
+        get localPosition(){
+            return this._localPosition;
+        }
+
+        set localPosition(v){
+            this._localPosition.copyFrom(v);
+            this.setTransformDirty();
+        }
+
+        get localRotation(){
+            return this._localRotation;
+        }
+
+        set localRotation(v){
+            this._localRotation.copyFrom(v);
+            this.setTransformDirty();
+        }
+
+        get localScale(){
+            return this._localScale;
+        }
+
+        set localScale(v){
+            this._localScale.copyFrom(v);
+            this.setTransformDirty();
+        }
+
+
+
+        //注意：所有的world属性，如果要修改必须调用setter
+        //调用getter只能用来获取值，在getter的结果上修改是错误的 （可惜js没有const&)
+
+        get worldPosition(){        
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }
+
+            return this._worldPosition;
+        }
+
+        set worldPosition(v){
             if(this.parent==null || this.parent.parent==null){
-                return this.localPosition;
+                this.localPosition = v;
+            } else {            
+                _tempMat4$1.setInverseOf(this.parent.worldMatrix);//TODO:缓存逆矩阵?
+                Matrix4.transformPoint(_tempMat4$1, v, _tempVec3$1);
+                this.localPosition = _tempVec3$1;
             }        
         }
 
-        set position(v){
-            if(this.parent==null || this.parent.parent==null){
-                this.localPosition.copyFrom(v);
-            }
+        get worldRotation(){
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }        
+
+            return this._worldRotation;
         }
 
-        get rotation(){
+        set worldRotation(v){
             if(this.parent==null || this.parent.parent==null){
-                return this.localRotation;
-            } 
-        }
-
-        setWorldRotation(v){
-            if(this.parent==null || this.parent.parent==null){
-                this.localRotation.copyFrom(v);
+                this.localRotation = v;
+            } else {            
+                _tempQuat$1.setInverseOf(this.parent.worldRotation);
+                Quaternion.multiply(_tempQuat$1, v, _tempQuat2$1);
+                this.localRotation = _tempQuat2$1;
             }
         }
         
@@ -2848,7 +3007,7 @@ var mini3d = (function (exports) {
 
         lookAt(target, up, smoothFactor){
             up = up || Vector3.Up;
-            let worldPos = this.position;
+            let worldPos = this.worldPosition;
             if(Math.abs(worldPos.x-target.x)<math.ZeroEpsilon 
                 && Math.abs(worldPos.y-target.y)<math.ZeroEpsilon 
                 && Math.abs(worldPos.z-target.z)<math.ZeroEpsilon){
@@ -2862,44 +3021,53 @@ var mini3d = (function (exports) {
             }
 
             if(smoothFactor != null){
-                this.setWorldRotation( Quaternion.slerp(this.rotation, _tempQuat$1, smoothFactor) );
+                this.worldRotation = Quaternion.slerp(this.worldRotation, _tempQuat$1, smoothFactor);
             } else {
-                this.setWorldRotation(_tempQuat$1);
+                this.worldRotation = _tempQuat$1;
             }
                            
             
         }
 
         updateLocalMatrix(){        
-            this.localMatrix.setTranslate(this.localPosition.x, this.localPosition.y, this.localPosition.z);           
-            Quaternion.toMatrix4(this.localRotation, _tempMat4$1);
+            this.localMatrix.setTranslate(this._localPosition.x, this._localPosition.y, this._localPosition.z);           
+            Quaternion.toMatrix4(this._localRotation, _tempMat4$1);
             this.localMatrix.multiply(_tempMat4$1);        
-            this.localMatrix.scale(this.localScale.x, this.localScale.y, this.localScale.z);   
+            this.localMatrix.scale(this._localScale.x, this._localScale.y, this._localScale.z);   
             
             //TODO:此处可优化，避免矩阵乘法，Matrix4增加fromTRS(pos, rot, scale)方法
         }
 
-        updateWorldMatrix(parentWorldMatrix){
-            if(!this._isStatic){
-                this.updateLocalMatrix();
+        updateWorldMatrix(){        
+            if(this._worldDirty){
+                if(!this._isStatic){
+                    this.updateLocalMatrix();
+                }
+        
+                if(this.parent==null){
+                    this.worldMatrix.set(this.localMatrix);
+                } else {
+                    Matrix4.multiply(this.parent.worldMatrix, this.localMatrix, this.worldMatrix);
+                }
+        
+                //从world matrix中提取出worldPosition
+                let worldMat = this.worldMatrix.elements;
+                this._worldPosition.set(worldMat[12], worldMat[13], worldMat[14]);
+        
+                //独立计算rotation, 而不是从矩阵中解出，防止矩阵蠕动带来的错误数据
+                if(this.parent==null){
+                    this._worldRotation.copyFrom(this._localRotation);
+                } else {
+                    Quaternion.multiply(this.parent._worldRotation, this._localRotation, this._worldRotation);
+                }
+
+                this._worldDirty = false;
             }
+
             
-
-            if(parentWorldMatrix){
-                Matrix4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
-            } else {
-                this.worldMatrix.set(this.localMatrix);
-            }
-
-            //TODO:从world matrix中提取出worldPosition
-
-
-            let worldMatrix = this.worldMatrix;
             this.children.forEach(function(child){
-                child.updateWorldMatrix(worldMatrix);
-            });
-
-            
+                child.updateWorldMatrix();
+            });        
         }
 
         addComponent(type, component){
