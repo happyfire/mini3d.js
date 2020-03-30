@@ -577,65 +577,6 @@ var main = (function () {
 	var fs_file = './shaders/tex_color.fs';
 	var tex_file = './imgs/box_diffuse.jpg';
 
-	function createMesh() {
-	  var format = new mini3d.VertexFormat();
-	  format.addAttrib(mini3d.VertexSemantic.POSITION, 3);
-	  format.addAttrib(mini3d.VertexSemantic.COLOR, 3);
-	  format.addAttrib(mini3d.VertexSemantic.UV0, 2); // cube
-	  //       ^ Y
-	  //       | 
-	  //       |
-	  //       / -------> X 
-	  //      /
-	  //     v
-	  //    Z
-	  //
-	  //    v6----- v5
-	  //   /|      /|
-	  //  v1------v0|
-	  //  | |     | |
-	  //  | |v7---|-|v4
-	  //  |/      |/
-	  //  v2------v3
-
-	  var mesh = new mini3d.Mesh(format); //6个面（12个三角形），24个顶点  
-
-	  var position_data = [//v0-v1-v2-v3 front (0,1,2,3)
-	  1.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, //v0-v3-v4-v5 right (4,5,6,7)
-	  1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, //v0-v5-v6-v1 top (8,9,10,11)
-	  1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, //v1-v6-v7-v2 left (12,13,14,15)
-	  -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, //v7-v4-v3-v2 bottom (16,17,18,19)
-	  -1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0, //v4-v7-v6-v5 back (20,21,22,23)
-	  1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0];
-	  var color_data = [//v0-v1-v2-v3 front (blue)
-	  0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, //v0-v3-v4-v5 right (green)
-	  0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, //v0-v5-v6-v1 top (red)
-	  1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, //v1-v6-v7-v2 left (yellow)
-	  1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, //v7-v4-v3-v2 bottom (white)
-	  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, //v4-v7-v6-v5 back
-	  0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
-	  var uv_data = [//v0-v1-v2-v3 front
-	  1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, //v0-v3-v4-v5 right
-	  0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, //v0-v5-v6-v1 top
-	  1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, //v1-v6-v7-v2 left
-	  1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, //v7-v4-v3-v2 bottom
-	  0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, //v4-v7-v6-v5 back
-	  0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
-	  var triangels = [0, 1, 2, 0, 2, 3, //front
-	  4, 5, 6, 4, 6, 7, //right
-	  8, 9, 10, 8, 10, 11, //top
-	  12, 13, 14, 12, 14, 15, //left
-	  16, 17, 18, 16, 18, 19, //bottom
-	  20, 21, 22, 20, 22, 23 //back
-	  ];
-	  mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);
-	  mesh.setVertexData(mini3d.VertexSemantic.COLOR, color_data);
-	  mesh.setVertexData(mini3d.VertexSemantic.UV0, uv_data);
-	  mesh.setTriangles(triangels);
-	  mesh.upload();
-	  return mesh;
-	}
-
 	var AppTexturedCube =
 	/*#__PURE__*/
 	function () {
@@ -648,6 +589,7 @@ var main = (function () {
 	    this._texture = null;
 	    this._viewMatrix = new mini3d.Matrix4();
 	    this._modelMatrix = new mini3d.Matrix4();
+	    this._normalMatrix = new mini3d.Matrix4();
 	    this._viewProjMatrix = new mini3d.Matrix4();
 	    this._mvpMatrix = new mini3d.Matrix4();
 	    this._rotX = 30;
@@ -697,14 +639,14 @@ var main = (function () {
 
 	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
 
-	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.COLOR, 'a_Color');
+	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.NORMAL, 'a_Normal');
 
 	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.UV0, 'a_TexCoord');
 
 	      this._shader.use();
 
 	      this._texture = mini3d.textureManager.getTexture(tex_file);
-	      this._mesh = createMesh();
+	      this._mesh = mini3d.Cube.createMesh();
 	      var that = this;
 	      mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
 	        var factor = 300 / mini3d.canvas.width;
@@ -739,11 +681,23 @@ var main = (function () {
 	      this._modelMatrix.rotate(this._rotY, 0.0, 1.0, 0.0); //rot around y-axis
 
 
+	      this._normalMatrix.setInverseOf(this._modelMatrix);
+
+	      this._normalMatrix.transpose();
+
 	      this._mvpMatrix.set(this._viewProjMatrix);
 
 	      this._mvpMatrix.multiply(this._modelMatrix);
 
 	      this._shader.setUniform('u_mvpMatrix', this._mvpMatrix.elements);
+
+	      this._shader.setUniform('u_NormalMatrix', this._normalMatrix.elements);
+
+	      this._shader.setUniform('u_LightColor', [1.0, 1.0, 1.0]);
+
+	      var lightDir = [0.5, 3.0, 4.0];
+
+	      this._shader.setUniform('u_LightDir', lightDir);
 
 	      this._texture.bind();
 

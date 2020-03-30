@@ -21,4 +21,5 @@ export {Scene} from './scene/scene';
 export {SystemComponents} from './scene/systemComps';
 export {MeshRenderer} from './scene/components/meshRenderer';
 export {Camera} from './scene/components/camera';
+export {Cube} from './geometry/cube';
 
