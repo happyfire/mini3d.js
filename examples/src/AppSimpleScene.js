@@ -42,7 +42,7 @@ class AppSimpleScene{
             //this._rotDegree %= 360;                       
             
             this._mesh1.lookAt(this._mesh2.worldPosition, mini3d.Vector3.Up, 0.1);
-            this._cameraNode.lookAt(this._mesh1.worldPosition);                        
+            //this._cameraNode.lookAt(this._mesh1.worldPosition);                        
 
                                              
             this._scene.render();
@@ -99,6 +99,14 @@ class AppSimpleScene{
     createWorld(){               
         this._scene = new mini3d.Scene();
 
+        this._planeNode = new mini3d.SceneNode();
+        this._scene.addChild(this._planeNode);
+        let plane = mini3d.Plane.createMesh(10,10,30,30);
+        let planeRenderer = new mini3d.MeshRenderer();
+        planeRenderer.setMesh(plane);
+        planeRenderer.setShader(this._shader);
+        this._planeNode.addComponent(mini3d.SystemComponents.Renderer, planeRenderer);
+
         let objFileString = mini3d.assetManager.getAsset(obj_file).data;
         let mesh = mini3d.objFileLoader.load(objFileString, 0.3);    
         
@@ -140,8 +148,8 @@ class AppSimpleScene{
         this._cameraNode.addComponent(mini3d.SystemComponents.Camera, camera);
         this._scene.addChild(this._cameraNode);
         
-        this._cameraNode.localPosition.set(0, 0, 8);       
-        this._cameraNode.lookAt(new mini3d.Vector3(0,3,0));         
+        this._cameraNode.localPosition.set(0, 3, 10);       
+        this._cameraNode.lookAt(new mini3d.Vector3(0,0,0));         
 
     }
 }

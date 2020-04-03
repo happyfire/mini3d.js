@@ -50,7 +50,7 @@ class AppTexturedCube{
 
     start(){
         let gl = mini3d.gl;
-
+        
         let vs = mini3d.assetManager.getAsset(vs_file).data;
         let fs = mini3d.assetManager.getAsset(fs_file).data;
 
@@ -68,7 +68,7 @@ class AppTexturedCube{
     
         this._texture = mini3d.textureManager.getTexture(tex_file);
         this._mesh = mini3d.Cube.createMesh();              
-        
+
         let that = this;
         mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function(event, data){      
             let factor = 300/mini3d.canvas.width;      

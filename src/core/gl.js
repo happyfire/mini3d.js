@@ -30,6 +30,8 @@ function init(canvasId, app){
     gl = context;
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); //Flip the image's y axis    
 
+    gl.enable(gl.CULL_FACE);
+
     _app = app;
 
     inputManager.init(canvas);
