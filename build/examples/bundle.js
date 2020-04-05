@@ -853,8 +853,7 @@ var main = (function () {
 	}();
 
 	var vs_file$2 = './shaders/basic_light.vs';
-	var fs_file$2 = './shaders/basic_light.fs';
-	var obj_file$1 = './models/dragon.obj';
+	var fs_file$2 = './shaders/basic_light.fs'; //let obj_file = './models/dragon.obj';
 
 	var AppSimpleScene =
 	/*#__PURE__*/
@@ -874,7 +873,8 @@ var main = (function () {
 	  _createClass(AppSimpleScene, [{
 	    key: "onInit",
 	    value: function onInit() {
-	      var assetList = [[vs_file$2, mini3d.AssetType.Text], [fs_file$2, mini3d.AssetType.Text], [obj_file$1, mini3d.AssetType.Text]];
+	      var assetList = [[vs_file$2, mini3d.AssetType.Text], [fs_file$2, mini3d.AssetType.Text] //[obj_file, mini3d.AssetType.Text]
+	      ];
 	      mini3d.assetManager.loadAssetList(assetList, function () {
 	        this._inited = true;
 	        this.start();
@@ -952,54 +952,28 @@ var main = (function () {
 	    key: "createWorld",
 	    value: function createWorld() {
 	      this._scene = new mini3d.Scene();
-	      this._planeNode = new mini3d.SceneNode();
+	      var planeMesh = mini3d.Plane.createMesh(10, 10, 6, 5, true);
+	      this._planeNode = this._scene.root.addMeshNode(planeMesh, this._shader); //let objFileString = mini3d.assetManager.getAsset(obj_file).data;
+	      //let mesh = mini3d.objFileLoader.load(objFileString, 0.3);   
 
-	      this._scene.addChild(this._planeNode);
+	      var mesh = mini3d.Cube.createMesh();
 
-	      var plane = mini3d.Plane.createMesh(10, 10, 30, 30);
-	      var planeRenderer = new mini3d.MeshRenderer();
-	      planeRenderer.setMesh(plane);
-	      planeRenderer.setShader(this._shader);
-
-	      this._planeNode.addComponent(mini3d.SystemComponents.Renderer, planeRenderer);
-
-	      var objFileString = mini3d.assetManager.getAsset(obj_file$1).data;
-	      var mesh = mini3d.objFileLoader.load(objFileString, 0.3);
-	      var meshRenderer = new mini3d.MeshRenderer();
-	      meshRenderer.setMesh(mesh);
-	      meshRenderer.setShader(this._shader);
-	      var meshRoot = new mini3d.SceneNode();
-
-	      this._scene.addChild(meshRoot);
+	      var meshRoot = this._scene.root.addEmptyNode();
 
 	      meshRoot.localPosition.set(-1, 1, 1);
 	      meshRoot.localScale.set(0.8, 1, 1);
 	      meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
-	      var mesh1 = new mini3d.SceneNode();
-	      mesh1.addComponent(mini3d.SystemComponents.Renderer, meshRenderer);
-	      meshRoot.addChild(mesh1); //this._scene.addChild(mesh1);
-
+	      var mesh1 = meshRoot.addMeshNode(mesh, this._shader);
 	      mesh1.localPosition.set(-2, 0, 0);
 	      mesh1.localScale.set(0.5, 0.5, 0.5);
 	      this._mesh1 = mesh1;
-	      var mesh2 = new mini3d.SceneNode();
-	      var meshRenderer2 = new mini3d.MeshRenderer();
-	      meshRenderer2.setMesh(mesh);
-	      meshRenderer2.setShader(this._shader);
-	      mesh2.addComponent(mini3d.SystemComponents.Renderer, meshRenderer2);
 
-	      this._scene.addChild(mesh2);
+	      var mesh2 = this._scene.root.addMeshNode(mesh, this._shader);
 
 	      mesh2.localPosition.set(2, 3.0, 0);
 	      mesh2.localScale.set(0.3, 0.3, 0.3);
 	      this._mesh2 = mesh2;
-	      var camera = new mini3d.Camera();
-	      camera.setPerspective(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100);
-	      this._cameraNode = new mini3d.SceneNode();
-
-	      this._cameraNode.addComponent(mini3d.SystemComponents.Camera, camera);
-
-	      this._scene.addChild(this._cameraNode);
+	      this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100);
 
 	      this._cameraNode.localPosition.set(0, 3, 10);
 

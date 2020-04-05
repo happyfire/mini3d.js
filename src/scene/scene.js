@@ -3,19 +3,15 @@ import { SystemComponents } from "./systemComps";
 
 class Scene{
     constructor(){
-        this.root = new SceneNode();
-        this.root._scene = this;
+        this._root = new SceneNode();
+        this._root._scene = this;
         this.cameras = [];
         this.lights = [];
         this.renderNodes = [];
     }
 
-    getRoot(){
-        return this.root;
-    }
-
-    addChild(child){ 
-        this.root.addChild(child);               
+    get root(){
+        return this._root;
     }
 
     onAddNode(node){

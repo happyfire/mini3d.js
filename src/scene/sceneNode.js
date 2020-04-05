@@ -3,6 +3,7 @@ import { Quaternion } from "../math/quaternion";
 import { Matrix4 } from "../math/matrix4";
 import { math } from "../math/math";
 import { SystemComponents } from "./systemComps";
+import { SceneNodeFactory } from "./SceneNodeFactory";
 
 let _tempVec3 = new Vector3();
 let _tempQuat = new Quaternion();
@@ -142,6 +143,24 @@ class SceneNode {
         node.setParent(this);
     }
 
+    addEmptyNode(){
+        let node = new SceneNode();
+        node.setParent(this);
+        return node;
+    }
+
+    addMeshNode(mesh, shader){
+        let node = SceneNodeFactory.createMeshNode(mesh, shader);        
+        node.setParent(this);        
+        return node;
+    }
+
+    addPerspectiveCamera(fovy, aspect, near, far){
+        let node = SceneNodeFactory.createPerspectiveCamera(fovy, aspect, near, far);
+        node.setParent(this);
+        return node;
+    }
+
     lookAt(target, up, smoothFactor){
         up = up || Vector3.Up;
         let worldPos = this.worldPosition;
@@ -222,6 +241,8 @@ class SceneNode {
             renderer.render(camera);
         }
     }
+
+    
 }
 
 export { SceneNode };

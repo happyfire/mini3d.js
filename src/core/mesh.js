@@ -3,9 +3,10 @@ import { VertexBuffer } from "./vertexBuffer";
 import { IndexBuffer } from "./indexBuffer";
 
 class Mesh{    
-    constructor(vertexFormat){        
+    constructor(vertexFormat, wireframe=false){        
         this._vertexBuffer = new VertexBuffer(vertexFormat);
         this._indexBuffer = null;
+        this._wireframe = wireframe;
     }
 
     setVertexData(semantic, data){
@@ -14,7 +15,7 @@ class Mesh{
     
     setTriangles(data){
         if(this._indexBuffer==null){
-            this._indexBuffer = new IndexBuffer();            
+            this._indexBuffer = new IndexBuffer(this._wireframe);            
         }
         this._indexBuffer.setData(data);
     }

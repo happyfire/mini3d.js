@@ -3,15 +3,14 @@ import { Vector3 } from "../math/vector3";
 // A plane on XZ plane and up is Y
 
 class Plane{
-    static createMesh(lengthX, lengthZ, xSegments, zSegments){
-        let hwx = lengthX * 0.5;
-        let hwz = lengthZ * 0.5;
-
+    static createMesh(lengthX, lengthZ, xSegments, zSegments, wireframe){        
         let position_data = [];
         let normal_data = [];
         let uv_data = [];
         let triangels = [];
 
+        let hwx = lengthX * 0.5;
+        let hwz = lengthZ * 0.5;
         let c00 = new Vector3(-hwx, 0, hwz);
         let c10 = new Vector3(hwx, 0, hwz);
         let c01 = new Vector3(-hwx, 0, -hwz);
@@ -54,7 +53,7 @@ class Plane{
         format.addAttrib(mini3d.VertexSemantic.NORMAL, 3);
         format.addAttrib(mini3d.VertexSemantic.UV0, 2);
 
-        let mesh = new mini3d.Mesh(format); 
+        let mesh = new mini3d.Mesh(format, wireframe); 
         mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);    
         mesh.setVertexData(mini3d.VertexSemantic.NORMAL, normal_data);   
         mesh.setVertexData(mini3d.VertexSemantic.UV0, uv_data);
