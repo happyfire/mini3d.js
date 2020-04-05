@@ -99,8 +99,9 @@ class AppSimpleScene {
     createWorld() {
         this._scene = new mini3d.Scene();
 
-        let planeMesh = mini3d.Plane.createMesh(10, 10, 6, 5, true);
+        let planeMesh = mini3d.Plane.createMesh(10, 10, 10, 10, true);
         this._planeNode = this._scene.root.addMeshNode(planeMesh, this._shader);
+        this._planeNode.localPosition.set(0,0,0);
 
 
         //let objFileString = mini3d.assetManager.getAsset(obj_file).data;
@@ -108,17 +109,17 @@ class AppSimpleScene {
         let mesh = mini3d.Cube.createMesh();
 
         let meshRoot = this._scene.root.addEmptyNode();        
-        meshRoot.localPosition.set(-1, 1, 1);
-        meshRoot.localScale.set(0.8, 1, 1);
-        meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
+        //meshRoot.localPosition.set(-1, 1, 1);
+        //meshRoot.localScale.set(0.8, 1, 1);
+        //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
 
         let mesh1 = meshRoot.addMeshNode(mesh, this._shader);
-        mesh1.localPosition.set(-2, 0, 0);
+        mesh1.localPosition.set(1, 0, 0);
         mesh1.localScale.set(0.5, 0.5, 0.5);
         this._mesh1 = mesh1;
 
         let mesh2 = this._scene.root.addMeshNode(mesh, this._shader);
-        mesh2.localPosition.set(2, 3.0, 0);
+        mesh2.localPosition.set(-1, 1, 0);
         mesh2.localScale.set(0.3, 0.3, 0.3);
         this._mesh2 = mesh2;
 

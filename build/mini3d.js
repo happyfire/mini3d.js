@@ -1027,23 +1027,53 @@ var mini3d = (function (exports) {
          */
         setLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
             // N = eye - target
+            const eps = math.ZeroEpsilon;
             let nx, ny, nz;
+            let rl;
             nx = targetX - eyeX;
             ny = targetY - eyeY;
             nz = targetZ - eyeZ;
-            let rl = 1/Math.sqrt(nx*nx+ny*ny+nz*nz);
-            nx *= rl;
-            ny *= rl;
-            nz *= rl;
+            let lenSqr = nx*nx+ny*ny+nz*nz;
+            if(lenSqr < eps){
+                // eye and target are in the same position
+                nz = 1;
+            } else {
+                rl = 1/Math.sqrt(lenSqr);
+                nx *= rl;
+                ny *= rl;
+                nz *= rl;
+            }
+            
             // U = UP cross N
             let ux, uy, uz;
             ux = upY * nz - upZ * ny;
             uy = upZ * nx - upX * nz;
             uz = upX * ny - upY * nx;
-            rl = 1/Math.sqrt(ux*ux+uy*uy+uz*uz);
+            lenSqr = ux*ux+uy*uy+uz*uz;
+            if(lenSqr < eps){
+                // UP and N are parallel
+                if(Math.abs(upZ)===1){
+                    nx += 0.0001;
+                } else {
+                    nz += 0.0001; 
+                }
+                rl = 1/Math.sqrt(nx*nx+ny*ny+nz*nz);
+                nx *= rl;
+                ny *= rl;
+                nz *= rl;
+
+                ux = upY * nz - upZ * ny;
+                uy = upZ * nx - upX * nz;
+                uz = upX * ny - upY * nx;
+                lenSqr = ux*ux+uy*uy+uz*uz;
+            } 
+
+            rl = 1/Math.sqrt(lenSqr);
             ux *= rl;
             uy *= rl;
             uz *= rl;
+            
+            
             // V = N cross U
             let vx, vy, vz;
             vx = ny * uz - nz * uy;
@@ -3442,46 +3472,48 @@ var mini3d = (function (exports) {
     // A plane on XZ plane and up is Y
 
     class Plane{
-        static createMesh(lengthX, lengthZ, xSegments, zSegments, wireframe){        
+        static createMesh(lengthX, lengthZ, xSegments, zSegments, wireframe){    
+            if(xSegments<=1){
+                xSegments = 1;
+            }    
+            if(zSegments<=1){
+                zSegments = 1;
+            }
+
             let position_data = [];
             let normal_data = [];
             let uv_data = [];
             let triangels = [];
 
-            let hwx = lengthX * 0.5;
-            let hwz = lengthZ * 0.5;
-            let c00 = new Vector3(-hwx, 0, hwz);
-            let c10 = new Vector3(hwx, 0, hwz);
-            let c01 = new Vector3(-hwx, 0, -hwz);
+            const anchorX = 0.5;
+            const anchorZ = 0.5;
 
-            let temp1 = new Vector3();
-            let temp2 = new Vector3();
-            let temp3 = new Vector3();
-            let r = new Vector3();
-
+            let hwx = lengthX * anchorX;
+            let hwz = lengthZ * anchorZ;
+        
             for(let iz=0; iz<=zSegments; ++iz){
+
+                let v = iz / zSegments;
+                let z = lengthZ*v - hwz;
+
                 for(let ix=0; ix<=xSegments; ++ix){
                     let u = ix / xSegments;
-                    let v = iz / zSegments;
+                    let x = lengthX*u - hwx;                
+                    
+                    position_data.push(x,0,z);
 
-                    Vector3.lerp(c00, c10, u, temp1);
-                    Vector3.lerp(c00, c01, v, temp2);
-                    Vector3.sub(temp2, c00, temp3);
-                    Vector3.add(temp1, temp3, r);
-
-                    position_data.push(r.x, r.y, r.z);
                     normal_data.push(0, 1, 0);
                     uv_data.push(u, v);
 
                     if(ix<xSegments && iz<zSegments){
-                        let useg1 = xSegments + 1;
-                        let a = ix + iz * useg1;
-                        let b = ix + (iz+1)*useg1;
-                        let c = (ix+1) + (iz+1)*useg1;
-                        let d = (ix+1) + iz*useg1;
-
-                        triangels.push(a,d,b);
-                        triangels.push(d,c,b);
+                        let line_verts = xSegments + 1;
+                        let a = ix + iz * line_verts; //x0z0
+                        let b = ix + (iz+1)*line_verts; //x0z1
+                        let c = (ix+1) + iz*line_verts; //x1z0
+                        let d = (ix+1) + (iz+1)*line_verts; //x1z1
+                        
+                        triangels.push(b,d,a);
+                        triangels.push(a,d,c);
                     }
                 }
             }

@@ -1,3 +1,5 @@
+import { math } from "./math";
+
 class Matrix3 {
     constructor(){
         this.elements = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
@@ -95,23 +97,53 @@ class Matrix3 {
      */
     setLookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ){
         // N = eye - target
+        const eps = math.ZeroEpsilon;
         let nx, ny, nz;
+        let rl;
         nx = targetX - eyeX;
         ny = targetY - eyeY;
         nz = targetZ - eyeZ;
-        let rl = 1/Math.sqrt(nx*nx+ny*ny+nz*nz);
-        nx *= rl;
-        ny *= rl;
-        nz *= rl;
+        let lenSqr = nx*nx+ny*ny+nz*nz;
+        if(lenSqr < eps){
+            // eye and target are in the same position
+            nz = 1;
+        } else {
+            rl = 1/Math.sqrt(lenSqr);
+            nx *= rl;
+            ny *= rl;
+            nz *= rl;
+        }
+        
         // U = UP cross N
         let ux, uy, uz;
         ux = upY * nz - upZ * ny;
         uy = upZ * nx - upX * nz;
         uz = upX * ny - upY * nx;
-        rl = 1/Math.sqrt(ux*ux+uy*uy+uz*uz);
+        lenSqr = ux*ux+uy*uy+uz*uz;
+        if(lenSqr < eps){
+            // UP and N are parallel
+            if(Math.abs(upZ)===1){
+                nx += 0.0001;
+            } else {
+                nz += 0.0001; 
+            }
+            rl = 1/Math.sqrt(nx*nx+ny*ny+nz*nz);
+            nx *= rl;
+            ny *= rl;
+            nz *= rl;
+
+            ux = upY * nz - upZ * ny;
+            uy = upZ * nx - upX * nz;
+            uz = upX * ny - upY * nx;
+            lenSqr = ux*ux+uy*uy+uz*uz;
+        } 
+
+        rl = 1/Math.sqrt(lenSqr);
         ux *= rl;
         uy *= rl;
         uz *= rl;
+        
+        
         // V = N cross U
         let vx, vy, vz;
         vx = ny * uz - nz * uy;

@@ -952,25 +952,28 @@ var main = (function () {
 	    key: "createWorld",
 	    value: function createWorld() {
 	      this._scene = new mini3d.Scene();
-	      var planeMesh = mini3d.Plane.createMesh(10, 10, 6, 5, true);
-	      this._planeNode = this._scene.root.addMeshNode(planeMesh, this._shader); //let objFileString = mini3d.assetManager.getAsset(obj_file).data;
+	      var planeMesh = mini3d.Plane.createMesh(10, 10, 10, 10, true);
+	      this._planeNode = this._scene.root.addMeshNode(planeMesh, this._shader);
+
+	      this._planeNode.localPosition.set(0, 0, 0); //let objFileString = mini3d.assetManager.getAsset(obj_file).data;
 	      //let mesh = mini3d.objFileLoader.load(objFileString, 0.3);   
+
 
 	      var mesh = mini3d.Cube.createMesh();
 
-	      var meshRoot = this._scene.root.addEmptyNode();
+	      var meshRoot = this._scene.root.addEmptyNode(); //meshRoot.localPosition.set(-1, 1, 1);
+	      //meshRoot.localScale.set(0.8, 1, 1);
+	      //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
 
-	      meshRoot.localPosition.set(-1, 1, 1);
-	      meshRoot.localScale.set(0.8, 1, 1);
-	      meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
+
 	      var mesh1 = meshRoot.addMeshNode(mesh, this._shader);
-	      mesh1.localPosition.set(-2, 0, 0);
+	      mesh1.localPosition.set(1, 0, 0);
 	      mesh1.localScale.set(0.5, 0.5, 0.5);
 	      this._mesh1 = mesh1;
 
 	      var mesh2 = this._scene.root.addMeshNode(mesh, this._shader);
 
-	      mesh2.localPosition.set(2, 3.0, 0);
+	      mesh2.localPosition.set(-1, 1, 0);
 	      mesh2.localScale.set(0.3, 0.3, 0.3);
 	      this._mesh2 = mesh2;
 	      this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100);
