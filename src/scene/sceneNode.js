@@ -3,7 +3,8 @@ import { Quaternion } from "../math/quaternion";
 import { Matrix4 } from "../math/matrix4";
 import { math } from "../math/math";
 import { SystemComponents } from "./systemComps";
-import { SceneNodeFactory } from "./SceneNodeFactory";
+import { MeshRenderer } from "./components/meshRenderer";
+import { Camera } from "./components/camera";
 
 let _tempVec3 = new Vector3();
 let _tempQuat = new Quaternion();
@@ -150,13 +151,22 @@ class SceneNode {
     }
 
     addMeshNode(mesh, shader){
-        let node = SceneNodeFactory.createMeshNode(mesh, shader);        
+        let meshRenderer = new MeshRenderer();
+        meshRenderer.setMesh(mesh);
+        meshRenderer.setShader(shader);
+        
+        let node = new SceneNode();
+        node.addComponent(SystemComponents.Renderer, meshRenderer);  
         node.setParent(this);        
         return node;
     }
 
     addPerspectiveCamera(fovy, aspect, near, far){
-        let node = SceneNodeFactory.createPerspectiveCamera(fovy, aspect, near, far);
+        let camera = new Camera();
+        camera.setPerspective(fovy, aspect, near, far);
+        
+        let node = new SceneNode();
+        node.addComponent(SystemComponents.Camera, camera);
         node.setParent(this);
         return node;
     }

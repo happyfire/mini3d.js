@@ -2680,6 +2680,107 @@ var mini3d = (function (exports) {
         Camera:'camera'
     };
 
+    class MeshRenderer{
+        constructor(){
+            this.mesh = null;
+            this.shader = null;
+
+            this._mvpMatrix = new mini3d.Matrix4();
+            this._normalMatrix = new mini3d.Matrix4();
+        }
+
+        setNode(node){
+            this.node = node;
+        }
+
+        setShader(shader){
+            this.shader = shader;
+        }
+
+        setMesh(mesh){
+            this.mesh = mesh;
+        }
+
+        render(camera){
+
+            this._normalMatrix.setInverseOf(this.node.worldMatrix);
+            this._normalMatrix.transpose();    
+        
+            this._mvpMatrix.set(camera.getViewProjMatrix());
+            this._mvpMatrix.multiply(this.node.worldMatrix);
+            
+            this.shader.setUniform('u_mvpMatrix', this._mvpMatrix.elements);
+            this.shader.setUniform('u_NormalMatrix', this._normalMatrix.elements);
+            this.shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
+            let lightDir = [0.5, 3.0, 4.0];
+            this.shader.setUniform('u_LightDir', lightDir);
+
+            this.mesh.render(this.shader);
+        }
+
+    }
+
+    class Camera{
+        constructor(){
+            this._fovy = 75;
+            this._aspect = 0.75;
+            this._near = 0.1;
+            this._far = 100.0;
+            this._projMatrix = new Matrix4();
+            this._viewMatrix = new Matrix4();
+            this._viewProjMatrix = new Matrix4();
+        }
+
+        setNode(node){
+            this.node = node;
+        }
+
+        getViewProjMatrix(){
+            return this._viewProjMatrix;
+        }
+
+        setPerspective(fovy, aspect, near, far){
+            this._fovy = fovy;
+            this._aspect = aspect;
+            this._near = near;
+            this._far = far; 
+            this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);
+        }
+
+        onScreenResize(width, height){
+            this._aspect = width/height;
+            this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);     
+            
+        }
+
+        _updateViewProjMatrix(){
+            this._viewProjMatrix.set(this._projMatrix);   
+            this._viewProjMatrix.multiply(this._viewMatrix);
+        }
+
+        beforeRender(){
+            this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
+            
+            this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
+
+            let gl = mini3d.gl;
+
+            //TODO:每个camera设置自己的clear color，并且在gl层缓存，避免重复设置相同的值
+            gl.clearColor(0, 0, 0, 1);
+            gl.clearDepth(1.0);
+            gl.enable(gl.DEPTH_TEST);
+
+            gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+            
+        }
+
+        afterRender(){
+
+        }
+
+
+    }
+
     let _tempVec3 = new Vector3();
     let _tempQuat = new Quaternion();
     let _tempQuat2 = new Quaternion();
@@ -2825,13 +2926,22 @@ var mini3d = (function (exports) {
         }
 
         addMeshNode(mesh, shader){
-            let node = SceneNodeFactory.createMeshNode(mesh, shader);        
+            let meshRenderer = new MeshRenderer();
+            meshRenderer.setMesh(mesh);
+            meshRenderer.setShader(shader);
+            
+            let node = new SceneNode();
+            node.addComponent(SystemComponents.Renderer, meshRenderer);  
             node.setParent(this);        
             return node;
         }
 
         addPerspectiveCamera(fovy, aspect, near, far){
-            let node = SceneNodeFactory.createPerspectiveCamera(fovy, aspect, near, far);
+            let camera = new Camera();
+            camera.setPerspective(fovy, aspect, near, far);
+            
+            let node = new SceneNode();
+            node.addComponent(SystemComponents.Camera, camera);
             node.setParent(this);
             return node;
         }
@@ -2918,130 +3028,6 @@ var mini3d = (function (exports) {
         }
 
         
-    }
-
-    class MeshRenderer{
-        constructor(){
-            this.mesh = null;
-            this.shader = null;
-
-            this._mvpMatrix = new mini3d.Matrix4();
-            this._normalMatrix = new mini3d.Matrix4();
-        }
-
-        setNode(node){
-            this.node = node;
-        }
-
-        setShader(shader){
-            this.shader = shader;
-        }
-
-        setMesh(mesh){
-            this.mesh = mesh;
-        }
-
-        render(camera){
-
-            this._normalMatrix.setInverseOf(this.node.worldMatrix);
-            this._normalMatrix.transpose();    
-        
-            this._mvpMatrix.set(camera.getViewProjMatrix());
-            this._mvpMatrix.multiply(this.node.worldMatrix);
-            
-            this.shader.setUniform('u_mvpMatrix', this._mvpMatrix.elements);
-            this.shader.setUniform('u_NormalMatrix', this._normalMatrix.elements);
-            this.shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
-            let lightDir = [0.5, 3.0, 4.0];
-            this.shader.setUniform('u_LightDir', lightDir);
-
-            this.mesh.render(this.shader);
-        }
-
-    }
-
-    class Camera{
-        constructor(){
-            this._fovy = 75;
-            this._aspect = 0.75;
-            this._near = 0.1;
-            this._far = 100.0;
-            this._projMatrix = new Matrix4();
-            this._viewMatrix = new Matrix4();
-            this._viewProjMatrix = new Matrix4();
-        }
-
-        setNode(node){
-            this.node = node;
-        }
-
-        getViewProjMatrix(){
-            return this._viewProjMatrix;
-        }
-
-        setPerspective(fovy, aspect, near, far){
-            this._fovy = fovy;
-            this._aspect = aspect;
-            this._near = near;
-            this._far = far; 
-            this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);
-        }
-
-        onScreenResize(width, height){
-            this._aspect = width/height;
-            this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);     
-            
-        }
-
-        _updateViewProjMatrix(){
-            this._viewProjMatrix.set(this._projMatrix);   
-            this._viewProjMatrix.multiply(this._viewMatrix);
-        }
-
-        beforeRender(){
-            this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
-            
-            this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
-
-            let gl = mini3d.gl;
-
-            //TODO:每个camera设置自己的clear color，并且在gl层缓存，避免重复设置相同的值
-            gl.clearColor(0, 0, 0, 1);
-            gl.clearDepth(1.0);
-            gl.enable(gl.DEPTH_TEST);
-
-            gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-            
-        }
-
-        afterRender(){
-
-        }
-
-
-    }
-
-    class SceneNodeFactory{
-
-        static createMeshNode(mesh, shader){
-            let meshRenderer = new MeshRenderer();
-            meshRenderer.setMesh(mesh);
-            meshRenderer.setShader(shader);
-            
-            let node = new SceneNode();
-            node.addComponent(SystemComponents.Renderer, meshRenderer);        
-            return node;        
-        }
-
-        static createPerspectiveCamera(fovy, aspect, near, far){
-            let camera = new Camera();
-            camera.setPerspective(fovy, aspect, near, far);
-            
-            let node = new SceneNode();
-            node.addComponent(SystemComponents.Camera, camera);
-            return node;
-        }
-
     }
 
     let _tempVec3$1 = new Vector3();
@@ -3189,13 +3175,22 @@ var mini3d = (function (exports) {
         }
 
         addMeshNode(mesh, shader){
-            let node = SceneNodeFactory.createMeshNode(mesh, shader);        
+            let meshRenderer = new MeshRenderer();
+            meshRenderer.setMesh(mesh);
+            meshRenderer.setShader(shader);
+            
+            let node = new SceneNode$1();
+            node.addComponent(SystemComponents.Renderer, meshRenderer);  
             node.setParent(this);        
             return node;
         }
 
         addPerspectiveCamera(fovy, aspect, near, far){
-            let node = SceneNodeFactory.createPerspectiveCamera(fovy, aspect, near, far);
+            let camera = new Camera();
+            camera.setPerspective(fovy, aspect, near, far);
+            
+            let node = new SceneNode$1();
+            node.addComponent(SystemComponents.Camera, camera);
             node.setParent(this);
             return node;
         }
@@ -3284,32 +3279,9 @@ var mini3d = (function (exports) {
         
     }
 
-    class SceneNodeFactory$1{
-
-        static createMeshNode(mesh, shader){
-            let meshRenderer = new MeshRenderer();
-            meshRenderer.setMesh(mesh);
-            meshRenderer.setShader(shader);
-            
-            let node = new SceneNode();
-            node.addComponent(SystemComponents.Renderer, meshRenderer);        
-            return node;        
-        }
-
-        static createPerspectiveCamera(fovy, aspect, near, far){
-            let camera = new Camera();
-            camera.setPerspective(fovy, aspect, near, far);
-            
-            let node = new SceneNode();
-            node.addComponent(SystemComponents.Camera, camera);
-            return node;
-        }
-
-    }
-
     class Scene{
         constructor(){
-            this._root = new SceneNode();
+            this._root = new SceneNode$1();
             this._root._scene = this;
             this.cameras = [];
             this.lights = [];
@@ -3542,8 +3514,7 @@ var mini3d = (function (exports) {
     exports.Plane = Plane;
     exports.Quaternion = Quaternion;
     exports.Scene = Scene;
-    exports.SceneNode = SceneNode$1;
-    exports.SceneNodeFactory = SceneNodeFactory$1;
+    exports.SceneNode = SceneNode;
     exports.Shader = Shader;
     exports.SystemComponents = SystemComponents;
     exports.SystemEvent = SystemEvent;
