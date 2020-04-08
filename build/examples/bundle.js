@@ -853,7 +853,9 @@ var main = (function () {
 	}();
 
 	var vs_file$2 = './shaders/basic_light.vs';
-	var fs_file$2 = './shaders/basic_light.fs'; //let obj_file = './models/dragon.obj';
+	var fs_file$2 = './shaders/basic_light.fs';
+	var vs_scolor_file = './shaders/basic_light.vs';
+	var fs_scolor_file = './shaders/basic_light.fs'; //let obj_file = './models/dragon.obj';
 
 	var AppSimpleScene =
 	/*#__PURE__*/
@@ -873,7 +875,7 @@ var main = (function () {
 	  _createClass(AppSimpleScene, [{
 	    key: "onInit",
 	    value: function onInit() {
-	      var assetList = [[vs_file$2, mini3d.AssetType.Text], [fs_file$2, mini3d.AssetType.Text] //[obj_file, mini3d.AssetType.Text]
+	      var assetList = [[vs_file$2, mini3d.AssetType.Text], [fs_file$2, mini3d.AssetType.Text], [vs_scolor_file, mini3d.AssetType.Text], [fs_scolor_file, mini3d.AssetType.Text] //[obj_file, mini3d.AssetType.Text]
 	      ];
 	      mini3d.assetManager.loadAssetList(assetList, function () {
 	        this._inited = true;
@@ -905,23 +907,12 @@ var main = (function () {
 	  }, {
 	    key: "start",
 	    value: function start() {
-	      var vs = mini3d.assetManager.getAsset(vs_file$2).data;
-	      var fs = mini3d.assetManager.getAsset(fs_file$2).data;
-	      var shader = new mini3d.Shader();
-
-	      if (!shader.create(vs, fs)) {
-	        console.log("Failed to initialize shaders");
-	        return;
-	      }
-
-	      this._shader = shader;
-
-	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
-
-	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.NORMAL, 'a_Normal');
-
-	      this._shader.use();
-
+	      // let vs = mini3d.assetManager.getAsset(vs_file).data;
+	      // let fs = mini3d.assetManager.getAsset(fs_file).data;
+	      // let vs_scolor = mini3d.assetManager.getAsset(vs_scolor_file).data;
+	      // let fs_scolor = mini3d.assetManager.getAsset(fs_scolor_file).data;
+	      this._material = new mini3d.MatBasicLight();
+	      this._materialSolidColor = new mini3d.MatSolidColor();
 	      this.createWorld();
 	      var that = this;
 	      mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
@@ -953,7 +944,7 @@ var main = (function () {
 	    value: function createWorld() {
 	      this._scene = new mini3d.Scene();
 	      var planeMesh = mini3d.Plane.createMesh(10, 10, 10, 10, true);
-	      this._planeNode = this._scene.root.addMeshNode(planeMesh, this._shader);
+	      this._planeNode = this._scene.root.addMeshNode(planeMesh, this._materialSolidColor);
 
 	      this._planeNode.localPosition.set(0, 0, 0); //let objFileString = mini3d.assetManager.getAsset(obj_file).data;
 	      //let mesh = mini3d.objFileLoader.load(objFileString, 0.3);   
@@ -966,12 +957,12 @@ var main = (function () {
 	      //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
 
 
-	      var mesh1 = meshRoot.addMeshNode(mesh, this._shader);
+	      var mesh1 = meshRoot.addMeshNode(mesh, this._material);
 	      mesh1.localPosition.set(1, 0, 0);
 	      mesh1.localScale.set(0.5, 0.5, 0.5);
 	      this._mesh1 = mesh1;
 
-	      var mesh2 = this._scene.root.addMeshNode(mesh, this._shader);
+	      var mesh2 = this._scene.root.addMeshNode(mesh, this._material);
 
 	      mesh2.localPosition.set(-1, 1, 0);
 	      mesh2.localScale.set(0.3, 0.3, 0.3);

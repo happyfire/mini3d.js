@@ -150,10 +150,10 @@ class SceneNode {
         return node;
     }
 
-    addMeshNode(mesh, shader){
+    addMeshNode(mesh, material){
         let meshRenderer = new MeshRenderer();
         meshRenderer.setMesh(mesh);
-        meshRenderer.setShader(shader);
+        meshRenderer.setMaterial(material);
         
         let node = new SceneNode();
         node.addComponent(SystemComponents.Renderer, meshRenderer);  

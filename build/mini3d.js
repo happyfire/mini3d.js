@@ -2710,10 +2710,88 @@ var mini3d = (function (exports) {
         Camera:'camera'
     };
 
+    class RenderPass {
+        constructor(){
+            this.index = 0;
+            this._shader = null;
+        }
+
+        create(vs, fs){
+            let shader = new Shader();
+            if (!shader.create(vs, fs)) {
+                console.log("Failed to initialize shaders");
+                //TODO: set to a default shader
+                return;
+            }
+            this._shader = shader;
+        }
+
+        setAttributesMap(attributesMap){
+            for(let attr of attributesMap){
+                let semantic = attr['semantic'];
+                let name = attr['name'];
+                this._shader.mapAttributeSemantic(semantic, name);
+            }
+        }
+
+        get shader(){
+            return this._shader;
+        }
+
+        
+
+    }
+
+    let SystemUniforms = {
+        MvpMatrix: 'u_mvpMatrix',
+        NormalMatrix: 'u_NormalMatrix',
+    };
+
+    class Material{
+        constructor(){          
+            this.renderPasses = [];
+            this.matrixMvp = true;
+            this.matrixNormal = false;
+        }
+
+        //Override
+        get systemUniforms(){
+            return [SystemUniforms.MvpMatrix];
+        }
+
+        addRenderPass(vs, fs){
+            let pass = new RenderPass();
+            pass.create(vs, fs);
+            pass.index = this.renderPasses.length;
+            this.renderPasses.push(pass);
+            return pass;
+        }
+
+        //Override
+        //如果是单Pass，且uniform的名字使用系统预定义的，则可以直接使用该方法，否则需要重载
+        //如果是多Pass，一般都需要重载，根据pass的idx来给不同的pass设置不同的uniform value
+        setSysUniformValues(pass, context){
+            let systemUniforms = this.systemUniforms;
+            for(let sysu of systemUniforms){ 
+                pass.shader.setUniform(sysu, context[sysu]);
+            }                
+        }
+
+        render(mesh, context){
+            for(let pass of this.renderPasses){            
+                pass.shader.use();
+                this.setSysUniformValues(pass, context);
+                mesh.render(pass.shader);
+            }
+        }
+
+
+    }
+
     class MeshRenderer{
         constructor(){
             this.mesh = null;
-            this.shader = null;
+            this.material = null;
 
             this._mvpMatrix = new mini3d.Matrix4();
             this._normalMatrix = new mini3d.Matrix4();
@@ -2723,8 +2801,8 @@ var mini3d = (function (exports) {
             this.node = node;
         }
 
-        setShader(shader){
-            this.shader = shader;
+        setMaterial(material){
+            this.material = material;
         }
 
         setMesh(mesh){
@@ -2733,19 +2811,28 @@ var mini3d = (function (exports) {
 
         render(camera){
 
-            this._normalMatrix.setInverseOf(this.node.worldMatrix);
-            this._normalMatrix.transpose();    
-        
-            this._mvpMatrix.set(camera.getViewProjMatrix());
-            this._mvpMatrix.multiply(this.node.worldMatrix);
-            
-            this.shader.setUniform('u_mvpMatrix', this._mvpMatrix.elements);
-            this.shader.setUniform('u_NormalMatrix', this._normalMatrix.elements);
-            this.shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
-            let lightDir = [0.5, 3.0, 4.0];
-            this.shader.setUniform('u_LightDir', lightDir);
+            let systemUniforms = this.material.systemUniforms;
+            let uniformContext = {};
 
-            this.mesh.render(this.shader);
+            for(let sysu of systemUniforms){
+                switch(sysu){
+                    case SystemUniforms.MvpMatrix:{
+                        this._mvpMatrix.set(camera.getViewProjMatrix());
+                        this._mvpMatrix.multiply(this.node.worldMatrix);
+                        uniformContext[SystemUniforms.MvpMatrix] = this._mvpMatrix.elements;
+                        break;
+                    }
+                    case SystemUniforms.NormalMatrix:{
+                        this._normalMatrix.setInverseOf(this.node.worldMatrix);
+                        this._normalMatrix.transpose();  
+                        uniformContext[SystemUniforms.NormalMatrix] = this._normalMatrix.elements;
+                        break;
+                    }
+
+                }
+            }
+
+            this.material.render(this.mesh, uniformContext);                
         }
 
     }
@@ -2955,10 +3042,10 @@ var mini3d = (function (exports) {
             return node;
         }
 
-        addMeshNode(mesh, shader){
+        addMeshNode(mesh, material){
             let meshRenderer = new MeshRenderer();
             meshRenderer.setMesh(mesh);
-            meshRenderer.setShader(shader);
+            meshRenderer.setMaterial(material);
             
             let node = new SceneNode();
             node.addComponent(SystemComponents.Renderer, meshRenderer);  
@@ -3204,10 +3291,10 @@ var mini3d = (function (exports) {
             return node;
         }
 
-        addMeshNode(mesh, shader){
+        addMeshNode(mesh, material){
             let meshRenderer = new MeshRenderer();
             meshRenderer.setMesh(mesh);
-            meshRenderer.setShader(shader);
+            meshRenderer.setMaterial(material);
             
             let node = new SceneNode$1();
             node.addComponent(SystemComponents.Renderer, meshRenderer);  
@@ -3535,10 +3622,126 @@ var mini3d = (function (exports) {
         }
     }
 
+    let vs = `
+attribute vec4 a_Position;
+attribute vec3 a_Normal;
+    
+uniform mat4 u_mvpMatrix;
+uniform mat4 u_NormalMatrix;
+uniform vec3 u_LightColor; // Light color
+uniform vec3 u_LightDir;   // World space light direction
+varying vec4 v_Color;
+
+void main(){
+    gl_Position = u_mvpMatrix * a_Position;
+    vec3 normal = normalize(vec3(u_NormalMatrix * vec4(a_Normal, 0.0)));
+    vec3 light = normalize(u_LightDir);
+    float nDotL = max(dot(light, normal), 0.0);
+    vec3 diffuse = u_LightColor * nDotL;
+    vec3 c = diffuse + vec3(0.1);
+    v_Color = vec4(c, 1.0);
+}
+
+`;
+
+    let fs = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec4 v_Color;
+
+void main(){
+    gl_FragColor = v_Color;
+}
+
+`;
+
+    class MatBasicLight extends Material{
+        constructor(){
+            super();
+            let pass = this.addRenderPass(vs, fs);
+            pass.setAttributesMap([
+                {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
+                {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'}
+            ]);
+
+            pass.shader.use();          
+            
+            pass.shader.setUniform('u_LightColor', [1.0,1.0,0.0]);
+            let lightDir = [0.5, 3.0, 4.0];
+            pass.shader.setUniform('u_LightDir', lightDir);
+        }
+
+        //Override
+        get systemUniforms(){
+            return [SystemUniforms.MvpMatrix, SystemUniforms.NormalMatrix]; 
+        }
+
+        // //Override
+        // setSysUniformValues(pass, context){
+        //     pass.shader.setUniform('u_mvpMatrix', context[SystemUniforms.MvpMatrix]);
+        //     pass.shader.setUniform('u_NormalMatrix', context[SystemUniforms.NormalMatrix]);
+        // }
+    }
+
+    let vs$1 = `
+attribute vec4 a_Position;
+
+uniform mat4 u_mvpMatrix;
+
+void main(){
+    gl_Position = u_mvpMatrix * a_Position;
+}
+
+`;
+
+    let fs$1 = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform vec3 u_Color;
+
+void main(){
+    gl_FragColor = vec4(u_Color, 1.0);
+}
+
+`;
+
+    class MatSolidColor extends Material{
+        constructor(){
+            super();
+            let pass = this.addRenderPass(vs$1, fs$1);
+            pass.setAttributesMap([
+                {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}
+            ]);
+
+            pass.shader.use();          
+            
+            pass.shader.setUniform('u_Color', [0.0,1.0,0.0]);
+        }
+
+        //Override
+        get systemUniforms(){
+            return [SystemUniforms.MvpMatrix]; 
+        }
+
+        // //Override
+        // setSysUniformValues(pass, context){
+        //     pass.shader.setUniform('u_mvpMatrix', context[SystemUniforms.MvpMatrix]);        
+        // }
+
+
+    }
+
     exports.AssetType = AssetType;
     exports.Camera = Camera;
     exports.Cube = Cube;
     exports.IndexBuffer = IndexBuffer;
+    exports.MatBasicLight = MatBasicLight;
+    exports.MatSolidColor = MatSolidColor;
+    exports.Material = Material;
     exports.Matrix3 = Matrix3;
     exports.Matrix4 = Matrix4;
     exports.Mesh = Mesh;

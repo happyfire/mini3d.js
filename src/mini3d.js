@@ -23,4 +23,7 @@ export {MeshRenderer} from './scene/components/meshRenderer';
 export {Camera} from './scene/components/camera';
 export {Cube} from './geometry/cube';
 export {Plane} from './geometry/plane';
+export {Material} from './material/material';
+export {MatBasicLight} from './material/matBasicLight';
+export {MatSolidColor} from './material/matSolidColor';
 

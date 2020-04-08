@@ -1,5 +1,7 @@
 let vs_file = './shaders/basic_light.vs';
 let fs_file = './shaders/basic_light.fs';
+let vs_scolor_file = './shaders/basic_light.vs';
+let fs_scolor_file = './shaders/basic_light.fs';
 //let obj_file = './models/dragon.obj';
 
 class AppSimpleScene {
@@ -18,6 +20,8 @@ class AppSimpleScene {
         let assetList = [
             [vs_file, mini3d.AssetType.Text],
             [fs_file, mini3d.AssetType.Text],
+            [vs_scolor_file, mini3d.AssetType.Text],
+            [fs_scolor_file, mini3d.AssetType.Text],
             //[obj_file, mini3d.AssetType.Text]
         ]
 
@@ -50,19 +54,14 @@ class AppSimpleScene {
     }
 
     start() {
-        let vs = mini3d.assetManager.getAsset(vs_file).data;
-        let fs = mini3d.assetManager.getAsset(fs_file).data;
+        // let vs = mini3d.assetManager.getAsset(vs_file).data;
+        // let fs = mini3d.assetManager.getAsset(fs_file).data;
 
-        let shader = new mini3d.Shader();
-        if (!shader.create(vs, fs)) {
-            console.log("Failed to initialize shaders");
-            return;
-        }
+        // let vs_scolor = mini3d.assetManager.getAsset(vs_scolor_file).data;
+        // let fs_scolor = mini3d.assetManager.getAsset(fs_scolor_file).data;
 
-        this._shader = shader;
-        this._shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
-        this._shader.mapAttributeSemantic(mini3d.VertexSemantic.NORMAL, 'a_Normal');
-        this._shader.use();
+        this._material = new mini3d.MatBasicLight();
+        this._materialSolidColor = new mini3d.MatSolidColor();        
 
         this.createWorld();
 
@@ -100,7 +99,7 @@ class AppSimpleScene {
         this._scene = new mini3d.Scene();
 
         let planeMesh = mini3d.Plane.createMesh(10, 10, 10, 10, true);
-        this._planeNode = this._scene.root.addMeshNode(planeMesh, this._shader);
+        this._planeNode = this._scene.root.addMeshNode(planeMesh, this._materialSolidColor);
         this._planeNode.localPosition.set(0,0,0);
 
 
@@ -113,12 +112,12 @@ class AppSimpleScene {
         //meshRoot.localScale.set(0.8, 1, 1);
         //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
 
-        let mesh1 = meshRoot.addMeshNode(mesh, this._shader);
+        let mesh1 = meshRoot.addMeshNode(mesh, this._material);
         mesh1.localPosition.set(1, 0, 0);
         mesh1.localScale.set(0.5, 0.5, 0.5);
         this._mesh1 = mesh1;
 
-        let mesh2 = this._scene.root.addMeshNode(mesh, this._shader);
+        let mesh2 = this._scene.root.addMeshNode(mesh, this._material);
         mesh2.localPosition.set(-1, 1, 0);
         mesh2.localScale.set(0.3, 0.3, 0.3);
         this._mesh2 = mesh2;

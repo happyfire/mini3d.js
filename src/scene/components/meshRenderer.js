@@ -1,7 +1,9 @@
+import { SystemUniforms } from "../../material/material";
+
 class MeshRenderer{
     constructor(){
         this.mesh = null;
-        this.shader = null;
+        this.material = null;
 
         this._mvpMatrix = new mini3d.Matrix4();
         this._normalMatrix = new mini3d.Matrix4();
@@ -11,8 +13,8 @@ class MeshRenderer{
         this.node = node;
     }
 
-    setShader(shader){
-        this.shader = shader;
+    setMaterial(material){
+        this.material = material;
     }
 
     setMesh(mesh){
@@ -21,19 +23,28 @@ class MeshRenderer{
 
     render(camera){
 
-        this._normalMatrix.setInverseOf(this.node.worldMatrix);
-        this._normalMatrix.transpose();    
-    
-        this._mvpMatrix.set(camera.getViewProjMatrix());
-        this._mvpMatrix.multiply(this.node.worldMatrix);
-        
-        this.shader.setUniform('u_mvpMatrix', this._mvpMatrix.elements);
-        this.shader.setUniform('u_NormalMatrix', this._normalMatrix.elements);
-        this.shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
-        let lightDir = [0.5, 3.0, 4.0];
-        this.shader.setUniform('u_LightDir', lightDir);
+        let systemUniforms = this.material.systemUniforms;
+        let uniformContext = {};
 
-        this.mesh.render(this.shader);
+        for(let sysu of systemUniforms){
+            switch(sysu){
+                case SystemUniforms.MvpMatrix:{
+                    this._mvpMatrix.set(camera.getViewProjMatrix());
+                    this._mvpMatrix.multiply(this.node.worldMatrix);
+                    uniformContext[SystemUniforms.MvpMatrix] = this._mvpMatrix.elements;
+                    break;
+                }
+                case SystemUniforms.NormalMatrix:{
+                    this._normalMatrix.setInverseOf(this.node.worldMatrix);
+                    this._normalMatrix.transpose();  
+                    uniformContext[SystemUniforms.NormalMatrix] = this._normalMatrix.elements;
+                    break;
+                }
+
+            }
+        }
+
+        this.material.render(this.mesh, uniformContext);                
     }
 
 }
