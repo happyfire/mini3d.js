@@ -37,22 +37,30 @@ void main(){
 
 `;
 
+let g_shader = null;
+
 class MatBasicLight extends Material{
     constructor(){
         super();
-        let pass = this.addRenderPass(vs, fs);
-        pass.setAttributesMap([
-            {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
-            {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'}
-        ]);
+        
+        if(g_shader==null){
+            g_shader = Material.createShader(vs, fs, [
+                {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
+                {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'}
+            ]);
+        }
+        
 
+        let pass = this.addRenderPass(g_shader);
+        
         pass.shader.use();          
         
         pass.shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
         let lightDir = [0.5, 3.0, 4.0];
         pass.shader.setUniform('u_LightDir', lightDir);
 
-        this.setDiffuseColor([1.0,1.0,1.0]);
+        //default uniforms
+        this.diffuseColor = [1.0, 1.0, 1.0];        
     }
 
     //Override
@@ -60,16 +68,13 @@ class MatBasicLight extends Material{
         return [SystemUniforms.MvpMatrix, SystemUniforms.NormalMatrix]; 
     }
 
-    // //Override
-    // setSysUniformValues(pass, context){
-    //     pass.shader.setUniform('u_mvpMatrix', context[SystemUniforms.MvpMatrix]);
-    //     pass.shader.setUniform('u_NormalMatrix', context[SystemUniforms.NormalMatrix]);
-    // }
+    //Override
+    setCustomUniformValues(pass){                   
+        pass.shader.setUniform('u_diffuseColor', this.diffuseColor);
+    }
 
     setDiffuseColor(diffuse){
-        let pass = this.renderPasses[0];
-        pass.shader.use();          
-        pass.shader.setUniform('u_diffuseColor', diffuse);
+        this.diffuseColor = diffuse;        
     }
 }
 

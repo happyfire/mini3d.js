@@ -947,7 +947,9 @@ var main = (function () {
 	      var planeMesh = mini3d.Plane.createMesh(10, 10, 10, 10, true);
 	      this._planeNode = this._scene.root.addMeshNode(planeMesh, this._materialSolidColor);
 
-	      this._planeNode.localPosition.set(0, 0, 0); //let objFileString = mini3d.assetManager.getAsset(obj_file).data;
+	      this._planeNode.localPosition.set(0, 0, 0);
+
+	      this._materialSolidColor.setColor([1.0, 1.0, 0.0]); //let objFileString = mini3d.assetManager.getAsset(obj_file).data;
 	      //let mesh = mini3d.objFileLoader.load(objFileString, 0.3);   
 
 

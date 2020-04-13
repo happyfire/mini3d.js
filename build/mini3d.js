@@ -1687,6 +1687,15 @@ var mini3d = (function (exports) {
             this._semanticToAttribName[semantic] = attribName;
         }
 
+        //set the semantic to attribute map from a list of {'semantic':semanticName, 'name':attributeName}
+        setAttributesMap(attributesMap){
+            for(let attr of attributesMap){
+                let semantic = attr['semantic'];
+                let name = attr['name'];
+                this.mapAttributeSemantic(semantic, name);
+            }
+        }
+
         create(vshader, fshader){
             let vertexShader = this.loadShader(exports.gl.VERTEX_SHADER, vshader);
             let fragmentShader = this.loadShader(exports.gl.FRAGMENT_SHADER, fshader);
@@ -2719,22 +2728,8 @@ var mini3d = (function (exports) {
             this._shader = null;
         }
 
-        create(vs, fs){
-            let shader = new Shader();
-            if (!shader.create(vs, fs)) {
-                console.log("Failed to initialize shaders");
-                //TODO: set to a default shader
-                return;
-            }
-            this._shader = shader;
-        }
-
-        setAttributesMap(attributesMap){
-            for(let attr of attributesMap){
-                let semantic = attr['semantic'];
-                let name = attr['name'];
-                this._shader.mapAttributeSemantic(semantic, name);
-            }
+        set shader(v){
+            this._shader = v;
         }
 
         get shader(){
@@ -2757,22 +2752,20 @@ var mini3d = (function (exports) {
             this.matrixNormal = false;
         }
 
-        //Override
-        get systemUniforms(){
-            return [SystemUniforms.MvpMatrix];
-        }
-
-        addRenderPass(vs, fs){
+        addRenderPass(shader){
             let pass = new RenderPass();
-            pass.create(vs, fs);
+            pass.shader = shader;
             pass.index = this.renderPasses.length;
             this.renderPasses.push(pass);
             return pass;
         }
 
         //Override
-        //如果是单Pass，且uniform的名字使用系统预定义的，则可以直接使用该方法，否则需要重载
-        //如果是多Pass，一般都需要重载，根据pass的idx来给不同的pass设置不同的uniform value
+        get systemUniforms(){
+            return [SystemUniforms.MvpMatrix];
+        }
+            
+        //自动设置system uniforms (根据systemUniforms的返回值)
         setSysUniformValues(pass, context){
             let systemUniforms = this.systemUniforms;
             for(let sysu of systemUniforms){ 
@@ -2780,12 +2773,30 @@ var mini3d = (function (exports) {
             }                
         }
 
+        //Override
+        //材质子类中手动设置uniform，需要重载
+        setCustomUniformValues(pass){
+
+        }
+
         render(mesh, context){
             for(let pass of this.renderPasses){            
                 pass.shader.use();
                 this.setSysUniformValues(pass, context);
+                this.setCustomUniformValues(pass);
                 mesh.render(pass.shader);
             }
+        }
+
+        static createShader(vs, fs, attributesMap){
+            let shader = new Shader();
+            if (!shader.create(vs, fs)) {
+                console.log("Failed to initialize shaders");
+                //TODO: set to a default shader
+                return null;
+            }
+            shader.setAttributesMap(attributesMap);
+            return shader;
         }
 
 
@@ -3661,22 +3672,30 @@ void main(){
 
 `;
 
+    let g_shader = null;
+
     class MatBasicLight extends Material{
         constructor(){
             super();
-            let pass = this.addRenderPass(vs, fs);
-            pass.setAttributesMap([
-                {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
-                {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'}
-            ]);
+            
+            if(g_shader==null){
+                g_shader = Material.createShader(vs, fs, [
+                    {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
+                    {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'}
+                ]);
+            }
+            
 
+            let pass = this.addRenderPass(g_shader);
+            
             pass.shader.use();          
             
             pass.shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
             let lightDir = [0.5, 3.0, 4.0];
             pass.shader.setUniform('u_LightDir', lightDir);
 
-            this.setDiffuseColor([1.0,1.0,1.0]);
+            //default uniforms
+            this.diffuseColor = [1.0, 1.0, 1.0];        
         }
 
         //Override
@@ -3684,16 +3703,13 @@ void main(){
             return [SystemUniforms.MvpMatrix, SystemUniforms.NormalMatrix]; 
         }
 
-        // //Override
-        // setSysUniformValues(pass, context){
-        //     pass.shader.setUniform('u_mvpMatrix', context[SystemUniforms.MvpMatrix]);
-        //     pass.shader.setUniform('u_NormalMatrix', context[SystemUniforms.NormalMatrix]);
-        // }
+        //Override
+        setCustomUniformValues(pass){                   
+            pass.shader.setUniform('u_diffuseColor', this.diffuseColor);
+        }
 
         setDiffuseColor(diffuse){
-            let pass = this.renderPasses[0];
-            pass.shader.use();          
-            pass.shader.setUniform('u_diffuseColor', diffuse);
+            this.diffuseColor = diffuse;        
         }
     }
 
@@ -3721,16 +3737,22 @@ void main(){
 
 `;
 
+    let g_shader$1 = null;
+
     class MatSolidColor extends Material{
         constructor(){
             super();
-            let pass = this.addRenderPass(vs$1, fs$1);
-            pass.setAttributesMap([
-                {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}
-            ]);
 
-            this.setColor([1.0, 1.0, 1.0]);
-            
+            if(g_shader$1==null){
+                g_shader$1 = Material.createShader(vs$1, fs$1, [
+                    {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}               
+                ]);
+            }
+
+            this.addRenderPass(g_shader$1);
+
+            //default uniforms
+            this.color = [1.0, 1.0, 1.0];            
         }
 
         //Override
@@ -3738,15 +3760,13 @@ void main(){
             return [SystemUniforms.MvpMatrix]; 
         }
 
-        // //Override
-        // setSysUniformValues(pass, context){
-        //     pass.shader.setUniform('u_mvpMatrix', context[SystemUniforms.MvpMatrix]);        
-        // }
+        //Override
+        setCustomUniformValues(pass){
+            pass.shader.setUniform('u_Color', this.color);
+        }
 
         setColor(color){
-            let pass = this.renderPasses[0];
-            pass.shader.use();          
-            pass.shader.setUniform('u_Color', color);
+            this.color = color;
         }
 
 

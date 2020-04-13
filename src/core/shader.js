@@ -23,6 +23,15 @@ class Shader{
         this._semanticToAttribName[semantic] = attribName;
     }
 
+    //set the semantic to attribute map from a list of {'semantic':semanticName, 'name':attributeName}
+    setAttributesMap(attributesMap){
+        for(let attr of attributesMap){
+            let semantic = attr['semantic'];
+            let name = attr['name'];
+            this.mapAttributeSemantic(semantic, name);
+        }
+    }
+
     create(vshader, fshader){
         let vertexShader = this.loadShader(gl.VERTEX_SHADER, vshader);
         let fragmentShader = this.loadShader(gl.FRAGMENT_SHADER, fshader);

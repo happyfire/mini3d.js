@@ -1,4 +1,5 @@
 import { RenderPass } from "./renderPass";
+import { Shader } from "../core/shader";
 
 let SystemUniforms = {
     MvpMatrix: 'u_mvpMatrix',
@@ -12,22 +13,20 @@ class Material{
         this.matrixNormal = false;
     }
 
-    //Override
-    get systemUniforms(){
-        return [SystemUniforms.MvpMatrix];
-    }
-
-    addRenderPass(vs, fs){
+    addRenderPass(shader){
         let pass = new RenderPass();
-        pass.create(vs, fs);
+        pass.shader = shader;
         pass.index = this.renderPasses.length;
         this.renderPasses.push(pass);
         return pass;
     }
 
     //Override
-    //如果是单Pass，且uniform的名字使用系统预定义的，则可以直接使用该方法，否则需要重载
-    //如果是多Pass，一般都需要重载，根据pass的idx来给不同的pass设置不同的uniform value
+    get systemUniforms(){
+        return [SystemUniforms.MvpMatrix];
+    }
+        
+    //自动设置system uniforms (根据systemUniforms的返回值)
     setSysUniformValues(pass, context){
         let systemUniforms = this.systemUniforms;
         for(let sysu of systemUniforms){ 
@@ -35,12 +34,30 @@ class Material{
         }                
     }
 
+    //Override
+    //材质子类中手动设置uniform，需要重载
+    setCustomUniformValues(pass){
+
+    }
+
     render(mesh, context){
         for(let pass of this.renderPasses){            
             pass.shader.use();
             this.setSysUniformValues(pass, context);
+            this.setCustomUniformValues(pass);
             mesh.render(pass.shader);
         }
+    }
+
+    static createShader(vs, fs, attributesMap){
+        let shader = new Shader();
+        if (!shader.create(vs, fs)) {
+            console.log("Failed to initialize shaders");
+            //TODO: set to a default shader
+            return null;
+        }
+        shader.setAttributesMap(attributesMap);
+        return shader;
     }
 
 

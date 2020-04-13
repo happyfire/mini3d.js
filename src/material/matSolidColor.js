@@ -25,16 +25,22 @@ void main(){
 
 `;
 
+let g_shader = null;
+
 class MatSolidColor extends Material{
     constructor(){
         super();
-        let pass = this.addRenderPass(vs, fs);
-        pass.setAttributesMap([
-            {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}
-        ]);
 
-        this.setColor([1.0, 1.0, 1.0]);
-        
+        if(g_shader==null){
+            g_shader = Material.createShader(vs, fs, [
+                {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}               
+            ]);
+        }
+
+        this.addRenderPass(g_shader);
+
+        //default uniforms
+        this.color = [1.0, 1.0, 1.0];            
     }
 
     //Override
@@ -42,15 +48,13 @@ class MatSolidColor extends Material{
         return [SystemUniforms.MvpMatrix]; 
     }
 
-    // //Override
-    // setSysUniformValues(pass, context){
-    //     pass.shader.setUniform('u_mvpMatrix', context[SystemUniforms.MvpMatrix]);        
-    // }
+    //Override
+    setCustomUniformValues(pass){
+        pass.shader.setUniform('u_Color', this.color);
+    }
 
     setColor(color){
-        let pass = this.renderPasses[0];
-        pass.shader.use();          
-        pass.shader.setUniform('u_Color', color);
+        this.color = color;
     }
 
 
