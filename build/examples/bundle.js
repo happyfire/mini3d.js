@@ -911,8 +911,6 @@ var main = (function () {
 	      // let fs = mini3d.assetManager.getAsset(fs_file).data;
 	      // let vs_scolor = mini3d.assetManager.getAsset(vs_scolor_file).data;
 	      // let fs_scolor = mini3d.assetManager.getAsset(fs_scolor_file).data;
-	      this._material = new mini3d.MatBasicLight();
-	      this._materialSolidColor = new mini3d.MatSolidColor();
 	      this.createWorld();
 	      var that = this;
 	      mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
@@ -942,6 +940,9 @@ var main = (function () {
 	  }, {
 	    key: "createWorld",
 	    value: function createWorld() {
+	      this._material1 = new mini3d.MatBasicLight();
+	      this._material2 = new mini3d.MatBasicLight();
+	      this._materialSolidColor = new mini3d.MatSolidColor();
 	      this._scene = new mini3d.Scene();
 	      var planeMesh = mini3d.Plane.createMesh(10, 10, 10, 10, true);
 	      this._planeNode = this._scene.root.addMeshNode(planeMesh, this._materialSolidColor);
@@ -957,16 +958,21 @@ var main = (function () {
 	      //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
 
 
-	      var mesh1 = meshRoot.addMeshNode(mesh, this._material);
+	      var mesh1 = meshRoot.addMeshNode(mesh, this._material1);
 	      mesh1.localPosition.set(1, 0, 0);
 	      mesh1.localScale.set(0.5, 0.5, 0.5);
 	      this._mesh1 = mesh1;
 
-	      var mesh2 = this._scene.root.addMeshNode(mesh, this._material);
+	      this._material1.setDiffuseColor([1.0, 0.0, 0.0]);
+
+	      var mesh2 = this._scene.root.addMeshNode(mesh, this._material2);
 
 	      mesh2.localPosition.set(-1, 1, 0);
 	      mesh2.localScale.set(0.3, 0.3, 0.3);
 	      this._mesh2 = mesh2;
+
+	      this._material2.setDiffuseColor([0.0, 1.0, 0.0]);
+
 	      this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100);
 
 	      this._cameraNode.localPosition.set(0, 3, 10);

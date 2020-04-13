@@ -55,6 +55,9 @@ class Shader{
             return false;        
         }
 
+        gl.deleteShader(fragmentShader);
+        gl.deleteShader(vertexShader);
+
         this.findoutAttributes();
         this.findoutUniforms();
 

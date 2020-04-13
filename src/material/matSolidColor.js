@@ -33,9 +33,8 @@ class MatSolidColor extends Material{
             {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}
         ]);
 
-        pass.shader.use();          
+        this.setColor([1.0, 1.0, 1.0]);
         
-        pass.shader.setUniform('u_Color', [0.0,1.0,0.0]);
     }
 
     //Override
@@ -47,6 +46,12 @@ class MatSolidColor extends Material{
     // setSysUniformValues(pass, context){
     //     pass.shader.setUniform('u_mvpMatrix', context[SystemUniforms.MvpMatrix]);        
     // }
+
+    setColor(color){
+        let pass = this.renderPasses[0];
+        pass.shader.use();          
+        pass.shader.setUniform('u_Color', color);
+    }
 
 
 }
