@@ -18,9 +18,16 @@ class Scene{
         let camera = node.getComponent(SystemComponents.Camera);
         if(camera!=null){
             this.cameras.push(camera);
-        } else {
-            this.renderNodes.push(node);
+            return;
+        }  
+
+        let light = node.getComponent(SystemComponents.Light);
+        if(light!=null){
+            this.lights.push(light);
+            return;
         }
+
+        this.renderNodes.push(node);        
     }
 
     onRemoveNode(node){
@@ -30,13 +37,22 @@ class Scene{
             if(idx>=0){
                 this.cameras.splice(idx, 1);
             }
-        } else {
-            let idx = this.renderNodes.indexOf(node);
-            if(idx>=0){
-                this.renderNodes.splice(idx, 1);
-            }
-        }
+            return;
+        } 
         
+        let light = node.getComponent(SystemComponents.Light);
+        if(light!=null){
+            let idx = this.lights.indexOf(light);
+            if(idx>=0){
+                this.lights.splice(idx, 1);
+            }
+            return;
+        }
+                
+        let idx = this.renderNodes.indexOf(node);
+        if(idx>=0){
+            this.renderNodes.splice(idx, 1);
+        }                
     }
 
     onScreenResize(width, height){
@@ -60,8 +76,9 @@ class Scene{
         for(let camera of this.cameras){
             camera.beforeRender();
 
+            //TODO：按优先级和范围选择灯光，灯光总数要有限制
             for(let rnode of this.renderNodes){
-                rnode.render(camera);
+                rnode.render(camera, this.lights);
             }
 
             camera.afterRender();

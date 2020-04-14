@@ -2,8 +2,13 @@ import { RenderPass } from "./renderPass";
 import { Shader } from "../core/shader";
 
 let SystemUniforms = {
-    MvpMatrix: 'u_mvpMatrix',
-    NormalMatrix: 'u_NormalMatrix',
+    MvpMatrix: 'u_mvpMatrix',    
+    Object2World: 'u_object2World',
+    World2Object: 'u_world2Object',   //normal matrix请使用World2Object，然后在shader里面矩阵放右边即可: vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
+    WorldCameraPos: 'u_worldCameraPos',
+    LightDir:'u_LightDir',
+    LightColor:'u_LightColor',
+    SceneAmbient:'u_ambient'
 }
 
 class Material{
@@ -11,6 +16,7 @@ class Material{
         this.renderPasses = [];
         this.matrixMvp = true;
         this.matrixNormal = false;
+        this.useLight = false;
     }
 
     addRenderPass(shader){

@@ -6,20 +6,33 @@ attribute vec4 a_Position;
 attribute vec3 a_Normal;
     
 uniform mat4 u_mvpMatrix;
-uniform mat4 u_NormalMatrix;
-uniform vec3 u_diffuseColor; // diffuse color
+uniform mat4 u_world2Object;
+uniform mat4 u_object2World;
+
+uniform vec3 u_worldCameraPos; // world space camera pos
 uniform vec3 u_LightColor; // Light color
 uniform vec3 u_LightDir;   // World space light direction
-varying vec4 v_Color;
+
+uniform vec3 u_ambient; // scene ambient
+uniform vec3 u_diffuse; // diffuse color
+uniform vec3 u_specular; // specular;
+uniform float u_gloss; //gloss
+
+varying vec3 v_Color;
 
 void main(){
-    gl_Position = u_mvpMatrix * a_Position;
-    vec3 normal = normalize(vec3(u_NormalMatrix * vec4(a_Normal, 0.0)));
-    vec3 light = normalize(u_LightDir);
-    float nDotL = max(dot(light, normal), 0.0);
-    vec3 diffuse = u_diffuseColor * u_LightColor * nDotL;
-    vec3 c = diffuse + vec3(0.1);
-    v_Color = vec4(c, 1.0);
+    gl_Position = u_mvpMatrix * a_Position;        
+    
+    vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
+    vec3 worldLightDir = normalize(u_LightDir);
+    
+    vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
+    
+    vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
+    vec3 viewDir = normalize(u_worldCameraPos - (u_object2World*a_Position).xyz);
+    vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
+
+    v_Color = u_ambient + diffuse + specular;    
 }
 
 `;
@@ -29,10 +42,10 @@ let fs = `
 precision mediump float;
 #endif
 
-varying vec4 v_Color;
+varying vec3 v_Color;
 
 void main(){
-    gl_FragColor = v_Color;
+    gl_FragColor = vec4(v_Color,1.0);
 }
 
 `;
@@ -42,6 +55,8 @@ let g_shader = null;
 class MatBasicLight extends Material{
     constructor(){
         super();
+
+        this.useLight = true;
         
         if(g_shader==null){
             g_shader = Material.createShader(vs, fs, [
@@ -51,30 +66,41 @@ class MatBasicLight extends Material{
         }
         
 
-        let pass = this.addRenderPass(g_shader);
-        
-        pass.shader.use();          
-        
-        pass.shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
-        let lightDir = [0.5, 3.0, 4.0];
-        pass.shader.setUniform('u_LightDir', lightDir);
+        this.addRenderPass(g_shader);                
 
-        //default uniforms
-        this.diffuseColor = [1.0, 1.0, 1.0];        
+        //default uniforms        
+        this._diffuse = [1.0, 1.0, 1.0];
+        this._specular = [1.0, 1.0, 1.0];
+        this._gloss = 20;    
     }
 
     //Override
     get systemUniforms(){
-        return [SystemUniforms.MvpMatrix, SystemUniforms.NormalMatrix]; 
+        return [SystemUniforms.MvpMatrix,
+            SystemUniforms.World2Object,
+            SystemUniforms.Object2World,
+            SystemUniforms.WorldCameraPos,
+            SystemUniforms.SceneAmbient,
+            SystemUniforms.LightColor, SystemUniforms.LightDir]; 
     }
 
     //Override
     setCustomUniformValues(pass){                   
-        pass.shader.setUniform('u_diffuseColor', this.diffuseColor);
+        pass.shader.setUniform('u_diffuse', this._diffuse);
+        pass.shader.setUniform('u_specular', this._specular);
+        pass.shader.setUniform('u_gloss', this._gloss);
     }
 
-    setDiffuseColor(diffuse){
-        this.diffuseColor = diffuse;        
+    set diffuse(v){
+        this._diffuse = v;
+    }
+
+    set specular(v){
+        this._specular = v;
+    }
+
+    set gloss(v){
+        this._gloss = v;
     }
 }
 

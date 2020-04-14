@@ -1,7 +1,10 @@
 import { Matrix4 } from '../../math/matrix4'
+import { Component } from './Component';
 
-class Camera{
+class Camera extends Component{
     constructor(){
+        super();
+
         this._fovy = 75;
         this._aspect = 0.75;
         this._near = 0.1;
@@ -9,10 +12,6 @@ class Camera{
         this._projMatrix = new Matrix4();
         this._viewMatrix = new Matrix4();
         this._viewProjMatrix = new Matrix4();
-    }
-
-    setNode(node){
-        this.node = node;
     }
 
     getViewProjMatrix(){

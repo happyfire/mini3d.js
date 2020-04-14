@@ -5,6 +5,7 @@ import { math } from "../math/math";
 import { SystemComponents } from "./systemComps";
 import { MeshRenderer } from "./components/meshRenderer";
 import { Camera } from "./components/camera";
+import { DirectionalLight } from "./components/DirectionalLight";
 
 let _tempVec3 = new Vector3();
 let _tempQuat = new Quaternion();
@@ -171,6 +172,16 @@ class SceneNode {
         return node;
     }
 
+    addDirectionalLight(color){
+        let light = new DirectionalLight();
+        light.color = color;
+
+        let node = new SceneNode();
+        node.addComponent(SystemComponents.Light, light);
+        node.setParent(this);
+        return node;
+    }
+
     lookAt(target, up, smoothFactor){
         up = up || Vector3.Up;
         let worldPos = this.worldPosition;
@@ -245,10 +256,10 @@ class SceneNode {
         return this.components[type];
     }
 
-    render(camera){
+    render(camera, lights){
         let renderer = this.components[SystemComponents.Renderer];
         if(renderer){
-            renderer.render(camera);
+            renderer.render(camera, lights);
         }
     }
 

@@ -28,6 +28,9 @@ function init(canvasId, app){
         }
     }
     gl = context;
+
+    glCheck();
+
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); //Flip the image's y axis    
 
     gl.enable(gl.CULL_FACE);
@@ -46,6 +49,12 @@ function init(canvasId, app){
     onResize();
     loop();
 };
+
+function glCheck(){
+    //let v = gl.getIntegerv(gl.MAX_VERTEX_ATTRIBS);
+    //Console.log("GL_MAX_VERTEX_ATTRIBS:", v);
+    //TODO:检查gl能力，如max uniform count
+}
 
 function onResize(){
     canvas.width = Math.floor(canvas.clientWidth * window.devicePixelRatio);

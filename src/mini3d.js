@@ -21,6 +21,7 @@ export {Scene} from './scene/scene';
 export {SystemComponents} from './scene/systemComps';
 export {MeshRenderer} from './scene/components/meshRenderer';
 export {Camera} from './scene/components/camera';
+export {DirectionalLight} from './scene/components/DirectionalLight'; 
 export {Cube} from './geometry/cube';
 export {Plane} from './geometry/plane';
 export {Material} from './material/material';

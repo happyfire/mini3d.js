@@ -150,6 +150,7 @@ var mini3d = (function (exports) {
             }
         }
         exports.gl = context;
+
         exports.gl.pixelStorei(exports.gl.UNPACK_FLIP_Y_WEBGL, 1); //Flip the image's y axis    
 
         exports.gl.enable(exports.gl.CULL_FACE);
@@ -2719,7 +2720,8 @@ var mini3d = (function (exports) {
     let SystemComponents = {
         Renderer:'renderer',
         Mesh:'mesh',
-        Camera:'camera'
+        Camera:'camera',
+        Light:'light'
     };
 
     class RenderPass {
@@ -2741,8 +2743,13 @@ var mini3d = (function (exports) {
     }
 
     let SystemUniforms = {
-        MvpMatrix: 'u_mvpMatrix',
-        NormalMatrix: 'u_NormalMatrix',
+        MvpMatrix: 'u_mvpMatrix',    
+        Object2World: 'u_object2World',
+        World2Object: 'u_world2Object',   //normal matrix请使用World2Object，然后在shader里面矩阵放右边即可: vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
+        WorldCameraPos: 'u_worldCameraPos',
+        LightDir:'u_LightDir',
+        LightColor:'u_LightColor',
+        SceneAmbient:'u_ambient'
     };
 
     class Material{
@@ -2750,6 +2757,7 @@ var mini3d = (function (exports) {
             this.renderPasses = [];
             this.matrixMvp = true;
             this.matrixNormal = false;
+            this.useLight = false;
         }
 
         addRenderPass(shader){
@@ -2802,17 +2810,27 @@ var mini3d = (function (exports) {
 
     }
 
-    class MeshRenderer{
+    class Component{
         constructor(){
-            this.mesh = null;
-            this.material = null;
 
-            this._mvpMatrix = new mini3d.Matrix4();
-            this._normalMatrix = new mini3d.Matrix4();
         }
 
         setNode(node){
             this.node = node;
+        }
+    }
+
+    class MeshRenderer extends Component{
+        constructor(){
+            super();
+
+            this.mesh = null;
+            this.material = null;
+
+            this._mvpMatrix = new Matrix4();
+            this._normalMatrix = new Matrix4();
+            this._objectToWorld = new Matrix4();
+            this._worldToObject = new Matrix4();
         }
 
         setMaterial(material){
@@ -2823,7 +2841,7 @@ var mini3d = (function (exports) {
             this.mesh = mesh;
         }
 
-        render(camera){
+        render(camera, lights){
 
             let systemUniforms = this.material.systemUniforms;
             let uniformContext = {};
@@ -2842,17 +2860,49 @@ var mini3d = (function (exports) {
                         uniformContext[SystemUniforms.NormalMatrix] = this._normalMatrix.elements;
                         break;
                     }
+                    case SystemUniforms.Object2World:{
+                        this._objectToWorld.set(this.node.worldMatrix);
+                        uniformContext[SystemUniforms.Object2World] = this._objectToWorld.elements;
+                        break;
+                    }
+                    case SystemUniforms.World2Object:{
+                        this._worldToObject.setInverseOf(this.node.worldMatrix);
+                        uniformContext[SystemUniforms.World2Object] = this._worldToObject.elements;
+                        break;
+                    }
+                    case SystemUniforms.WorldCameraPos:{
+                        let pos = camera.node.worldPosition;
+                        uniformContext[SystemUniforms.WorldCameraPos] = [pos.x, pos.y, pos.z];
+                        break;
+                    }
+                    case SystemUniforms.SceneAmbient:{
+                        uniformContext[SystemUniforms.SceneAmbient] = [0.05,0.05,0.05];//TODO:get from scene
+                        break;
+                    }
 
                 }
             }
 
-            this.material.render(this.mesh, uniformContext);                
+            if(this.material.useLight){
+                for(let light of lights){
+                    uniformContext[SystemUniforms.LightDir] = [5.0, 5.0, 5.0]; //TODO:根据不同的光源类型，如果是点光则传入world pos
+                    uniformContext[SystemUniforms.LightColor] = light.color;
+                    this.material.render(this.mesh, uniformContext);                
+                }
+            } else {
+                this.material.render(this.mesh, uniformContext);
+            }
+
+            
+            
         }
 
     }
 
-    class Camera{
+    class Camera extends Component{
         constructor(){
+            super();
+
             this._fovy = 75;
             this._aspect = 0.75;
             this._near = 0.1;
@@ -2860,10 +2910,6 @@ var mini3d = (function (exports) {
             this._projMatrix = new Matrix4();
             this._viewMatrix = new Matrix4();
             this._viewProjMatrix = new Matrix4();
-        }
-
-        setNode(node){
-            this.node = node;
         }
 
         getViewProjMatrix(){
@@ -2910,6 +2956,13 @@ var mini3d = (function (exports) {
         }
 
 
+    }
+
+    class DirectionalLight extends Component {
+        constructor(){
+            super();
+            this.color = [1.0, 1.0, 1.0];
+        }
     }
 
     let _tempVec3 = new Vector3();
@@ -3077,6 +3130,16 @@ var mini3d = (function (exports) {
             return node;
         }
 
+        addDirectionalLight(color){
+            let light = new DirectionalLight();
+            light.color = color;
+
+            let node = new SceneNode();
+            node.addComponent(SystemComponents.Light, light);
+            node.setParent(this);
+            return node;
+        }
+
         lookAt(target, up, smoothFactor){
             up = up || Vector3.Up;
             let worldPos = this.worldPosition;
@@ -3151,10 +3214,10 @@ var mini3d = (function (exports) {
             return this.components[type];
         }
 
-        render(camera){
+        render(camera, lights){
             let renderer = this.components[SystemComponents.Renderer];
             if(renderer){
-                renderer.render(camera);
+                renderer.render(camera, lights);
             }
         }
 
@@ -3326,6 +3389,16 @@ var mini3d = (function (exports) {
             return node;
         }
 
+        addDirectionalLight(color){
+            let light = new DirectionalLight();
+            light.color = color;
+
+            let node = new SceneNode$1();
+            node.addComponent(SystemComponents.Light, light);
+            node.setParent(this);
+            return node;
+        }
+
         lookAt(target, up, smoothFactor){
             up = up || Vector3.Up;
             let worldPos = this.worldPosition;
@@ -3400,10 +3473,10 @@ var mini3d = (function (exports) {
             return this.components[type];
         }
 
-        render(camera){
+        render(camera, lights){
             let renderer = this.components[SystemComponents.Renderer];
             if(renderer){
-                renderer.render(camera);
+                renderer.render(camera, lights);
             }
         }
 
@@ -3427,9 +3500,16 @@ var mini3d = (function (exports) {
             let camera = node.getComponent(SystemComponents.Camera);
             if(camera!=null){
                 this.cameras.push(camera);
-            } else {
-                this.renderNodes.push(node);
+                return;
+            }  
+
+            let light = node.getComponent(SystemComponents.Light);
+            if(light!=null){
+                this.lights.push(light);
+                return;
             }
+
+            this.renderNodes.push(node);        
         }
 
         onRemoveNode(node){
@@ -3439,13 +3519,22 @@ var mini3d = (function (exports) {
                 if(idx>=0){
                     this.cameras.splice(idx, 1);
                 }
-            } else {
-                let idx = this.renderNodes.indexOf(node);
-                if(idx>=0){
-                    this.renderNodes.splice(idx, 1);
-                }
-            }
+                return;
+            } 
             
+            let light = node.getComponent(SystemComponents.Light);
+            if(light!=null){
+                let idx = this.lights.indexOf(light);
+                if(idx>=0){
+                    this.lights.splice(idx, 1);
+                }
+                return;
+            }
+                    
+            let idx = this.renderNodes.indexOf(node);
+            if(idx>=0){
+                this.renderNodes.splice(idx, 1);
+            }                
         }
 
         onScreenResize(width, height){
@@ -3469,8 +3558,9 @@ var mini3d = (function (exports) {
             for(let camera of this.cameras){
                 camera.beforeRender();
 
+                //TODO：按优先级和范围选择灯光，灯光总数要有限制
                 for(let rnode of this.renderNodes){
-                    rnode.render(camera);
+                    rnode.render(camera, this.lights);
                 }
 
                 camera.afterRender();
@@ -3641,20 +3731,33 @@ attribute vec4 a_Position;
 attribute vec3 a_Normal;
     
 uniform mat4 u_mvpMatrix;
-uniform mat4 u_NormalMatrix;
-uniform vec3 u_diffuseColor; // diffuse color
+uniform mat4 u_world2Object;
+uniform mat4 u_object2World;
+
+uniform vec3 u_worldCameraPos; // world space camera pos
 uniform vec3 u_LightColor; // Light color
 uniform vec3 u_LightDir;   // World space light direction
-varying vec4 v_Color;
+
+uniform vec3 u_ambient; // scene ambient
+uniform vec3 u_diffuse; // diffuse color
+uniform vec3 u_specular; // specular;
+uniform float u_gloss; //gloss
+
+varying vec3 v_Color;
 
 void main(){
-    gl_Position = u_mvpMatrix * a_Position;
-    vec3 normal = normalize(vec3(u_NormalMatrix * vec4(a_Normal, 0.0)));
-    vec3 light = normalize(u_LightDir);
-    float nDotL = max(dot(light, normal), 0.0);
-    vec3 diffuse = u_diffuseColor * u_LightColor * nDotL;
-    vec3 c = diffuse + vec3(0.1);
-    v_Color = vec4(c, 1.0);
+    gl_Position = u_mvpMatrix * a_Position;        
+    
+    vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
+    vec3 worldLightDir = normalize(u_LightDir);
+    
+    vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
+    
+    vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
+    vec3 viewDir = normalize(u_worldCameraPos - (u_object2World*a_Position).xyz);
+    vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
+
+    v_Color = u_ambient + diffuse + specular;    
 }
 
 `;
@@ -3664,10 +3767,10 @@ void main(){
 precision mediump float;
 #endif
 
-varying vec4 v_Color;
+varying vec3 v_Color;
 
 void main(){
-    gl_FragColor = v_Color;
+    gl_FragColor = vec4(v_Color,1.0);
 }
 
 `;
@@ -3677,6 +3780,8 @@ void main(){
     class MatBasicLight extends Material{
         constructor(){
             super();
+
+            this.useLight = true;
             
             if(g_shader==null){
                 g_shader = Material.createShader(vs, fs, [
@@ -3686,30 +3791,41 @@ void main(){
             }
             
 
-            let pass = this.addRenderPass(g_shader);
-            
-            pass.shader.use();          
-            
-            pass.shader.setUniform('u_LightColor', [1.0,1.0,1.0]);
-            let lightDir = [0.5, 3.0, 4.0];
-            pass.shader.setUniform('u_LightDir', lightDir);
+            this.addRenderPass(g_shader);                
 
-            //default uniforms
-            this.diffuseColor = [1.0, 1.0, 1.0];        
+            //default uniforms        
+            this._diffuse = [1.0, 1.0, 1.0];
+            this._specular = [1.0, 1.0, 1.0];
+            this._gloss = 20;    
         }
 
         //Override
         get systemUniforms(){
-            return [SystemUniforms.MvpMatrix, SystemUniforms.NormalMatrix]; 
+            return [SystemUniforms.MvpMatrix,
+                SystemUniforms.World2Object,
+                SystemUniforms.Object2World,
+                SystemUniforms.WorldCameraPos,
+                SystemUniforms.SceneAmbient,
+                SystemUniforms.LightColor, SystemUniforms.LightDir]; 
         }
 
         //Override
         setCustomUniformValues(pass){                   
-            pass.shader.setUniform('u_diffuseColor', this.diffuseColor);
+            pass.shader.setUniform('u_diffuse', this._diffuse);
+            pass.shader.setUniform('u_specular', this._specular);
+            pass.shader.setUniform('u_gloss', this._gloss);
         }
 
-        setDiffuseColor(diffuse){
-            this.diffuseColor = diffuse;        
+        set diffuse(v){
+            this._diffuse = v;
+        }
+
+        set specular(v){
+            this._specular = v;
+        }
+
+        set gloss(v){
+            this._gloss = v;
         }
     }
 
@@ -3775,6 +3891,7 @@ void main(){
     exports.AssetType = AssetType;
     exports.Camera = Camera;
     exports.Cube = Cube;
+    exports.DirectionalLight = DirectionalLight;
     exports.IndexBuffer = IndexBuffer;
     exports.MatBasicLight = MatBasicLight;
     exports.MatSolidColor = MatSolidColor;
