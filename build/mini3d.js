@@ -2747,7 +2747,7 @@ var mini3d = (function (exports) {
         Object2World: 'u_object2World',
         World2Object: 'u_world2Object',   //normal matrix请使用World2Object，然后在shader里面矩阵放右边即可: vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
         WorldCameraPos: 'u_worldCameraPos',
-        LightDir:'u_LightDir',
+        WorldLightPos:'u_worldLightPos',
         LightColor:'u_LightColor',
         SceneAmbient:'u_ambient'
     };
@@ -2820,6 +2820,19 @@ var mini3d = (function (exports) {
         }
     }
 
+    let LightType = {
+        Directional: 0,
+        Point: 1
+    };
+
+    class Light extends Component {
+        constructor(type){
+            super();
+            this.type = type;
+            this.color = [1.0, 1.0, 1.0];
+        }
+    }
+
     class MeshRenderer extends Component{
         constructor(){
             super();
@@ -2885,7 +2898,13 @@ var mini3d = (function (exports) {
 
             if(this.material.useLight){
                 for(let light of lights){
-                    uniformContext[SystemUniforms.LightDir] = [5.0, 5.0, 5.0]; //TODO:根据不同的光源类型，如果是点光则传入world pos
+                    if(light.type == LightType.Directional){
+                        uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
+                    } else {
+                        let pos =  light.node.worldPosition;
+                        uniformContext[SystemUniforms.WorldLightPos] = [pos.x, pos.y, pos.z, 1.0];//TODO:点光源在shader中如何处理？
+                    }
+                    
                     uniformContext[SystemUniforms.LightColor] = light.color;
                     this.material.render(this.mesh, uniformContext);                
                 }
@@ -2899,7 +2918,17 @@ var mini3d = (function (exports) {
 
     }
 
-    class Camera extends Component{
+    class Component$1{
+        constructor(){
+
+        }
+
+        setNode(node){
+            this.node = node;
+        }
+    }
+
+    class Camera extends Component$1{
         constructor(){
             super();
 
@@ -2956,13 +2985,6 @@ var mini3d = (function (exports) {
         }
 
 
-    }
-
-    class DirectionalLight extends Component {
-        constructor(){
-            super();
-            this.color = [1.0, 1.0, 1.0];
-        }
     }
 
     let _tempVec3 = new Vector3();
@@ -3131,7 +3153,7 @@ var mini3d = (function (exports) {
         }
 
         addDirectionalLight(color){
-            let light = new DirectionalLight();
+            let light = new Light(LightType.Directional);
             light.color = color;
 
             let node = new SceneNode();
@@ -3390,7 +3412,7 @@ var mini3d = (function (exports) {
         }
 
         addDirectionalLight(color){
-            let light = new DirectionalLight();
+            let light = new Light(LightType.Directional);
             light.color = color;
 
             let node = new SceneNode$1();
@@ -3734,9 +3756,9 @@ uniform mat4 u_mvpMatrix;
 uniform mat4 u_world2Object;
 uniform mat4 u_object2World;
 
-uniform vec3 u_worldCameraPos; // world space camera pos
+uniform vec3 u_worldCameraPos; // world space camera position
 uniform vec3 u_LightColor; // Light color
-uniform vec3 u_LightDir;   // World space light direction
+uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
 
 uniform vec3 u_ambient; // scene ambient
 uniform vec3 u_diffuse; // diffuse color
@@ -3749,7 +3771,7 @@ void main(){
     gl_Position = u_mvpMatrix * a_Position;        
     
     vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
-    vec3 worldLightDir = normalize(u_LightDir);
+    vec3 worldLightDir = normalize(u_worldLightPos.xyz);
     
     vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
@@ -3806,7 +3828,7 @@ void main(){
                 SystemUniforms.Object2World,
                 SystemUniforms.WorldCameraPos,
                 SystemUniforms.SceneAmbient,
-                SystemUniforms.LightColor, SystemUniforms.LightDir]; 
+                SystemUniforms.LightColor, SystemUniforms.WorldLightPos]; 
         }
 
         //Override
@@ -3891,8 +3913,9 @@ void main(){
     exports.AssetType = AssetType;
     exports.Camera = Camera;
     exports.Cube = Cube;
-    exports.DirectionalLight = DirectionalLight;
     exports.IndexBuffer = IndexBuffer;
+    exports.Light = Light;
+    exports.LightType = LightType;
     exports.MatBasicLight = MatBasicLight;
     exports.MatSolidColor = MatSolidColor;
     exports.Material = Material;

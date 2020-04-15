@@ -1,6 +1,7 @@
 import { SystemUniforms } from "../../material/material";
-import { Component } from "./Component";
+import { Component } from "./component";
 import { Matrix4 } from "../../math/matrix4";
+import { LightType } from "./light";
 
 
 class MeshRenderer extends Component{
@@ -68,7 +69,13 @@ class MeshRenderer extends Component{
 
         if(this.material.useLight){
             for(let light of lights){
-                uniformContext[SystemUniforms.LightDir] = [5.0, 5.0, 5.0]; //TODO:根据不同的光源类型，如果是点光则传入world pos
+                if(light.type == LightType.Directional){
+                    uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
+                } else {
+                    let pos =  light.node.worldPosition;
+                    uniformContext[SystemUniforms.WorldLightPos] = [pos.x, pos.y, pos.z, 1.0];//TODO:点光源在shader中如何处理？
+                }
+                
                 uniformContext[SystemUniforms.LightColor] = light.color;
                 this.material.render(this.mesh, uniformContext);                
             }

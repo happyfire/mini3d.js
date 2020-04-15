@@ -9,9 +9,9 @@ uniform mat4 u_mvpMatrix;
 uniform mat4 u_world2Object;
 uniform mat4 u_object2World;
 
-uniform vec3 u_worldCameraPos; // world space camera pos
+uniform vec3 u_worldCameraPos; // world space camera position
 uniform vec3 u_LightColor; // Light color
-uniform vec3 u_LightDir;   // World space light direction
+uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
 
 uniform vec3 u_ambient; // scene ambient
 uniform vec3 u_diffuse; // diffuse color
@@ -24,7 +24,7 @@ void main(){
     gl_Position = u_mvpMatrix * a_Position;        
     
     vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
-    vec3 worldLightDir = normalize(u_LightDir);
+    vec3 worldLightDir = normalize(u_worldLightPos.xyz);
     
     vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
@@ -81,7 +81,7 @@ class MatBasicLight extends Material{
             SystemUniforms.Object2World,
             SystemUniforms.WorldCameraPos,
             SystemUniforms.SceneAmbient,
-            SystemUniforms.LightColor, SystemUniforms.LightDir]; 
+            SystemUniforms.LightColor, SystemUniforms.WorldLightPos]; 
     }
 
     //Override

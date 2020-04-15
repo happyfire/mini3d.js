@@ -5,7 +5,7 @@ import { math } from "../math/math";
 import { SystemComponents } from "./systemComps";
 import { MeshRenderer } from "./components/meshRenderer";
 import { Camera } from "./components/camera";
-import { DirectionalLight } from "./components/DirectionalLight";
+import { Light, LightType } from "./components/light";
 
 let _tempVec3 = new Vector3();
 let _tempQuat = new Quaternion();
@@ -173,7 +173,7 @@ class SceneNode {
     }
 
     addDirectionalLight(color){
-        let light = new DirectionalLight();
+        let light = new Light(LightType.Directional);
         light.color = color;
 
         let node = new SceneNode();
