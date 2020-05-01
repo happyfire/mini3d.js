@@ -2895,9 +2895,10 @@ var mini3d = (function (exports) {
 
                 }
             }
-
+           
             if(this.material.useLight){
-                for(let light of lights){
+                let idx = 0;
+                for(let light of lights){                
                     if(light.type == LightType.Directional){
                         uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
                     } else {
@@ -2906,8 +2907,23 @@ var mini3d = (function (exports) {
                     }
                     
                     uniformContext[SystemUniforms.LightColor] = light.color;
+
+                    if(idx>0){
+                        //TODO:临时解决方案，为了能让多个灯光pass混合
+                        exports.gl.enable(exports.gl.BLEND);
+                        exports.gl.blendFunc(exports.gl.ONE, exports.gl.ONE);
+                        exports.gl.enable(exports.gl.POLYGON_OFFSET_FILL);
+                        exports.gl.polygonOffset(0.0, -1.0*idx);
+                    }
+
                     this.material.render(this.mesh, uniformContext);                
+
+                    idx++;
                 }
+
+                exports.gl.disable(exports.gl.BLEND);
+                exports.gl.disable(exports.gl.POLYGON_OFFSET_FILL);
+
             } else {
                 this.material.render(this.mesh, uniformContext);
             }
@@ -2951,6 +2967,10 @@ var mini3d = (function (exports) {
             this._near = near;
             this._far = far; 
             this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);
+        }
+
+        setOrtho(left, right, bottom, top, near, far){ 
+            this._projMatrix.setOrtho(left, right, bottom, top, near, far);        
         }
 
         onScreenResize(width, height){
@@ -3155,6 +3175,17 @@ var mini3d = (function (exports) {
         addDirectionalLight(color){
             let light = new Light(LightType.Directional);
             light.color = color;
+
+            let node = new SceneNode();
+            node.addComponent(SystemComponents.Light, light);
+            node.setParent(this);
+            return node;
+        }
+
+        addPointLight(color, range){
+            let light = new Light(LightType.Point);
+            light.color = color;
+            light.range = range;
 
             let node = new SceneNode();
             node.addComponent(SystemComponents.Light, light);
@@ -3414,6 +3445,17 @@ var mini3d = (function (exports) {
         addDirectionalLight(color){
             let light = new Light(LightType.Directional);
             light.color = color;
+
+            let node = new SceneNode$1();
+            node.addComponent(SystemComponents.Light, light);
+            node.setParent(this);
+            return node;
+        }
+
+        addPointLight(color, range){
+            let light = new Light(LightType.Point);
+            light.color = color;
+            light.range = range;
 
             let node = new SceneNode$1();
             node.addComponent(SystemComponents.Light, light);
@@ -3768,18 +3810,31 @@ uniform float u_gloss; //gloss
 varying vec3 v_Color;
 
 void main(){
-    gl_Position = u_mvpMatrix * a_Position;        
+    gl_Position = u_mvpMatrix * a_Position;   
+    
+    vec4 worldPos = u_object2World*a_Position;
     
     vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
-    vec3 worldLightDir = normalize(u_worldLightPos.xyz);
+    vec3 worldLightDir;
+    float atten = 1.0;
+
+    if(u_worldLightPos.w==1.0){ //点光源
+        vec3 lightver = u_worldLightPos.xyz-worldPos.xyz;
+        float dis = length(lightver);
+        worldLightDir = normalize(lightver);
+        vec3 a = vec3(0.01);
+        atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
+    } else {
+        worldLightDir = normalize(u_worldLightPos.xyz);
+    }
     
     vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
     vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
-    vec3 viewDir = normalize(u_worldCameraPos - (u_object2World*a_Position).xyz);
+    vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
     vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
-    v_Color = u_ambient + diffuse + specular;    
+    v_Color = u_ambient + (diffuse + specular)*atten;    
 }
 
 `;

@@ -21,18 +21,31 @@ uniform float u_gloss; //gloss
 varying vec3 v_Color;
 
 void main(){
-    gl_Position = u_mvpMatrix * a_Position;        
+    gl_Position = u_mvpMatrix * a_Position;   
+    
+    vec4 worldPos = u_object2World*a_Position;
     
     vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
-    vec3 worldLightDir = normalize(u_worldLightPos.xyz);
+    vec3 worldLightDir;
+    float atten = 1.0;
+
+    if(u_worldLightPos.w==1.0){ //点光源
+        vec3 lightver = u_worldLightPos.xyz-worldPos.xyz;
+        float dis = length(lightver);
+        worldLightDir = normalize(lightver);
+        vec3 a = vec3(0.01);
+        atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
+    } else {
+        worldLightDir = normalize(u_worldLightPos.xyz);
+    }
     
     vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
     vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
-    vec3 viewDir = normalize(u_worldCameraPos - (u_object2World*a_Position).xyz);
+    vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
     vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
-    v_Color = u_ambient + diffuse + specular;    
+    v_Color = u_ambient + (diffuse + specular)*atten;    
 }
 
 `;

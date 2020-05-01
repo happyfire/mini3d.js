@@ -26,6 +26,10 @@ class Camera extends Component{
         this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);
     }
 
+    setOrtho(left, right, bottom, top, near, far){ 
+        this._projMatrix.setOrtho(left, right, bottom, top, near, far);        
+    }
+
     onScreenResize(width, height){
         this._aspect = width/height;
         this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);     

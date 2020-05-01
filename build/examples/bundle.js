@@ -866,6 +866,7 @@ var main = (function () {
 
 	    this._inited = false;
 	    this._shader = null;
+	    this._time = 0;
 	    this._rotX = 0;
 	    this._rotY = 0;
 	    this._rotDegree = 0;
@@ -893,12 +894,29 @@ var main = (function () {
 	    key: "onUpdate",
 	    value: function onUpdate(dt) {
 	      if (this._scene) {
+	        this._time += dt;
+
 	        this._scene.update(); //this._mesh2.localRotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
 	        //this._rotDegree += dt*100/1000;
 	        //this._rotDegree %= 360;                       
 	        //this._mesh1.lookAt(this._mesh2.worldPosition, mini3d.Vector3.Up, 0.1);
-	        //this._cameraNode.lookAt(this._mesh1.worldPosition);                        
+	        //this._cameraNode.lookAt(this._mesh1.worldPosition);          
 
+
+	        var cosv = Math.cos(this._time / 1000);
+	        var sinv = Math.sin(this._time / 1000);
+	        var radius = 20 * cosv;
+	        this._pointLight1.localPosition.x = radius * cosv;
+	        this._pointLight1.localPosition.z = radius * sinv;
+	        this._pointLight1.localPosition.y = 10 + radius * sinv;
+
+	        this._pointLight1.setTransformDirty();
+
+	        this._pointLight2.localPosition.z = radius * sinv;
+	        this._pointLight2.localPosition.z = radius * cosv;
+	        this._pointLight2.localPosition.y = 10 + radius * sinv;
+
+	        this._pointLight2.setTransformDirty();
 
 	        this._scene.render();
 	      }
@@ -974,8 +992,15 @@ var main = (function () {
 	      this._material2.diffuse = [1.0, 1.0, 1.0];
 	      this._material2.specular = [1.0, 1.0, 1.0];
 
-	      var light = this._scene.root.addDirectionalLight([1, 1, 1]);
+	      this._scene.root.addDirectionalLight([0.5, 0.5, 0.5]);
 
+	      var pointLight = this._scene.root.addPointLight([0, 0.5, 0], 10);
+
+	      pointLight.localPosition.set(0, 10, 0);
+	      this._pointLight1 = pointLight;
+	      pointLight = this._scene.root.addPointLight([0.5, 0, 0], 10);
+	      pointLight.localPosition.set(10, 10, 0);
+	      this._pointLight2 = pointLight;
 	      this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100);
 
 	      this._cameraNode.localPosition.set(0, 3, 10);

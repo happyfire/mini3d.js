@@ -2,6 +2,7 @@ import { SystemUniforms } from "../../material/material";
 import { Component } from "./component";
 import { Matrix4 } from "../../math/matrix4";
 import { LightType } from "./light";
+import { gl } from "../../core/gl";
 
 
 class MeshRenderer extends Component{
@@ -66,9 +67,10 @@ class MeshRenderer extends Component{
 
             }
         }
-
+       
         if(this.material.useLight){
-            for(let light of lights){
+            let idx = 0;
+            for(let light of lights){                
                 if(light.type == LightType.Directional){
                     uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
                 } else {
@@ -77,8 +79,23 @@ class MeshRenderer extends Component{
                 }
                 
                 uniformContext[SystemUniforms.LightColor] = light.color;
+
+                if(idx>0){
+                    //TODO:临时解决方案，为了能让多个灯光pass混合
+                    gl.enable(gl.BLEND);
+                    gl.blendFunc(gl.ONE, gl.ONE);
+                    gl.enable(gl.POLYGON_OFFSET_FILL);
+                    gl.polygonOffset(0.0, -1.0*idx);
+                }
+
                 this.material.render(this.mesh, uniformContext);                
+
+                idx++;
             }
+
+            gl.disable(gl.BLEND);
+            gl.disable(gl.POLYGON_OFFSET_FILL);
+
         } else {
             this.material.render(this.mesh, uniformContext);
         }

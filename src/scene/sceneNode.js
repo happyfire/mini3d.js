@@ -182,6 +182,17 @@ class SceneNode {
         return node;
     }
 
+    addPointLight(color, range){
+        let light = new Light(LightType.Point);
+        light.color = color;
+        light.range = range;
+
+        let node = new SceneNode();
+        node.addComponent(SystemComponents.Light, light);
+        node.setParent(this);
+        return node;
+    }
+
     lookAt(target, up, smoothFactor){
         up = up || Vector3.Up;
         let worldPos = this.worldPosition;
