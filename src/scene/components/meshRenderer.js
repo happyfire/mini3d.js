@@ -61,7 +61,7 @@ class MeshRenderer extends Component{
                     break;
                 }
                 case SystemUniforms.SceneAmbient:{
-                    uniformContext[SystemUniforms.SceneAmbient] = [0.05,0.05,0.05];//TODO:get from scene
+                    uniformContext[SystemUniforms.SceneAmbient] = [0.1,0.1,0.1];//TODO:get from scene
                     break;
                 }
 

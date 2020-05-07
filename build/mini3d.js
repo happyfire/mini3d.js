@@ -2889,7 +2889,7 @@ var mini3d = (function (exports) {
                         break;
                     }
                     case SystemUniforms.SceneAmbient:{
-                        uniformContext[SystemUniforms.SceneAmbient] = [0.05,0.05,0.05];//TODO:get from scene
+                        uniformContext[SystemUniforms.SceneAmbient] = [0.1,0.1,0.1];//TODO:get from scene
                         break;
                     }
 
@@ -3807,6 +3807,7 @@ var mini3d = (function (exports) {
     let vs = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
+attribute vec2 a_Texcoord;
     
 uniform mat4 u_mvpMatrix;
 uniform mat4 u_world2Object;
@@ -3821,7 +3822,8 @@ uniform vec3 u_diffuse; // diffuse color
 uniform vec3 u_specular; // specular;
 uniform float u_gloss; //gloss
 
-varying vec3 v_Color;
+varying vec3 v_color;
+varying vec2 v_texcoord;
 
 void main(){
     gl_Position = u_mvpMatrix * a_Position;   
@@ -3832,6 +3834,8 @@ void main(){
     vec3 worldLightDir;
     float atten = 1.0;
 
+    vec3 ambient = vec3(0.0);
+
     if(u_worldLightPos.w==1.0){ //点光源
         vec3 lightver = u_worldLightPos.xyz-worldPos.xyz;
         float dis = length(lightver);
@@ -3840,6 +3844,7 @@ void main(){
         atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
     } else {
         worldLightDir = normalize(u_worldLightPos.xyz);
+        ambient = u_ambient; //只有平行光加ambient,TODO:还是得把pass拆开
     }
     
     vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
@@ -3848,7 +3853,8 @@ void main(){
     vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
     vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
-    v_Color = u_ambient + (diffuse + specular)*atten;    
+    v_color = ambient + (diffuse + specular)*atten;    
+    v_texcoord = a_Texcoord;
 }
 
 `;
@@ -3858,10 +3864,14 @@ void main(){
 precision mediump float;
 #endif
 
-varying vec3 v_Color;
+uniform sampler2D u_texMain;
+
+varying vec3 v_color;
+varying vec2 v_texcoord;
 
 void main(){
-    gl_FragColor = vec4(v_Color,1.0);
+    vec4 tex = texture2D(u_texMain, v_texcoord);
+    gl_FragColor = tex * vec4(v_color,1.0);
 }
 
 `;
@@ -3877,14 +3887,16 @@ void main(){
             if(g_shader==null){
                 g_shader = Material.createShader(vs, fs, [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
-                    {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'}
+                    {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
+                    {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
                 ]);
             }
             
 
             this.addRenderPass(g_shader);                
 
-            //default uniforms        
+            //default uniforms
+            this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
             this._diffuse = [1.0, 1.0, 1.0];
             this._specular = [1.0, 1.0, 1.0];
             this._gloss = 20;    
@@ -3905,6 +3917,8 @@ void main(){
             pass.shader.setUniform('u_diffuse', this._diffuse);
             pass.shader.setUniform('u_specular', this._specular);
             pass.shader.setUniform('u_gloss', this._gloss);
+            this._mainTexture.bind();
+            pass.shader.setUniform('u_texMain', 0);
         }
 
         set diffuse(v){
@@ -3917,6 +3931,10 @@ void main(){
 
         set gloss(v){
             this._gloss = v;
+        }
+
+        set mainTexture(v){
+            this._mainTexture = v;
         }
     }
 

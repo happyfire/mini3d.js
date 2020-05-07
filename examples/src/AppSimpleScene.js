@@ -1,5 +1,9 @@
+import { Material } from "../../src/material/material";
+
 let obj_file_capsule = './models/capsule.obj';
 let obj_file_sphere = './models/sphere.obj';
+let obj_main_texture = './imgs/wall01_diffuse.png';
+let plane_main_texture = './imgs/wall02_diffuse.png';
 
 class AppSimpleScene {
     constructor() {             
@@ -12,7 +16,9 @@ class AppSimpleScene {
     onInit() {
         let assetList = [
             [obj_file_capsule, mini3d.AssetType.Text],
-            [obj_file_sphere, mini3d.AssetType.Text]
+            [obj_file_sphere, mini3d.AssetType.Text],
+            [obj_main_texture, mini3d.AssetType.Image],
+            [plane_main_texture, mini3d.AssetType.Image]
         ]
 
         mini3d.assetManager.loadAssetList(assetList, function () {            
@@ -32,13 +38,13 @@ class AppSimpleScene {
         this.createWorld();
         
         mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
-            let factor = 300 / mini3d.canvas.width;
-            let dx = data.dx * factor;
-            let dy = data.dy * factor;
+            let factor = 0.01;
+            let dx = data.dx;
+            let dy = data.dy;
 
             this._tempVec3.copyFrom(this._mesh2.localPosition);
-            this._tempVec3.z += 0.05 * dy;
-            this._tempVec3.x += 0.05 * dx;
+            this._tempVec3.z += dy * factor;
+            this._tempVec3.x += dx * factor;
             this._mesh2.localPosition = this._tempVec3;
 
         }.bind(this));
@@ -63,6 +69,7 @@ class AppSimpleScene {
         // Create a plane
         let planeMesh = mini3d.Plane.createMesh(20, 20, 20, 20);
         let matPlane = new mini3d.MatBasicLight();
+        matPlane.mainTexture = mini3d.textureManager.getTexture(plane_main_texture);
         matPlane.diffuse = [0.8, 0.8, 0.8];
         matPlane.specular = [0.8, 0.8, 0.8];
         this._planeNode = this._scene.root.addMeshNode(planeMesh, matPlane);
@@ -76,6 +83,7 @@ class AppSimpleScene {
 
         // Create mesh node 1
         let material1 = new mini3d.MatBasicLight();
+        material1.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
         material1.diffuse = [0.8, 0.8, 0.8];
         material1.specular = [0.8, 0.8, 0.8];
 
@@ -84,18 +92,20 @@ class AppSimpleScene {
         
         // Create mesh node 2
         let material2 = new mini3d.MatBasicLight();
+        material2.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
         material2.diffuse = [0.8, 0.8, 0.8];
         material2.specular = [0.8, 0.8, 0.8];
+        material2.gloss = 20;
 
         this._mesh2 = meshRoot.addMeshNode(capusleMesh, material2);
         this._mesh2.localPosition.set(-1, 1, 0);
         this._mesh2.localScale.set(1, 1, 1);
         
         // Add a directional light node to scene
-        this._scene.root.addDirectionalLight([0.3,0.3,0.3]);
+        this._scene.root.addDirectionalLight([0.5,0.5,0.5]);
 
         // Add point light 1
-        let lightColor = [0,0.2,0];
+        let lightColor = [0,0.1,0];
         let pointLight = this._scene.root.addPointLight(lightColor,10);
         pointLight.localPosition.set(-5, 6, 0);
         let lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.3,0.9,0.3])); //点光源身上放一个小球以显示他的位置   
@@ -103,7 +113,7 @@ class AppSimpleScene {
         this._pointLight1 = pointLight;             
 
         // Add point light 2
-        lightColor = [0.2,0,0];
+        lightColor = [0.1,0,0];
         pointLight = this._scene.root.addPointLight(lightColor,10);
         pointLight.localPosition.set(5, 6, 0);
         lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.9,0.3,0.3]));
@@ -124,7 +134,7 @@ class AppSimpleScene {
             this._scene.update();
 
             //mesh2自动旋转
-            if(false){
+            if(true){
                 this._mesh2.localRotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
                 this._mesh2.localPosition.y = (0.5+0.5*Math.cos(mini3d.math.degToRad(this._rotDegree)))*5;
                 this._mesh2.setTransformDirty();
