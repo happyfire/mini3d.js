@@ -12,6 +12,12 @@ class Camera extends Component{
         this._projMatrix = new Matrix4();
         this._viewMatrix = new Matrix4();
         this._viewProjMatrix = new Matrix4();
+
+        this._clearColor = [0, 0, 0];
+    }
+
+    set clearColor(v){
+        this._clearColor = v;
     }
 
     getViewProjMatrix(){
@@ -49,7 +55,7 @@ class Camera extends Component{
         let gl = mini3d.gl;
 
         //TODO:每个camera设置自己的clear color，并且在gl层缓存，避免重复设置相同的值
-        gl.clearColor(0, 0, 0, 1);
+        gl.clearColor(this._clearColor[0], this._clearColor[1], this._clearColor[2], 1);
         gl.clearDepth(1.0);
         gl.enable(gl.DEPTH_TEST);
 

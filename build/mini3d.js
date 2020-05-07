@@ -2955,6 +2955,12 @@ var mini3d = (function (exports) {
             this._projMatrix = new Matrix4();
             this._viewMatrix = new Matrix4();
             this._viewProjMatrix = new Matrix4();
+
+            this._clearColor = [0, 0, 0];
+        }
+
+        set clearColor(v){
+            this._clearColor = v;
         }
 
         getViewProjMatrix(){
@@ -2992,7 +2998,7 @@ var mini3d = (function (exports) {
             let gl = mini3d.gl;
 
             //TODO:每个camera设置自己的clear color，并且在gl层缓存，避免重复设置相同的值
-            gl.clearColor(0, 0, 0, 1);
+            gl.clearColor(this._clearColor[0], this._clearColor[1], this._clearColor[2], 1);
             gl.clearDepth(1.0);
             gl.enable(gl.DEPTH_TEST);
 
@@ -3169,6 +3175,7 @@ var mini3d = (function (exports) {
             let node = new SceneNode();
             node.addComponent(SystemComponents.Camera, camera);
             node.setParent(this);
+            node.camera = camera;
             return node;
         }
 
@@ -3179,6 +3186,7 @@ var mini3d = (function (exports) {
             let node = new SceneNode();
             node.addComponent(SystemComponents.Light, light);
             node.setParent(this);
+            node.light = light;
             return node;
         }
 
@@ -3190,6 +3198,7 @@ var mini3d = (function (exports) {
             let node = new SceneNode();
             node.addComponent(SystemComponents.Light, light);
             node.setParent(this);
+            node.light = light;
             return node;
         }
 
@@ -3226,8 +3235,8 @@ var mini3d = (function (exports) {
             //TODO:此处可优化，避免矩阵乘法，Matrix4增加fromTRS(pos, rot, scale)方法
         }
 
-        updateWorldMatrix(){        
-            if(this._worldDirty){
+        updateWorldMatrix(forceUpdate=false){        
+            if(this._worldDirty || forceUpdate){
                 if(!this._isStatic){
                     this.updateLocalMatrix();
                 }
@@ -3254,7 +3263,7 @@ var mini3d = (function (exports) {
 
             
             this.children.forEach(function(child){
-                child.updateWorldMatrix();
+                child.updateWorldMatrix(true);
             });        
         }
 
@@ -3439,6 +3448,7 @@ var mini3d = (function (exports) {
             let node = new SceneNode$1();
             node.addComponent(SystemComponents.Camera, camera);
             node.setParent(this);
+            node.camera = camera;
             return node;
         }
 
@@ -3449,6 +3459,7 @@ var mini3d = (function (exports) {
             let node = new SceneNode$1();
             node.addComponent(SystemComponents.Light, light);
             node.setParent(this);
+            node.light = light;
             return node;
         }
 
@@ -3460,6 +3471,7 @@ var mini3d = (function (exports) {
             let node = new SceneNode$1();
             node.addComponent(SystemComponents.Light, light);
             node.setParent(this);
+            node.light = light;
             return node;
         }
 
@@ -3496,8 +3508,8 @@ var mini3d = (function (exports) {
             //TODO:此处可优化，避免矩阵乘法，Matrix4增加fromTRS(pos, rot, scale)方法
         }
 
-        updateWorldMatrix(){        
-            if(this._worldDirty){
+        updateWorldMatrix(forceUpdate=false){        
+            if(this._worldDirty || forceUpdate){
                 if(!this._isStatic){
                     this.updateLocalMatrix();
                 }
@@ -3524,7 +3536,7 @@ var mini3d = (function (exports) {
 
             
             this.children.forEach(function(child){
-                child.updateWorldMatrix();
+                child.updateWorldMatrix(true);
             });        
         }
 
@@ -3579,6 +3591,7 @@ var mini3d = (function (exports) {
         onRemoveNode(node){
             let camera = node.getComponent(SystemComponents.Camera);
             if(camera!=null){
+                node.camera = null;
                 let idx = this.cameras.indexOf(camera);
                 if(idx>=0){
                     this.cameras.splice(idx, 1);
@@ -3588,6 +3601,7 @@ var mini3d = (function (exports) {
             
             let light = node.getComponent(SystemComponents.Light);
             if(light!=null){
+                node.light = null;
                 let idx = this.lights.indexOf(light);
                 if(idx>=0){
                     this.lights.splice(idx, 1);
@@ -3933,7 +3947,7 @@ void main(){
     let g_shader$1 = null;
 
     class MatSolidColor extends Material{
-        constructor(){
+        constructor(color=null){
             super();
 
             if(g_shader$1==null){
@@ -3945,7 +3959,11 @@ void main(){
             this.addRenderPass(g_shader$1);
 
             //default uniforms
-            this.color = [1.0, 1.0, 1.0];            
+            if(color){
+                this.color = color;
+            } else {
+                this.color = [1.0, 1.0, 1.0];
+            }
         }
 
         //Override

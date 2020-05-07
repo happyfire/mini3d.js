@@ -169,6 +169,7 @@ class SceneNode {
         let node = new SceneNode();
         node.addComponent(SystemComponents.Camera, camera);
         node.setParent(this);
+        node.camera = camera;
         return node;
     }
 
@@ -179,6 +180,7 @@ class SceneNode {
         let node = new SceneNode();
         node.addComponent(SystemComponents.Light, light);
         node.setParent(this);
+        node.light = light;
         return node;
     }
 
@@ -190,6 +192,7 @@ class SceneNode {
         let node = new SceneNode();
         node.addComponent(SystemComponents.Light, light);
         node.setParent(this);
+        node.light = light;
         return node;
     }
 
@@ -226,8 +229,8 @@ class SceneNode {
         //TODO:此处可优化，避免矩阵乘法，Matrix4增加fromTRS(pos, rot, scale)方法
     }
 
-    updateWorldMatrix(){        
-        if(this._worldDirty){
+    updateWorldMatrix(forceUpdate=false){        
+        if(this._worldDirty || forceUpdate){
             if(!this._isStatic){
                 this.updateLocalMatrix();
             }
@@ -254,7 +257,7 @@ class SceneNode {
 
         
         this.children.forEach(function(child){
-            child.updateWorldMatrix();
+            child.updateWorldMatrix(true);
         });        
     }
 

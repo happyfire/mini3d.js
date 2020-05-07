@@ -852,11 +852,8 @@ var main = (function () {
 	  return AppObjLoader;
 	}();
 
-	var vs_file$2 = './shaders/basic_light.vs';
-	var fs_file$2 = './shaders/basic_light.fs';
-	var vs_scolor_file = './shaders/basic_light.vs';
-	var fs_scolor_file = './shaders/basic_light.fs';
-	var obj_file$1 = './models/dragon.obj';
+	var obj_file_capsule = './models/capsule.obj';
+	var obj_file_sphere = './models/sphere.obj';
 
 	var AppSimpleScene =
 	/*#__PURE__*/
@@ -864,11 +861,7 @@ var main = (function () {
 	  function AppSimpleScene() {
 	    _classCallCheck(this, AppSimpleScene);
 
-	    this._inited = false;
-	    this._shader = null;
 	    this._time = 0;
-	    this._rotX = 0;
-	    this._rotY = 0;
 	    this._rotDegree = 0;
 	    this._tempQuat = new mini3d.Quaternion();
 	    this._tempVec3 = new mini3d.Vector3();
@@ -877,9 +870,8 @@ var main = (function () {
 	  _createClass(AppSimpleScene, [{
 	    key: "onInit",
 	    value: function onInit() {
-	      var assetList = [[vs_file$2, mini3d.AssetType.Text], [fs_file$2, mini3d.AssetType.Text], [vs_scolor_file, mini3d.AssetType.Text], [fs_scolor_file, mini3d.AssetType.Text], [obj_file$1, mini3d.AssetType.Text]];
+	      var assetList = [[obj_file_capsule, mini3d.AssetType.Text], [obj_file_sphere, mini3d.AssetType.Text]];
 	      mini3d.assetManager.loadAssetList(assetList, function () {
-	        this._inited = true;
 	        this.start();
 	      }.bind(this));
 	    }
@@ -891,66 +883,17 @@ var main = (function () {
 	      }
 	    }
 	  }, {
-	    key: "onUpdate",
-	    value: function onUpdate(dt) {
-	      if (this._scene) {
-	        this._time += dt;
-
-	        this._scene.update(); //this._mesh2.localRotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
-	        //this._rotDegree += dt*100/1000;
-	        //this._rotDegree %= 360;                       
-	        //this._mesh1.lookAt(this._mesh2.worldPosition, mini3d.Vector3.Up, 0.1);
-	        //this._cameraNode.lookAt(this._mesh1.worldPosition);          
-
-
-	        var cosv = Math.cos(this._time / 1000);
-	        var sinv = Math.sin(this._time / 1000);
-	        var radius = 20 * cosv;
-	        this._pointLight1.localPosition.x = radius * cosv;
-	        this._pointLight1.localPosition.z = radius * sinv;
-	        this._pointLight1.localPosition.y = 10 + radius * sinv;
-
-	        this._pointLight1.setTransformDirty();
-
-	        this._pointLight2.localPosition.z = radius * sinv;
-	        this._pointLight2.localPosition.z = radius * cosv;
-	        this._pointLight2.localPosition.y = 10 + radius * sinv;
-
-	        this._pointLight2.setTransformDirty();
-
-	        this._scene.render();
-	      }
-	    }
-	  }, {
 	    key: "start",
 	    value: function start() {
-	      // let vs = mini3d.assetManager.getAsset(vs_file).data;
-	      // let fs = mini3d.assetManager.getAsset(fs_file).data;
-	      // let vs_scolor = mini3d.assetManager.getAsset(vs_scolor_file).data;
-	      // let fs_scolor = mini3d.assetManager.getAsset(fs_scolor_file).data;
 	      this.createWorld();
 	      mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
 	        var factor = 300 / mini3d.canvas.width;
 	        var dx = data.dx * factor;
 	        var dy = data.dy * factor;
 
-	        var clampAngle = function clampAngle(angle, min, max) {
-	          if (angle < -360) angle += 360;
-	          if (angle > 360) angle -= 360;
-	          return Math.max(Math.min(angle, max), min);
-	        };
-
-	        this._rotX = clampAngle(this._rotX + dy, -90.0, 90.0);
-	        this._rotY += dx; //先旋转qy,再旋转qx
-
-	        var qx = mini3d.Quaternion.axisAngle(mini3d.Vector3.Right, this._rotX);
-	        var qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, this._rotY);
-	        mini3d.Quaternion.multiply(qx, qy, this._tempQuat);
-	        this._mesh1.localRotation = this._tempQuat;
-
 	        this._tempVec3.copyFrom(this._mesh2.localPosition);
 
-	        this._tempVec3.y -= 0.05 * dy;
+	        this._tempVec3.z += 0.05 * dy;
 	        this._tempVec3.x += 0.05 * dx;
 	        this._mesh2.localPosition = this._tempVec3;
 	      }.bind(this));
@@ -958,54 +901,104 @@ var main = (function () {
 	  }, {
 	    key: "createWorld",
 	    value: function createWorld() {
-	      this._material1 = new mini3d.MatBasicLight();
-	      this._material2 = new mini3d.MatBasicLight();
-	      this._materialSolidColor = new mini3d.MatSolidColor();
-	      this._scene = new mini3d.Scene();
-	      var planeMesh = mini3d.Plane.createMesh(10, 10, 10, 10, true);
-	      this._planeNode = this._scene.root.addMeshNode(planeMesh, this._materialSolidColor);
+	      // Load meshes
+	      var capusleData = mini3d.assetManager.getAsset(obj_file_capsule).data;
+	      var capusleMesh = mini3d.objFileLoader.load(capusleData, 1.0);
+	      var sphereData = mini3d.assetManager.getAsset(obj_file_sphere).data;
+	      var sphereMesh = mini3d.objFileLoader.load(sphereData, 1.0); // Create scene
 
-	      this._planeNode.localPosition.set(0, 0, 0);
+	      this._scene = new mini3d.Scene(); // Create a plane
 
-	      this._materialSolidColor.setColor([1.0, 1.0, 0.0]);
+	      var planeMesh = mini3d.Plane.createMesh(20, 20, 20, 20);
+	      var matPlane = new mini3d.MatBasicLight();
+	      matPlane.diffuse = [0.8, 0.8, 0.8];
+	      matPlane.specular = [0.8, 0.8, 0.8];
+	      this._planeNode = this._scene.root.addMeshNode(planeMesh, matPlane);
 
-	      var objFileString = mini3d.assetManager.getAsset(obj_file$1).data;
-	      var mesh = mini3d.objFileLoader.load(objFileString, 0.5); //let mesh = mini3d.Cube.createMesh();
+	      this._planeNode.localPosition.set(0, 0, 0); // Create an empty mesh root node
+
 
 	      var meshRoot = this._scene.root.addEmptyNode(); //meshRoot.localPosition.set(-1, 1, 1);
 	      //meshRoot.localScale.set(0.8, 1, 1);
-	      //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 90);
+	      //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 45);
+	      // Create mesh node 1
 
 
-	      var mesh1 = meshRoot.addMeshNode(mesh, this._material1);
-	      mesh1.localPosition.set(1, 0, 0);
-	      mesh1.localScale.set(0.5, 0.5, 0.5);
-	      this._mesh1 = mesh1;
-	      this._material1.diffuse = [1.0, 1.0, 1.0];
-	      this._material1.specular = [1.0, 1.0, 1.0];
+	      var material1 = new mini3d.MatBasicLight();
+	      material1.diffuse = [0.8, 0.8, 0.8];
+	      material1.specular = [0.8, 0.8, 0.8];
+	      this._mesh1 = meshRoot.addMeshNode(capusleMesh, material1);
 
-	      var mesh2 = this._scene.root.addMeshNode(mesh, this._material2);
+	      this._mesh1.localPosition.set(1, 1, 0); // Create mesh node 2
 
-	      mesh2.localPosition.set(-1, 1, 0);
-	      mesh2.localScale.set(0.3, 0.3, 0.3);
-	      this._mesh2 = mesh2;
-	      this._material2.diffuse = [1.0, 1.0, 1.0];
-	      this._material2.specular = [1.0, 1.0, 1.0];
 
-	      this._scene.root.addDirectionalLight([0.5, 0.5, 0.5]);
+	      var material2 = new mini3d.MatBasicLight();
+	      material2.diffuse = [0.8, 0.8, 0.8];
+	      material2.specular = [0.8, 0.8, 0.8];
+	      this._mesh2 = meshRoot.addMeshNode(capusleMesh, material2);
 
-	      var pointLight = this._scene.root.addPointLight([0, 0.5, 0], 10);
+	      this._mesh2.localPosition.set(-1, 1, 0);
 
-	      pointLight.localPosition.set(0, 10, 0);
-	      this._pointLight1 = pointLight;
-	      pointLight = this._scene.root.addPointLight([0.5, 0, 0], 10);
-	      pointLight.localPosition.set(10, 10, 0);
-	      this._pointLight2 = pointLight;
-	      this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 100);
+	      this._mesh2.localScale.set(1, 1, 1); // Add a directional light node to scene
 
-	      this._cameraNode.localPosition.set(0, 3, 10);
+
+	      this._scene.root.addDirectionalLight([0.3, 0.3, 0.3]); // Add point light 1
+
+
+	      var lightColor = [0, 0.2, 0];
+
+	      var pointLight = this._scene.root.addPointLight(lightColor, 10);
+
+	      pointLight.localPosition.set(-5, 6, 0);
+	      var lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.3, 0.9, 0.3])); //点光源身上放一个小球以显示他的位置   
+
+	      lightball.localScale.set(0.5, 0.5, 0.5);
+	      this._pointLight1 = pointLight; // Add point light 2
+
+	      lightColor = [0.2, 0, 0];
+	      pointLight = this._scene.root.addPointLight(lightColor, 10);
+	      pointLight.localPosition.set(5, 6, 0);
+	      lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.9, 0.3, 0.3]));
+	      lightball.localScale.set(0.5, 0.5, 0.5);
+	      this._pointLight2 = pointLight; // Add a perspective camera
+
+	      this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 1000);
+
+	      this._cameraNode.localPosition.set(0, 10, 10);
 
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 0, 0));
+
+	      this._cameraNode.camera.clearColor = [0.2, 0.5, 0.5];
+	    }
+	  }, {
+	    key: "onUpdate",
+	    value: function onUpdate(dt) {
+	      if (this._scene) {
+	        this._time += dt;
+
+	        this._scene.update(); //mesh2自动旋转
+
+
+	        this._mesh1.lookAt(this._mesh2.worldPosition, mini3d.Vector3.Up, 0.1); //灯光做圆周运动
+
+
+	        var cosv = Math.cos(this._time / 1000);
+	        var sinv = Math.sin(this._time / 1000);
+	        var radius = 5;
+	        this._pointLight1.localPosition.x = radius * cosv * cosv;
+	        this._pointLight1.localPosition.z = radius * sinv * cosv;
+	        this._pointLight1.localPosition.y = 1 + radius * (0.5 + 0.5 * sinv);
+
+	        this._pointLight1.setTransformDirty();
+
+	        this._pointLight2.localPosition.x = -radius * cosv * cosv;
+	        this._pointLight2.localPosition.z = -radius * sinv * cosv;
+	        this._pointLight2.localPosition.y = 1 + radius * (0.5 + 0.5 * sinv);
+
+	        this._pointLight2.setTransformDirty();
+
+	        this._scene.render();
+	      }
 	    }
 	  }]);
 

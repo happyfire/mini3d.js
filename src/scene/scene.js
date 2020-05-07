@@ -33,6 +33,7 @@ class Scene{
     onRemoveNode(node){
         let camera = node.getComponent(SystemComponents.Camera);
         if(camera!=null){
+            node.camera = null;
             let idx = this.cameras.indexOf(camera);
             if(idx>=0){
                 this.cameras.splice(idx, 1);
@@ -42,6 +43,7 @@ class Scene{
         
         let light = node.getComponent(SystemComponents.Light);
         if(light!=null){
+            node.light = null;
             let idx = this.lights.indexOf(light);
             if(idx>=0){
                 this.lights.splice(idx, 1);

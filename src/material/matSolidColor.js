@@ -28,7 +28,7 @@ void main(){
 let g_shader = null;
 
 class MatSolidColor extends Material{
-    constructor(){
+    constructor(color=null){
         super();
 
         if(g_shader==null){
@@ -40,7 +40,11 @@ class MatSolidColor extends Material{
         this.addRenderPass(g_shader);
 
         //default uniforms
-        this.color = [1.0, 1.0, 1.0];            
+        if(color){
+            this.color = color;
+        } else {
+            this.color = [1.0, 1.0, 1.0];
+        }
     }
 
     //Override
