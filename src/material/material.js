@@ -1,4 +1,4 @@
-import { RenderPass } from "./renderPass";
+import { RenderPass, LightMode } from "./renderPass";
 import { Shader } from "../core/shader";
 
 let SystemUniforms = {
@@ -19,8 +19,8 @@ class Material{
         this.useLight = false;
     }
 
-    addRenderPass(shader){
-        let pass = new RenderPass();
+    addRenderPass(shader, lightMode=LightMode.None){
+        let pass = new RenderPass(lightMode);
         pass.shader = shader;
         pass.index = this.renderPasses.length;
         this.renderPasses.push(pass);
@@ -36,7 +36,9 @@ class Material{
     setSysUniformValues(pass, context){
         let systemUniforms = this.systemUniforms;
         for(let sysu of systemUniforms){ 
-            pass.shader.setUniform(sysu, context[sysu]);
+            if(pass.shader.hasUniform(sysu)){ //pass不一定使用材质所有的uniform，所以要判断一下
+                pass.shader.setUniform(sysu, context[sysu]);
+            }            
         }                
     }
 
@@ -46,13 +48,11 @@ class Material{
 
     }
 
-    render(mesh, context){
-        for(let pass of this.renderPasses){            
-            pass.shader.use();
-            this.setSysUniformValues(pass, context);
-            this.setCustomUniformValues(pass);
-            mesh.render(pass.shader);
-        }
+    renderPass(mesh, context, pass){
+        pass.shader.use();
+        this.setSysUniformValues(pass, context);
+        this.setCustomUniformValues(pass);
+        mesh.render(pass.shader);
     }
 
     static createShader(vs, fs, attributesMap){

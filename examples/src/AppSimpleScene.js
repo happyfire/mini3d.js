@@ -68,7 +68,7 @@ class AppSimpleScene {
 
         // Create a plane
         let planeMesh = mini3d.Plane.createMesh(20, 20, 20, 20);
-        let matPlane = new mini3d.MatBasicLight();
+        let matPlane = new mini3d.MatVertexLight();
         matPlane.mainTexture = mini3d.textureManager.getTexture(plane_main_texture);
         matPlane.diffuse = [0.8, 0.8, 0.8];
         matPlane.specular = [0.8, 0.8, 0.8];
@@ -82,16 +82,17 @@ class AppSimpleScene {
         //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 45);
 
         // Create mesh node 1
-        let material1 = new mini3d.MatBasicLight();
+        let material1 = new mini3d.MatVertexLight();
         material1.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
         material1.diffuse = [0.8, 0.8, 0.8];
         material1.specular = [0.8, 0.8, 0.8];
+        material1.colorTint = [2.0, 2.0, 2.0, 0.0];
 
         this._mesh1 = meshRoot.addMeshNode(capusleMesh, material1);
         this._mesh1.localPosition.set(1, 1, 0);        
         
         // Create mesh node 2
-        let material2 = new mini3d.MatBasicLight();
+        let material2 = new mini3d.MatVertexLight();
         material2.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
         material2.diffuse = [0.8, 0.8, 0.8];
         material2.specular = [0.8, 0.8, 0.8];

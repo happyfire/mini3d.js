@@ -1794,6 +1794,10 @@ var mini3d = (function (exports) {
             console.log('uniforms',this._uniforms);
         }
 
+        hasUniform(name){
+            return this._uniforms[name]!=null;
+        }
+
         setUniform(name, value){
             let info = this._uniforms[name];
             if(!info){
@@ -2724,10 +2728,18 @@ var mini3d = (function (exports) {
         Light:'light'
     };
 
+    let LightMode = {
+        None: 0,
+        ForwardBase: 1,
+        ForwardAdd: 2,
+        ShadowCaster: 3
+    };
+
     class RenderPass {
-        constructor(){
+        constructor(lightMode){
             this.index = 0;
             this._shader = null;
+            this._lightMode = lightMode;
         }
 
         set shader(v){
@@ -2738,7 +2750,9 @@ var mini3d = (function (exports) {
             return this._shader;
         }
 
-        
+        get lightMode(){
+            return this._lightMode;
+        }
 
     }
 
@@ -2760,8 +2774,8 @@ var mini3d = (function (exports) {
             this.useLight = false;
         }
 
-        addRenderPass(shader){
-            let pass = new RenderPass();
+        addRenderPass(shader, lightMode=LightMode.None){
+            let pass = new RenderPass(lightMode);
             pass.shader = shader;
             pass.index = this.renderPasses.length;
             this.renderPasses.push(pass);
@@ -2777,7 +2791,9 @@ var mini3d = (function (exports) {
         setSysUniformValues(pass, context){
             let systemUniforms = this.systemUniforms;
             for(let sysu of systemUniforms){ 
-                pass.shader.setUniform(sysu, context[sysu]);
+                if(pass.shader.hasUniform(sysu)){ //pass不一定使用材质所有的uniform，所以要判断一下
+                    pass.shader.setUniform(sysu, context[sysu]);
+                }            
             }                
         }
 
@@ -2787,13 +2803,11 @@ var mini3d = (function (exports) {
 
         }
 
-        render(mesh, context){
-            for(let pass of this.renderPasses){            
-                pass.shader.use();
-                this.setSysUniformValues(pass, context);
-                this.setCustomUniformValues(pass);
-                mesh.render(pass.shader);
-            }
+        renderPass(mesh, context, pass){
+            pass.shader.use();
+            this.setSysUniformValues(pass, context);
+            this.setCustomUniformValues(pass);
+            mesh.render(pass.shader);
         }
 
         static createShader(vs, fs, attributesMap){
@@ -2895,41 +2909,62 @@ var mini3d = (function (exports) {
 
                 }
             }
-           
-            if(this.material.useLight){
-                let idx = 0;
-                for(let light of lights){                
-                    if(light.type == LightType.Directional){
-                        uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
-                    } else {
-                        let pos =  light.node.worldPosition;
-                        uniformContext[SystemUniforms.WorldLightPos] = [pos.x, pos.y, pos.z, 1.0];//TODO:点光源在shader中如何处理？
-                    }
-                    
-                    uniformContext[SystemUniforms.LightColor] = light.color;
 
-                    if(idx>0){
-                        //TODO:临时解决方案，为了能让多个灯光pass混合
-                        exports.gl.enable(exports.gl.BLEND);
-                        exports.gl.blendFunc(exports.gl.ONE, exports.gl.ONE);
-                        exports.gl.enable(exports.gl.POLYGON_OFFSET_FILL);
-                        exports.gl.polygonOffset(0.0, -1.0*idx);
-                    }
-
-                    this.material.render(this.mesh, uniformContext);                
-
-                    idx++;
+            //TODO:灯光规则，选出最亮的平行光为主光（传入forwardbase pass)，选择 N 个光为逐像素光（传入forwardadd pass)，其他的光为逐顶点光（传入forwardbase pass)
+            let mainLight = null;
+            let pixelLights = [];
+            for(let light of lights){                
+                if(mainLight==null && light.type == LightType.Directional){
+                    mainLight = light;
+                    break;
+                }            
+            }    
+            for(let light of lights){
+                if(light != mainLight){
+                    pixelLights.push(light);
                 }
+            }    
 
-                exports.gl.disable(exports.gl.BLEND);
-                exports.gl.disable(exports.gl.POLYGON_OFFSET_FILL);
 
-            } else {
-                this.material.render(this.mesh, uniformContext);
-            }
+            //逐pass渲染，对于 ForwardAdd pass 会渲染多次叠加效果
+            for(let pass of this.material.renderPasses){            
+                if(pass.lightMode == LightMode.ForwardBase && mainLight!=null){
 
-            
-            
+                    uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
+                    uniformContext[SystemUniforms.LightColor] = mainLight.color;
+                    this.material.renderPass(this.mesh, uniformContext, pass);
+
+                } else if(pass.lightMode == LightMode.ForwardAdd){
+                    let idx = 1;
+                    for(let light of pixelLights){
+                        if(light.type == LightType.Directional){
+                            uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
+                        } else {
+                            let pos =  light.node.worldPosition;
+                            uniformContext[SystemUniforms.WorldLightPos] = [pos.x, pos.y, pos.z, 1.0];
+                        }
+                        
+                        uniformContext[SystemUniforms.LightColor] = light.color;
+                        
+                        //TODO:临时解决方案，为了能让多个灯光pass混合
+                        if(idx==1){
+                            exports.gl.enable(exports.gl.BLEND);
+                            exports.gl.blendFunc(exports.gl.ONE, exports.gl.ONE);
+                            exports.gl.enable(exports.gl.POLYGON_OFFSET_FILL);
+                        }
+                        exports.gl.polygonOffset(0.0, -1.0*idx);         
+                        this.material.renderPass(this.mesh, uniformContext, pass);              
+                        idx++;
+                    }
+
+                    exports.gl.disable(exports.gl.BLEND);
+                    exports.gl.disable(exports.gl.POLYGON_OFFSET_FILL);
+
+                } else if(pass.lightMode == LightMode.ShadowCaster); else {
+                    //非光照pass
+                    this.material.renderPass(this.mesh, uniformContext, pass); 
+                }
+            }                               
         }
 
     }
@@ -3804,7 +3839,9 @@ var mini3d = (function (exports) {
         }
     }
 
-    let vs = `
+    //逐顶点光照材质，支持 diffuse 贴图
+
+    let vs_forwardbase = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec2 a_Texcoord;
@@ -3832,9 +3869,7 @@ void main(){
     
     vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
     vec3 worldLightDir;
-    float atten = 1.0;
-
-    vec3 ambient = vec3(0.0);
+    float atten = 1.0;    
 
     if(u_worldLightPos.w==1.0){ //点光源
         vec3 lightver = u_worldLightPos.xyz-worldPos.xyz;
@@ -3844,7 +3879,6 @@ void main(){
         atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
     } else {
         worldLightDir = normalize(u_worldLightPos.xyz);
-        ambient = u_ambient; //只有平行光加ambient,TODO:还是得把pass拆开
     }
     
     vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
@@ -3853,39 +3887,119 @@ void main(){
     vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
     vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
-    v_color = ambient + (diffuse + specular)*atten;    
+    v_color = u_ambient + (diffuse + specular)*atten;    
     v_texcoord = a_Texcoord;
 }
 
 `;
 
-    let fs = `
+    let fs_forwardbase = `
 #ifdef GL_ES
 precision mediump float;
 #endif
 
 uniform sampler2D u_texMain;
+uniform vec4 u_colorTint;
+
+varying vec3 v_color;
+varying vec2 v_texcoord;
+
+
+void main(){
+    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint.rgb;
+    gl_FragColor = vec4(v_color * albedo, 1.0);
+}
+
+`;
+
+
+    let vs_forwardadd = `
+attribute vec4 a_Position;
+attribute vec3 a_Normal;
+attribute vec2 a_Texcoord;
+    
+uniform mat4 u_mvpMatrix;
+uniform mat4 u_world2Object;
+uniform mat4 u_object2World;
+
+uniform vec3 u_worldCameraPos; // world space camera position
+uniform vec3 u_LightColor; // Light color
+uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
+
+uniform vec3 u_diffuse; // diffuse color
+uniform vec3 u_specular; // specular;
+uniform float u_gloss; //gloss
 
 varying vec3 v_color;
 varying vec2 v_texcoord;
 
 void main(){
-    vec4 tex = texture2D(u_texMain, v_texcoord);
-    gl_FragColor = tex * vec4(v_color,1.0);
+    gl_Position = u_mvpMatrix * a_Position;   
+    
+    vec4 worldPos = u_object2World*a_Position;
+    
+    vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
+    vec3 worldLightDir;
+    float atten = 1.0;
+
+    if(u_worldLightPos.w==1.0){ //点光源
+        vec3 lightver = u_worldLightPos.xyz-worldPos.xyz;
+        float dis = length(lightver);
+        worldLightDir = normalize(lightver);
+        vec3 a = vec3(0.01);
+        atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
+    } else {
+        worldLightDir = normalize(u_worldLightPos.xyz);
+    }
+    
+    vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
+    
+    vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
+    vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
+    vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
+
+    v_color = (diffuse + specular)*atten;    
+    v_texcoord = a_Texcoord;
 }
 
 `;
 
-    let g_shader = null;
+    let fs_forwardadd = `
+#ifdef GL_ES
+precision mediump float;
+#endif
 
-    class MatBasicLight extends Material{
+uniform sampler2D u_texMain;
+uniform vec4 u_colorTint;
+
+varying vec3 v_color;
+varying vec2 v_texcoord;
+
+void main(){
+    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint.rgb;
+    gl_FragColor = vec4(v_color * albedo, 1.0);  
+}
+
+`;
+
+    let g_shaderForwardBase = null;
+    let g_shaderForwardAdd = null;
+
+    class MatVertexLight extends Material{
         constructor(){
             super();
 
             this.useLight = true;
             
-            if(g_shader==null){
-                g_shader = Material.createShader(vs, fs, [
+            if(g_shaderForwardBase==null){
+                g_shaderForwardBase = Material.createShader(vs_forwardbase, fs_forwardbase, [
+                    {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
+                    {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
+                    {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
+                ]);
+            }
+            if(g_shaderForwardAdd==null){
+                g_shaderForwardAdd = Material.createShader(vs_forwardadd, fs_forwardadd, [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
@@ -3893,13 +4007,15 @@ void main(){
             }
             
 
-            this.addRenderPass(g_shader);                
+            this.addRenderPass(g_shaderForwardBase, LightMode.ForwardBase);  
+            this.addRenderPass(g_shaderForwardAdd, LightMode.ForwardAdd);                
 
             //default uniforms
             this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
             this._diffuse = [1.0, 1.0, 1.0];
             this._specular = [1.0, 1.0, 1.0];
-            this._gloss = 20;    
+            this._gloss = 20;  
+            this._colorTint = [1.0, 1.0, 1.0, 1.0];  
         }
 
         //Override
@@ -3917,6 +4033,7 @@ void main(){
             pass.shader.setUniform('u_diffuse', this._diffuse);
             pass.shader.setUniform('u_specular', this._specular);
             pass.shader.setUniform('u_gloss', this._gloss);
+            pass.shader.setUniform('u_colorTint', this._colorTint);
             this._mainTexture.bind();
             pass.shader.setUniform('u_texMain', 0);
         }
@@ -3933,12 +4050,16 @@ void main(){
             this._gloss = v;
         }
 
+        set colorTint(v){
+            this._colorTint = v;
+        }
+
         set mainTexture(v){
             this._mainTexture = v;
         }
     }
 
-    let vs$1 = `
+    let vs = `
 attribute vec4 a_Position;
 
 uniform mat4 u_mvpMatrix;
@@ -3949,7 +4070,7 @@ void main(){
 
 `;
 
-    let fs$1 = `
+    let fs = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -3962,19 +4083,19 @@ void main(){
 
 `;
 
-    let g_shader$1 = null;
+    let g_shader = null;
 
     class MatSolidColor extends Material{
         constructor(color=null){
             super();
 
-            if(g_shader$1==null){
-                g_shader$1 = Material.createShader(vs$1, fs$1, [
+            if(g_shader==null){
+                g_shader = Material.createShader(vs, fs, [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}               
                 ]);
             }
 
-            this.addRenderPass(g_shader$1);
+            this.addRenderPass(g_shader);
 
             //default uniforms
             if(color){
@@ -4007,8 +4128,8 @@ void main(){
     exports.IndexBuffer = IndexBuffer;
     exports.Light = Light;
     exports.LightType = LightType;
-    exports.MatBasicLight = MatBasicLight;
     exports.MatSolidColor = MatSolidColor;
+    exports.MatVertexLight = MatVertexLight;
     exports.Material = Material;
     exports.Matrix3 = Matrix3;
     exports.Matrix4 = Matrix4;

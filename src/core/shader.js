@@ -129,6 +129,10 @@ class Shader{
         console.log('uniforms',this._uniforms);
     }
 
+    hasUniform(name){
+        return this._uniforms[name]!=null;
+    }
+
     setUniform(name, value){
         let info = this._uniforms[name];
         if(!info){
