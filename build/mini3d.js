@@ -3872,7 +3872,9 @@ void main(){
         }
     }
 
-    //逐顶点光照材质，支持 diffuse 贴图
+    //逐顶点光照材质，支持 diffuse 贴图和color tint, 使用blinn-phong高光
+
+    //////////// forward base pass shader /////////////////////
 
     let vs_forwardbase = `
 attribute vec4 a_Position;
@@ -3887,13 +3889,14 @@ uniform vec3 u_worldCameraPos; // world space camera position
 uniform vec3 u_LightColor; // Light color
 uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
 
-uniform vec3 u_ambient; // scene ambient
 uniform vec3 u_specular; // specular;
 uniform float u_gloss; //gloss
 
 uniform vec4 u_texMain_ST; // Main texture tiling and offset
 
-varying vec3 v_color;
+varying vec3 v_diffuse;
+varying vec3 v_specular;
+varying float v_atten;
 varying vec2 v_texcoord;
 
 void main(){
@@ -3903,25 +3906,30 @@ void main(){
     
     vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
     vec3 worldLightDir;
-    float atten = 1.0;    
+    v_atten = 1.0;    
 
     if(u_worldLightPos.w==1.0){ //点光源
         vec3 lightver = u_worldLightPos.xyz-worldPos.xyz;
         float dis = length(lightver);
         worldLightDir = normalize(lightver);
         vec3 a = vec3(0.01);
-        atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
+        v_atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
     } else {
         worldLightDir = normalize(u_worldLightPos.xyz);
     }
     
-    vec3 diffuse = u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
+    v_diffuse = u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
-    vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
     vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
-    vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
-    v_color = u_ambient + (diffuse + specular)*atten;    
+#ifdef LIGHT_MODEL_PHONG
+    vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
+    v_specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);     
+#else    
+    vec3 halfDir = normalize(worldLightDir + viewDir);
+    v_specular = u_specular * u_LightColor * pow(max(0.0, dot(worldNormal,halfDir)), u_gloss);     
+#endif
+    
     v_texcoord = a_Texcoord.xy * u_texMain_ST.xy + u_texMain_ST.zw;
 }
 
@@ -3934,18 +3942,23 @@ precision mediump float;
 
 uniform sampler2D u_texMain;
 uniform vec3 u_colorTint;
+uniform vec3 u_ambient; // scene ambient
 
-varying vec3 v_color;
+varying vec3 v_diffuse;
+varying vec3 v_specular;
+varying float v_atten;
 varying vec2 v_texcoord;
 
 
-void main(){
+void main(){    
     vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint;
-    gl_FragColor = vec4(v_color * albedo, 1.0);
+    vec3 ambient = u_ambient * albedo;
+    vec3 diffuse = v_diffuse * albedo;
+    gl_FragColor = vec4(ambient + (diffuse + v_specular) * v_atten, 1.0);
 }
-
 `;
 
+    //////////// forward add pass shader /////////////////////
 
     let vs_forwardadd = `
 attribute vec4 a_Position;
@@ -3965,7 +3978,9 @@ uniform float u_gloss; //gloss
 
 uniform vec4 u_texMain_ST; // Main texture tiling and offset
 
-varying vec3 v_color;
+varying vec3 v_diffuse;
+varying vec3 v_specular;
+varying float v_atten;
 varying vec2 v_texcoord;
 
 void main(){
@@ -3975,25 +3990,30 @@ void main(){
     
     vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
     vec3 worldLightDir;
-    float atten = 1.0;
+    v_atten = 1.0;
 
     if(u_worldLightPos.w==1.0){ //点光源
         vec3 lightver = u_worldLightPos.xyz-worldPos.xyz;
         float dis = length(lightver);
         worldLightDir = normalize(lightver);
         vec3 a = vec3(0.01);
-        atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
+        v_atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
     } else {
         worldLightDir = normalize(u_worldLightPos.xyz);
     }
     
-    vec3 diffuse = u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
+    v_diffuse = u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
-    vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
     vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
-    vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
-    v_color = (diffuse + specular)*atten;    
+#ifdef LIGHT_MODEL_PHONG
+    vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
+    v_specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);     
+#else    
+    vec3 halfDir = normalize(worldLightDir + viewDir);
+    v_specular = u_specular * u_LightColor * pow(max(0.0, dot(worldNormal,halfDir)), u_gloss);     
+#endif
+    
     v_texcoord = a_Texcoord.xy * u_texMain_ST.xy + u_texMain_ST.zw;
 }
 
@@ -4007,12 +4027,16 @@ precision mediump float;
 uniform sampler2D u_texMain;
 uniform vec3 u_colorTint;
 
-varying vec3 v_color;
+varying vec3 v_diffuse;
+varying vec3 v_specular;
+varying float v_atten;
 varying vec2 v_texcoord;
+
 
 void main(){
     vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint;
-    gl_FragColor = vec4(v_color * albedo, 1.0);  
+    vec3 diffuse = v_diffuse * albedo;
+    gl_FragColor = vec4((diffuse + v_specular) * v_atten, 1.0); 
 }
 
 `;
