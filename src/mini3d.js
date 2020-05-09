@@ -26,5 +26,6 @@ export {Cube} from './geometry/cube';
 export {Plane} from './geometry/plane';
 export {Material} from './material/material';
 export {MatVertexLight} from './material/matVertexLight';
+export {MatPixelLight} from './material/matPixelLight';
 export {MatSolidColor} from './material/matSolidColor';
 

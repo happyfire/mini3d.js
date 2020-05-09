@@ -1,5 +1,3 @@
-import { Material } from "../../src/material/material";
-
 let obj_file_capsule = './models/capsule.obj';
 let obj_file_sphere = './models/sphere.obj';
 let obj_main_texture = './imgs/wall01_diffuse.png';
@@ -63,7 +61,7 @@ class AppSimpleScene {
 
         // Create a plane
         let planeMesh = mini3d.Plane.createMesh(20, 20, 20, 20);
-        let matPlane = new mini3d.MatVertexLight();
+        let matPlane = new mini3d.MatPixelLight();
         matPlane.mainTexture = mini3d.textureManager.getTexture(plane_main_texture);
         matPlane.mainTexture.setRepeat();
         matPlane.mainTextureST = [2,2,0,0];
@@ -78,7 +76,7 @@ class AppSimpleScene {
         //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 45);
 
         // Create mesh node 1
-        let material1 = new mini3d.MatVertexLight();
+        let material1 = new mini3d.MatPixelLight();
         material1.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
         material1.colorTint = [1.0, 1.0, 1.0];
         material1.specular = [0.8, 0.8, 0.8];
@@ -87,7 +85,7 @@ class AppSimpleScene {
         this._mesh1.localPosition.set(1, 1, 0);        
         
         // Create mesh node 2
-        let material2 = new mini3d.MatVertexLight();
+        let material2 = new mini3d.MatPixelLight();
         material2.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
         material2.colorTint = [1.0, 1.0, 1.0];
         material2.specular = [0.8, 0.8, 0.8];
