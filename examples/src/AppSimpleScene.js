@@ -30,9 +30,7 @@ class AppSimpleScene {
         if (this._scene) {
             this._scene.onScreenResize(width, height);
         }
-    }
-
-    
+    }    
 
     start() {
         this.createWorld();
@@ -48,9 +46,6 @@ class AppSimpleScene {
             this._mesh2.localPosition = this._tempVec3;
 
         }.bind(this));
-
-
-
     }
 
     createWorld() {
@@ -70,7 +65,8 @@ class AppSimpleScene {
         let planeMesh = mini3d.Plane.createMesh(20, 20, 20, 20);
         let matPlane = new mini3d.MatVertexLight();
         matPlane.mainTexture = mini3d.textureManager.getTexture(plane_main_texture);
-        matPlane.diffuse = [0.8, 0.8, 0.8];
+        matPlane.mainTexture.setRepeat();
+        matPlane.mainTextureST = [2,2,0,0];
         matPlane.specular = [0.8, 0.8, 0.8];
         this._planeNode = this._scene.root.addMeshNode(planeMesh, matPlane);
         this._planeNode.localPosition.set(0,0,0);       
@@ -84,9 +80,8 @@ class AppSimpleScene {
         // Create mesh node 1
         let material1 = new mini3d.MatVertexLight();
         material1.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
-        material1.diffuse = [0.8, 0.8, 0.8];
+        material1.colorTint = [1.0, 1.0, 1.0];
         material1.specular = [0.8, 0.8, 0.8];
-        material1.colorTint = [2.0, 2.0, 2.0, 0.0];
 
         this._mesh1 = meshRoot.addMeshNode(capusleMesh, material1);
         this._mesh1.localPosition.set(1, 1, 0);        
@@ -94,7 +89,7 @@ class AppSimpleScene {
         // Create mesh node 2
         let material2 = new mini3d.MatVertexLight();
         material2.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
-        material2.diffuse = [0.8, 0.8, 0.8];
+        material2.colorTint = [1.0, 1.0, 1.0];
         material2.specular = [0.8, 0.8, 0.8];
         material2.gloss = 20;
 

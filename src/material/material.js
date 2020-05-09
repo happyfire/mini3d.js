@@ -11,12 +11,26 @@ let SystemUniforms = {
     SceneAmbient:'u_ambient'
 }
 
+let vs_errorReplace = `
+attribute vec4 a_Position;
+uniform mat4 u_mvpMatrix;
+void main(){
+    gl_Position = u_mvpMatrix * a_Position;
+}
+`;
+
+let fs_errorReplace = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+void main(){
+    gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+}
+`;
+
 class Material{
     constructor(){          
         this.renderPasses = [];
-        this.matrixMvp = true;
-        this.matrixNormal = false;
-        this.useLight = false;
     }
 
     addRenderPass(shader, lightMode=LightMode.None){
@@ -59,8 +73,8 @@ class Material{
         let shader = new Shader();
         if (!shader.create(vs, fs)) {
             console.log("Failed to initialize shaders");
-            //TODO: set to a default shader
-            return null;
+            //Set to a default error replace shader
+            shader.create(vs_errorReplace, fs_errorReplace);            
         }
         shader.setAttributesMap(attributesMap);
         return shader;

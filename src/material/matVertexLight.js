@@ -3,6 +3,7 @@
 import { Material, SystemUniforms } from "./material";
 import { VertexSemantic } from "../core/vertexFormat";
 import { LightMode } from "./renderPass";
+import { gl } from "../core/gl";
 
 let vs_forwardbase = `
 attribute vec4 a_Position;
@@ -18,9 +19,10 @@ uniform vec3 u_LightColor; // Light color
 uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
 
 uniform vec3 u_ambient; // scene ambient
-uniform vec3 u_diffuse; // diffuse color
 uniform vec3 u_specular; // specular;
 uniform float u_gloss; //gloss
+
+uniform vec4 u_texMain_ST; // Main texture tiling and offset
 
 varying vec3 v_color;
 varying vec2 v_texcoord;
@@ -44,14 +46,14 @@ void main(){
         worldLightDir = normalize(u_worldLightPos.xyz);
     }
     
-    vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
+    vec3 diffuse = u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
     vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
     vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
     vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
     v_color = u_ambient + (diffuse + specular)*atten;    
-    v_texcoord = a_Texcoord;
+    v_texcoord = a_Texcoord.xy * u_texMain_ST.xy + u_texMain_ST.zw;
 }
 
 `;
@@ -62,14 +64,14 @@ precision mediump float;
 #endif
 
 uniform sampler2D u_texMain;
-uniform vec4 u_colorTint;
+uniform vec3 u_colorTint;
 
 varying vec3 v_color;
 varying vec2 v_texcoord;
 
 
 void main(){
-    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint.rgb;
+    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint;
     gl_FragColor = vec4(v_color * albedo, 1.0);
 }
 
@@ -89,9 +91,10 @@ uniform vec3 u_worldCameraPos; // world space camera position
 uniform vec3 u_LightColor; // Light color
 uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
 
-uniform vec3 u_diffuse; // diffuse color
 uniform vec3 u_specular; // specular;
 uniform float u_gloss; //gloss
+
+uniform vec4 u_texMain_ST; // Main texture tiling and offset
 
 varying vec3 v_color;
 varying vec2 v_texcoord;
@@ -115,14 +118,14 @@ void main(){
         worldLightDir = normalize(u_worldLightPos.xyz);
     }
     
-    vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
+    vec3 diffuse = u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
     vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
     vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
     vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
     v_color = (diffuse + specular)*atten;    
-    v_texcoord = a_Texcoord;
+    v_texcoord = a_Texcoord.xy * u_texMain_ST.xy + u_texMain_ST.zw;
 }
 
 `;
@@ -133,13 +136,13 @@ precision mediump float;
 #endif
 
 uniform sampler2D u_texMain;
-uniform vec4 u_colorTint;
+uniform vec3 u_colorTint;
 
 varying vec3 v_color;
 varying vec2 v_texcoord;
 
 void main(){
-    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint.rgb;
+    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint;
     gl_FragColor = vec4(v_color * albedo, 1.0);  
 }
 
@@ -151,8 +154,6 @@ let g_shaderForwardAdd = null;
 class MatVertexLight extends Material{
     constructor(){
         super();
-
-        this.useLight = true;
         
         if(g_shaderForwardBase==null){
             g_shaderForwardBase = Material.createShader(vs_forwardbase, fs_forwardbase, [
@@ -167,18 +168,17 @@ class MatVertexLight extends Material{
                 {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                 {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
             ]);
-        }
-        
+        }        
 
         this.addRenderPass(g_shaderForwardBase, LightMode.ForwardBase);  
         this.addRenderPass(g_shaderForwardAdd, LightMode.ForwardAdd);                
 
         //default uniforms
         this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
-        this._diffuse = [1.0, 1.0, 1.0];
+        this._mainTexture_ST = [1,1,0,0];
         this._specular = [1.0, 1.0, 1.0];
-        this._gloss = 20;  
-        this._colorTint = [1.0, 1.0, 1.0, 1.0];  
+        this._gloss = 20.0;  
+        this._colorTint = [1.0, 1.0, 1.0];  
     }
 
     //Override
@@ -192,17 +192,13 @@ class MatVertexLight extends Material{
     }
 
     //Override
-    setCustomUniformValues(pass){                   
-        pass.shader.setUniform('u_diffuse', this._diffuse);
-        pass.shader.setUniform('u_specular', this._specular);
-        pass.shader.setUniform('u_gloss', this._gloss);
-        pass.shader.setUniform('u_colorTint', this._colorTint);
+    setCustomUniformValues(pass){                           
+        pass.shader.setUniformSafe('u_specular', this._specular);
+        pass.shader.setUniformSafe('u_gloss', this._gloss);
+        pass.shader.setUniformSafe('u_colorTint', this._colorTint);
+        pass.shader.setUniformSafe('u_texMain_ST', this._mainTexture_ST);        
         this._mainTexture.bind();
-        pass.shader.setUniform('u_texMain', 0);
-    }
-
-    set diffuse(v){
-        this._diffuse = v;
+        pass.shader.setUniformSafe('u_texMain', 0);
     }
 
     set specular(v){
@@ -220,6 +216,16 @@ class MatVertexLight extends Material{
     set mainTexture(v){
         this._mainTexture = v;
     }
+
+    get mainTexture(){
+        return this._mainTexture;
+    }
+
+    set mainTextureST(v){
+        this._mainTexture_ST = v;
+    }
+
+
 }
 
 export { MatVertexLight };

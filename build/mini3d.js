@@ -1798,6 +1798,12 @@ var mini3d = (function (exports) {
             return this._uniforms[name]!=null;
         }
 
+        setUniformSafe(name, value){
+            if(this.hasUniform(name)){
+                this.setUniform(name, value);
+            }   
+        }
+
         setUniform(name, value){
             let info = this._uniforms[name];
             if(!info){
@@ -2176,8 +2182,8 @@ var mini3d = (function (exports) {
             
             // Set the texture parameters
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.LINEAR);
-            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_S, exports.gl.CLAMP_TO_EDGE);
-            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_T, exports.gl.CLAMP_TO_EDGE);
+            
+            this.setClamp();
             
             // Set the texture image data
             exports.gl.texImage2D(exports.gl.TEXTURE_2D, 0, exports.gl.RGB, exports.gl.RGB, exports.gl.UNSIGNED_BYTE, image);
@@ -2197,6 +2203,19 @@ var mini3d = (function (exports) {
 
         unbind(){
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
+        }
+
+        setRepeat()
+        {
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_S, exports.gl.REPEAT);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_T, exports.gl.REPEAT);
+        }
+
+        setClamp(){
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_S, exports.gl.CLAMP_TO_EDGE);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_T, exports.gl.CLAMP_TO_EDGE);
         }
     }
 
@@ -2766,12 +2785,26 @@ var mini3d = (function (exports) {
         SceneAmbient:'u_ambient'
     };
 
+    let vs_errorReplace = `
+attribute vec4 a_Position;
+uniform mat4 u_mvpMatrix;
+void main(){
+    gl_Position = u_mvpMatrix * a_Position;
+}
+`;
+
+    let fs_errorReplace = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+void main(){
+    gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+}
+`;
+
     class Material{
         constructor(){          
             this.renderPasses = [];
-            this.matrixMvp = true;
-            this.matrixNormal = false;
-            this.useLight = false;
         }
 
         addRenderPass(shader, lightMode=LightMode.None){
@@ -2814,8 +2847,8 @@ var mini3d = (function (exports) {
             let shader = new Shader();
             if (!shader.create(vs, fs)) {
                 console.log("Failed to initialize shaders");
-                //TODO: set to a default shader
-                return null;
+                //Set to a default error replace shader
+                shader.create(vs_errorReplace, fs_errorReplace);            
             }
             shader.setAttributesMap(attributesMap);
             return shader;
@@ -3855,9 +3888,10 @@ uniform vec3 u_LightColor; // Light color
 uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
 
 uniform vec3 u_ambient; // scene ambient
-uniform vec3 u_diffuse; // diffuse color
 uniform vec3 u_specular; // specular;
 uniform float u_gloss; //gloss
+
+uniform vec4 u_texMain_ST; // Main texture tiling and offset
 
 varying vec3 v_color;
 varying vec2 v_texcoord;
@@ -3881,14 +3915,14 @@ void main(){
         worldLightDir = normalize(u_worldLightPos.xyz);
     }
     
-    vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
+    vec3 diffuse = u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
     vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
     vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
     vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
     v_color = u_ambient + (diffuse + specular)*atten;    
-    v_texcoord = a_Texcoord;
+    v_texcoord = a_Texcoord.xy * u_texMain_ST.xy + u_texMain_ST.zw;
 }
 
 `;
@@ -3899,14 +3933,14 @@ precision mediump float;
 #endif
 
 uniform sampler2D u_texMain;
-uniform vec4 u_colorTint;
+uniform vec3 u_colorTint;
 
 varying vec3 v_color;
 varying vec2 v_texcoord;
 
 
 void main(){
-    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint.rgb;
+    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint;
     gl_FragColor = vec4(v_color * albedo, 1.0);
 }
 
@@ -3926,9 +3960,10 @@ uniform vec3 u_worldCameraPos; // world space camera position
 uniform vec3 u_LightColor; // Light color
 uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
 
-uniform vec3 u_diffuse; // diffuse color
 uniform vec3 u_specular; // specular;
 uniform float u_gloss; //gloss
+
+uniform vec4 u_texMain_ST; // Main texture tiling and offset
 
 varying vec3 v_color;
 varying vec2 v_texcoord;
@@ -3952,14 +3987,14 @@ void main(){
         worldLightDir = normalize(u_worldLightPos.xyz);
     }
     
-    vec3 diffuse = u_diffuse * u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
+    vec3 diffuse = u_LightColor * max(0.0, dot(worldLightDir, worldNormal));
     
     vec3 reflectDir = normalize(reflect(-worldLightDir, worldNormal));
     vec3 viewDir = normalize(u_worldCameraPos - worldPos.xyz);
     vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(reflectDir,viewDir)), u_gloss);
 
     v_color = (diffuse + specular)*atten;    
-    v_texcoord = a_Texcoord;
+    v_texcoord = a_Texcoord.xy * u_texMain_ST.xy + u_texMain_ST.zw;
 }
 
 `;
@@ -3970,13 +4005,13 @@ precision mediump float;
 #endif
 
 uniform sampler2D u_texMain;
-uniform vec4 u_colorTint;
+uniform vec3 u_colorTint;
 
 varying vec3 v_color;
 varying vec2 v_texcoord;
 
 void main(){
-    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint.rgb;
+    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint;
     gl_FragColor = vec4(v_color * albedo, 1.0);  
 }
 
@@ -3988,8 +4023,6 @@ void main(){
     class MatVertexLight extends Material{
         constructor(){
             super();
-
-            this.useLight = true;
             
             if(g_shaderForwardBase==null){
                 g_shaderForwardBase = Material.createShader(vs_forwardbase, fs_forwardbase, [
@@ -4004,18 +4037,17 @@ void main(){
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
                 ]);
-            }
-            
+            }        
 
             this.addRenderPass(g_shaderForwardBase, LightMode.ForwardBase);  
             this.addRenderPass(g_shaderForwardAdd, LightMode.ForwardAdd);                
 
             //default uniforms
             this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
-            this._diffuse = [1.0, 1.0, 1.0];
+            this._mainTexture_ST = [1,1,0,0];
             this._specular = [1.0, 1.0, 1.0];
-            this._gloss = 20;  
-            this._colorTint = [1.0, 1.0, 1.0, 1.0];  
+            this._gloss = 20.0;  
+            this._colorTint = [1.0, 1.0, 1.0];  
         }
 
         //Override
@@ -4029,17 +4061,13 @@ void main(){
         }
 
         //Override
-        setCustomUniformValues(pass){                   
-            pass.shader.setUniform('u_diffuse', this._diffuse);
-            pass.shader.setUniform('u_specular', this._specular);
-            pass.shader.setUniform('u_gloss', this._gloss);
-            pass.shader.setUniform('u_colorTint', this._colorTint);
+        setCustomUniformValues(pass){                           
+            pass.shader.setUniformSafe('u_specular', this._specular);
+            pass.shader.setUniformSafe('u_gloss', this._gloss);
+            pass.shader.setUniformSafe('u_colorTint', this._colorTint);
+            pass.shader.setUniformSafe('u_texMain_ST', this._mainTexture_ST);        
             this._mainTexture.bind();
-            pass.shader.setUniform('u_texMain', 0);
-        }
-
-        set diffuse(v){
-            this._diffuse = v;
+            pass.shader.setUniformSafe('u_texMain', 0);
         }
 
         set specular(v){
@@ -4057,6 +4085,16 @@ void main(){
         set mainTexture(v){
             this._mainTexture = v;
         }
+
+        get mainTexture(){
+            return this._mainTexture;
+        }
+
+        set mainTextureST(v){
+            this._mainTexture_ST = v;
+        }
+
+
     }
 
     let vs = `

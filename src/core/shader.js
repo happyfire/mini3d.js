@@ -133,6 +133,12 @@ class Shader{
         return this._uniforms[name]!=null;
     }
 
+    setUniformSafe(name, value){
+        if(this.hasUniform(name)){
+            this.setUniform(name, value);
+        }   
+    }
+
     setUniform(name, value){
         let info = this._uniforms[name];
         if(!info){
