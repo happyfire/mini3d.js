@@ -50,7 +50,7 @@ class AppSimpleScene {
 
         // Load meshes
         let capusleData = mini3d.assetManager.getAsset(obj_file_capsule).data;
-        let capusleMesh = mini3d.objFileLoader.load(capusleData, 1.0);
+        let capusleMesh = mini3d.objFileLoader.load(capusleData, 1.0, true);
 
         let sphereData = mini3d.assetManager.getAsset(obj_file_sphere).data;
         let sphereMesh = mini3d.objFileLoader.load(sphereData, 1.0);

@@ -199,9 +199,12 @@ class MatPixelLight extends Material{
         pass.shader.setUniformSafe('u_specular', this._specular);
         pass.shader.setUniformSafe('u_gloss', this._gloss);
         pass.shader.setUniformSafe('u_colorTint', this._colorTint);
-        pass.shader.setUniformSafe('u_texMain_ST', this._mainTexture_ST);        
-        this._mainTexture.bind();
-        pass.shader.setUniformSafe('u_texMain', 0);
+        pass.shader.setUniformSafe('u_texMain_ST', this._mainTexture_ST);      
+        if(this._mainTexture){
+            this._mainTexture.bind();
+            pass.shader.setUniformSafe('u_texMain', 0);
+        }  
+        
     }
 
     set specular(v){

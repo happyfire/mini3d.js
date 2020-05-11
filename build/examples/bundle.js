@@ -905,7 +905,7 @@ var main = (function () {
 	    value: function createWorld() {
 	      // Load meshes
 	      var capusleData = mini3d.assetManager.getAsset(obj_file_capsule).data;
-	      var capusleMesh = mini3d.objFileLoader.load(capusleData, 1.0);
+	      var capusleMesh = mini3d.objFileLoader.load(capusleData, 1.0, true);
 	      var sphereData = mini3d.assetManager.getAsset(obj_file_sphere).data;
 	      var sphereMesh = mini3d.objFileLoader.load(sphereData, 1.0); // Create scene
 
