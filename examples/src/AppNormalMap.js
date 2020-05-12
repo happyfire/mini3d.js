@@ -1,12 +1,14 @@
 let obj_file_capsule = './models/capsule.obj';
 let obj_file_sphere = './models/sphere.obj';
 let obj_main_texture = './imgs/wall01_diffuse.jpg';
+let obj_normal_map = './imgs/wall01_normal.jpg';
 let plane_main_texture = './imgs/wall02_diffuse.png';
 
-class AppSimpleScene {
+class AppNormalMap {
     constructor() {             
-        this._time = 0;        
-        this._rotDegree = 0;
+        this._time = 0;     
+        this._rotX = 0;
+        this._rotY = 0;           
         this._tempQuat = new mini3d.Quaternion();
         this._tempVec3 = new mini3d.Vector3();
     }
@@ -16,6 +18,7 @@ class AppSimpleScene {
             [obj_file_capsule, mini3d.AssetType.Text],
             [obj_file_sphere, mini3d.AssetType.Text],
             [obj_main_texture, mini3d.AssetType.Image],
+            [obj_normal_map, mini3d.AssetType.Image],
             [plane_main_texture, mini3d.AssetType.Image]
         ]
 
@@ -38,10 +41,25 @@ class AppSimpleScene {
             let dx = data.dx;
             let dy = data.dy;
 
-            this._tempVec3.copyFrom(this._mesh2.localPosition);
-            this._tempVec3.z += dy * factor;
-            this._tempVec3.x += dx * factor;
-            this._mesh2.localPosition = this._tempVec3;
+            // this._tempVec3.copyFrom(this._mesh2.localPosition);
+            // this._tempVec3.z += dy * factor;
+            // this._tempVec3.x += dx * factor;
+            // this._mesh2.localPosition = this._tempVec3;
+
+            let clampAngle = function (angle, min, max) {
+                if (angle < -360) angle += 360;
+                if (angle > 360) angle -= 360;
+                return Math.max(Math.min(angle, max), min);
+            }
+            this._rotX = clampAngle(this._rotX + dy, -90.0, 90.0);
+            this._rotY += dx;
+
+            //先旋转qy,再旋转qx
+            let qx = mini3d.Quaternion.axisAngle(mini3d.Vector3.Right, this._rotX);
+            let qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, this._rotY);
+            mini3d.Quaternion.multiply(qx, qy, this._tempQuat);
+            this._mesh1.localRotation = this._tempQuat;
+            this._mesh2.localRotation = this._tempQuat;
 
         }.bind(this));
     }
@@ -76,8 +94,9 @@ class AppSimpleScene {
         //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 45);
 
         // Create mesh node 1
-        let material1 = new mini3d.MatPixelLight();
+        let material1 = new mini3d.MatNormalMap();
         material1.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
+        material1.normalMap = mini3d.textureManager.getTexture(obj_normal_map);
         material1.colorTint = [1.0, 1.0, 1.0];
         material1.specular = [0.8, 0.8, 0.8];
 
@@ -85,8 +104,9 @@ class AppSimpleScene {
         this._mesh1.localPosition.set(1, 1, 0);        
         
         // Create mesh node 2
-        let material2 = new mini3d.MatPixelLight();
+        let material2 = new mini3d.MatNormalMap();
         material2.mainTexture = mini3d.textureManager.getTexture(obj_main_texture);
+        material2.normalMap = mini3d.textureManager.getTexture(obj_normal_map);
         material2.colorTint = [1.0, 1.0, 1.0];
         material2.specular = [0.8, 0.8, 0.8];
         material2.gloss = 20;
@@ -96,7 +116,7 @@ class AppSimpleScene {
         this._mesh2.localScale.set(1, 1, 1);
         
         // Add a directional light node to scene
-        this._scene.root.addDirectionalLight([0.5,0.5,0.5]);
+        this._scene.root.addDirectionalLight([0.8,0.8,0.8]);
 
         // Add point light 1
         let lightColor = [0,0.1,0];
@@ -116,8 +136,8 @@ class AppSimpleScene {
         
         // Add a perspective camera
         this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 1000);        
-        this._cameraNode.localPosition.set(0, 10, 10);
-        this._cameraNode.lookAt(new mini3d.Vector3(0, 0, 0));
+        this._cameraNode.localPosition.set(0, 1, 5);
+        this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
         this._cameraNode.camera.clearColor = [0.2,0.5,0.5];
 
     }
@@ -125,19 +145,7 @@ class AppSimpleScene {
     onUpdate(dt) {
         if (this._scene) {
             this._time += dt;
-            this._scene.update();
-
-            //mesh2自动旋转
-            if(true){
-                this._mesh2.localRotation.setFromEulerAngles(new mini3d.Vector3(this._rotDegree, this._rotDegree, this._rotDegree));
-                this._mesh2.localPosition.y = (0.5+0.5*Math.cos(mini3d.math.degToRad(this._rotDegree)))*5;
-                this._mesh2.setTransformDirty();
-                this._rotDegree += dt*100/1000;
-                this._rotDegree %= 360;                       
-            }
-
-            //mesh1看向mesh2
-            this._mesh1.lookAt(this._mesh2.worldPosition, mini3d.Vector3.Up, 0.1);                    
+            this._scene.update();             
            
             //灯光做圆周运动
             let cosv = Math.cos(this._time/1000);
@@ -160,4 +168,4 @@ class AppSimpleScene {
     }
 }
 
-export default AppSimpleScene;
+export default AppNormalMap;

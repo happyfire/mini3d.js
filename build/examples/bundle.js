@@ -854,7 +854,7 @@ var main = (function () {
 
 	var obj_file_capsule = './models/capsule.obj';
 	var obj_file_sphere = './models/sphere.obj';
-	var obj_main_texture = './imgs/wall01_diffuse.png';
+	var obj_main_texture = './imgs/wall01_diffuse.jpg';
 	var plane_main_texture = './imgs/wall02_diffuse.png';
 
 	var AppSimpleScene =
@@ -1024,6 +1024,178 @@ var main = (function () {
 	  return AppSimpleScene;
 	}();
 
+	var obj_file_capsule$1 = './models/capsule.obj';
+	var obj_file_sphere$1 = './models/sphere.obj';
+	var obj_main_texture$1 = './imgs/wall01_diffuse.jpg';
+	var obj_normal_map = './imgs/wall01_normal.jpg';
+	var plane_main_texture$1 = './imgs/wall02_diffuse.png';
+
+	var AppNormalMap =
+	/*#__PURE__*/
+	function () {
+	  function AppNormalMap() {
+	    _classCallCheck(this, AppNormalMap);
+
+	    this._time = 0;
+	    this._rotX = 0;
+	    this._rotY = 0;
+	    this._tempQuat = new mini3d.Quaternion();
+	    this._tempVec3 = new mini3d.Vector3();
+	  }
+
+	  _createClass(AppNormalMap, [{
+	    key: "onInit",
+	    value: function onInit() {
+	      var assetList = [[obj_file_capsule$1, mini3d.AssetType.Text], [obj_file_sphere$1, mini3d.AssetType.Text], [obj_main_texture$1, mini3d.AssetType.Image], [obj_normal_map, mini3d.AssetType.Image], [plane_main_texture$1, mini3d.AssetType.Image]];
+	      mini3d.assetManager.loadAssetList(assetList, function () {
+	        this.start();
+	      }.bind(this));
+	    }
+	  }, {
+	    key: "onResize",
+	    value: function onResize(width, height) {
+	      if (this._scene) {
+	        this._scene.onScreenResize(width, height);
+	      }
+	    }
+	  }, {
+	    key: "start",
+	    value: function start() {
+	      this.createWorld();
+	      mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
+	        var dx = data.dx;
+	        var dy = data.dy; // this._tempVec3.copyFrom(this._mesh2.localPosition);
+	        // this._tempVec3.z += dy * factor;
+	        // this._tempVec3.x += dx * factor;
+	        // this._mesh2.localPosition = this._tempVec3;
+
+	        var clampAngle = function clampAngle(angle, min, max) {
+	          if (angle < -360) angle += 360;
+	          if (angle > 360) angle -= 360;
+	          return Math.max(Math.min(angle, max), min);
+	        };
+
+	        this._rotX = clampAngle(this._rotX + dy, -90.0, 90.0);
+	        this._rotY += dx; //先旋转qy,再旋转qx
+
+	        var qx = mini3d.Quaternion.axisAngle(mini3d.Vector3.Right, this._rotX);
+	        var qy = mini3d.Quaternion.axisAngle(mini3d.Vector3.Up, this._rotY);
+	        mini3d.Quaternion.multiply(qx, qy, this._tempQuat);
+	        this._mesh1.localRotation = this._tempQuat;
+	        this._mesh2.localRotation = this._tempQuat;
+	      }.bind(this));
+	    }
+	  }, {
+	    key: "createWorld",
+	    value: function createWorld() {
+	      // Load meshes
+	      var capusleData = mini3d.assetManager.getAsset(obj_file_capsule$1).data;
+	      var capusleMesh = mini3d.objFileLoader.load(capusleData, 1.0, true);
+	      var sphereData = mini3d.assetManager.getAsset(obj_file_sphere$1).data;
+	      var sphereMesh = mini3d.objFileLoader.load(sphereData, 1.0); // Create scene
+
+	      this._scene = new mini3d.Scene(); // Create a plane
+
+	      var planeMesh = mini3d.Plane.createMesh(20, 20, 20, 20);
+	      var matPlane = new mini3d.MatPixelLight();
+	      matPlane.mainTexture = mini3d.textureManager.getTexture(plane_main_texture$1);
+	      matPlane.mainTexture.setRepeat();
+	      matPlane.mainTextureST = [2, 2, 0, 0];
+	      matPlane.specular = [0.8, 0.8, 0.8];
+	      this._planeNode = this._scene.root.addMeshNode(planeMesh, matPlane);
+
+	      this._planeNode.localPosition.set(0, 0, 0); // Create an empty mesh root node
+
+
+	      var meshRoot = this._scene.root.addEmptyNode(); //meshRoot.localPosition.set(-1, 1, 1);
+	      //meshRoot.localScale.set(0.8, 1, 1);
+	      //meshRoot.localRotation.setFromAxisAngle(new mini3d.Vector3(0, 1, 0), 45);
+	      // Create mesh node 1
+
+
+	      var material1 = new mini3d.MatNormalMap();
+	      material1.mainTexture = mini3d.textureManager.getTexture(obj_main_texture$1);
+	      material1.normalMap = mini3d.textureManager.getTexture(obj_normal_map);
+	      material1.colorTint = [1.0, 1.0, 1.0];
+	      material1.specular = [0.8, 0.8, 0.8];
+	      this._mesh1 = meshRoot.addMeshNode(capusleMesh, material1);
+
+	      this._mesh1.localPosition.set(1, 1, 0); // Create mesh node 2
+
+
+	      var material2 = new mini3d.MatNormalMap();
+	      material2.mainTexture = mini3d.textureManager.getTexture(obj_main_texture$1);
+	      material2.normalMap = mini3d.textureManager.getTexture(obj_normal_map);
+	      material2.colorTint = [1.0, 1.0, 1.0];
+	      material2.specular = [0.8, 0.8, 0.8];
+	      material2.gloss = 20;
+	      this._mesh2 = meshRoot.addMeshNode(capusleMesh, material2);
+
+	      this._mesh2.localPosition.set(-1, 1, 0);
+
+	      this._mesh2.localScale.set(1, 1, 1); // Add a directional light node to scene
+
+
+	      this._scene.root.addDirectionalLight([0.8, 0.8, 0.8]); // Add point light 1
+
+
+	      var lightColor = [0, 0.1, 0];
+
+	      var pointLight = this._scene.root.addPointLight(lightColor, 10);
+
+	      pointLight.localPosition.set(-5, 6, 0);
+	      var lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.3, 0.9, 0.3])); //点光源身上放一个小球以显示他的位置   
+
+	      lightball.localScale.set(0.5, 0.5, 0.5);
+	      this._pointLight1 = pointLight; // Add point light 2
+
+	      lightColor = [0.1, 0, 0];
+	      pointLight = this._scene.root.addPointLight(lightColor, 10);
+	      pointLight.localPosition.set(5, 6, 0);
+	      lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.9, 0.3, 0.3]));
+	      lightball.localScale.set(0.5, 0.5, 0.5);
+	      this._pointLight2 = pointLight; // Add a perspective camera
+
+	      this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 1000);
+
+	      this._cameraNode.localPosition.set(0, 1, 5);
+
+	      this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
+
+	      this._cameraNode.camera.clearColor = [0.2, 0.5, 0.5];
+	    }
+	  }, {
+	    key: "onUpdate",
+	    value: function onUpdate(dt) {
+	      if (this._scene) {
+	        this._time += dt;
+
+	        this._scene.update(); //灯光做圆周运动
+
+
+	        var cosv = Math.cos(this._time / 1000);
+	        var sinv = Math.sin(this._time / 1000);
+	        var radius = 5;
+	        this._pointLight1.localPosition.x = radius * cosv * cosv;
+	        this._pointLight1.localPosition.z = radius * sinv * cosv;
+	        this._pointLight1.localPosition.y = 1 + radius * (0.5 + 0.5 * sinv);
+
+	        this._pointLight1.setTransformDirty();
+
+	        this._pointLight2.localPosition.x = -radius * cosv * cosv;
+	        this._pointLight2.localPosition.z = -radius * sinv * cosv;
+	        this._pointLight2.localPosition.y = 1 + radius * (0.5 + 0.5 * sinv);
+
+	        this._pointLight2.setTransformDirty();
+
+	        this._scene.render();
+	      }
+	    }
+	  }]);
+
+	  return AppNormalMap;
+	}();
+
 	function exampleTexturedCube() {
 	  var app = new AppTexturedCube();
 	  mini3d.init('webgl', app);
@@ -1039,6 +1211,11 @@ var main = (function () {
 	  mini3d.init('webgl', app);
 	}
 
+	function exampleNormalMap() {
+	  var app = new AppNormalMap();
+	  mini3d.init('webgl', app);
+	}
+
 	var examples = [{
 	  name: 'Textured Cube',
 	  entry: exampleTexturedCube
@@ -1048,6 +1225,9 @@ var main = (function () {
 	}, {
 	  name: 'Simple Scene',
 	  entry: exampleSimpleScene
+	}, {
+	  name: 'Normal Map',
+	  entry: exampleNormalMap
 	}];
 	function main() {
 	  return examples;
