@@ -1028,7 +1028,12 @@ var main = (function () {
 	var obj_file_sphere$1 = './models/sphere.obj';
 	var obj_main_texture$1 = './imgs/wall01_diffuse.jpg';
 	var obj_normal_map = './imgs/wall01_normal.jpg';
+	var box_main_texture = './imgs/box_diffuse.jpg';
+	var box_normal_map = './imgs/box_normal.jpg';
 	var plane_main_texture$1 = './imgs/wall02_diffuse.png';
+	var plane_normal_map = './imgs/wall02_normal.png';
+	var brick_main_texture = './imgs/brickwall_diffuse.jpg';
+	var brick_normal_map = './imgs/brickwall_normal.jpg';
 
 	var AppNormalMap =
 	/*#__PURE__*/
@@ -1046,7 +1051,7 @@ var main = (function () {
 	  _createClass(AppNormalMap, [{
 	    key: "onInit",
 	    value: function onInit() {
-	      var assetList = [[obj_file_capsule$1, mini3d.AssetType.Text], [obj_file_sphere$1, mini3d.AssetType.Text], [obj_main_texture$1, mini3d.AssetType.Image], [obj_normal_map, mini3d.AssetType.Image], [plane_main_texture$1, mini3d.AssetType.Image]];
+	      var assetList = [[obj_file_capsule$1, mini3d.AssetType.Text], [obj_file_sphere$1, mini3d.AssetType.Text], [obj_main_texture$1, mini3d.AssetType.Image], [obj_normal_map, mini3d.AssetType.Image], [box_main_texture, mini3d.AssetType.Image], [box_normal_map, mini3d.AssetType.Image], [plane_main_texture$1, mini3d.AssetType.Image], [plane_normal_map, mini3d.AssetType.Image], [brick_main_texture, mini3d.AssetType.Image], [brick_normal_map, mini3d.AssetType.Image]];
 	      mini3d.assetManager.loadAssetList(assetList, function () {
 	        this.start();
 	      }.bind(this));
@@ -1092,7 +1097,7 @@ var main = (function () {
 	      var capusleData = mini3d.assetManager.getAsset(obj_file_capsule$1).data;
 	      var capusleMesh = mini3d.objFileLoader.load(capusleData, 1.0, true);
 	      var sphereData = mini3d.assetManager.getAsset(obj_file_sphere$1).data;
-	      var sphereMesh = mini3d.objFileLoader.load(sphereData, 1.0); // Create scene
+	      var sphereMesh = mini3d.objFileLoader.load(sphereData, 1.0, true); // Create scene
 
 	      this._scene = new mini3d.Scene(); // Create a plane
 
@@ -1124,45 +1129,45 @@ var main = (function () {
 
 
 	      var material2 = new mini3d.MatNormalMap();
-	      material2.mainTexture = mini3d.textureManager.getTexture(obj_main_texture$1);
-	      material2.normalMap = mini3d.textureManager.getTexture(obj_normal_map);
+	      material2.mainTexture = mini3d.textureManager.getTexture(brick_main_texture);
+	      material2.normalMap = mini3d.textureManager.getTexture(brick_normal_map);
 	      material2.colorTint = [1.0, 1.0, 1.0];
 	      material2.specular = [0.8, 0.8, 0.8];
-	      material2.gloss = 20;
-	      this._mesh2 = meshRoot.addMeshNode(capusleMesh, material2);
+	      material2.gloss = 10;
+	      this._mesh2 = meshRoot.addMeshNode(sphereMesh, material2);
 
 	      this._mesh2.localPosition.set(-1, 1, 0);
 
-	      this._mesh2.localScale.set(1, 1, 1); // Add a directional light node to scene
+	      this._mesh2.localScale.set(2, 2, 2); // Add a directional light node to scene
 
 
 	      this._scene.root.addDirectionalLight([0.8, 0.8, 0.8]); // Add point light 1
 
 
-	      var lightColor = [0, 0.1, 0];
+	      var lightColor = [0.05, 0.05, 0.05];
 
 	      var pointLight = this._scene.root.addPointLight(lightColor, 10);
 
 	      pointLight.localPosition.set(-5, 6, 0);
-	      var lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.3, 0.9, 0.3])); //点光源身上放一个小球以显示他的位置   
+	      var lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.9, 0.9, 0.9])); //点光源身上放一个小球以显示他的位置   
 
-	      lightball.localScale.set(0.5, 0.5, 0.5);
+	      lightball.localScale.set(0.2, 0.2, 0.2);
 	      this._pointLight1 = pointLight; // Add point light 2
 
-	      lightColor = [0.1, 0, 0];
+	      lightColor = [0.05, 0.05, 0.05];
 	      pointLight = this._scene.root.addPointLight(lightColor, 10);
 	      pointLight.localPosition.set(5, 6, 0);
-	      lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.9, 0.3, 0.3]));
-	      lightball.localScale.set(0.5, 0.5, 0.5);
+	      lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.9, 0.9, 0.9]));
+	      lightball.localScale.set(0.2, 0.2, 0.2);
 	      this._pointLight2 = pointLight; // Add a perspective camera
 
 	      this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 1000);
 
-	      this._cameraNode.localPosition.set(0, 1, 5);
+	      this._cameraNode.localPosition.set(0, 1, 5.5);
 
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
 
-	      this._cameraNode.camera.clearColor = [0.2, 0.5, 0.5];
+	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1];
 	    }
 	  }, {
 	    key: "onUpdate",
@@ -1173,18 +1178,18 @@ var main = (function () {
 	        this._scene.update(); //灯光做圆周运动
 
 
-	        var cosv = Math.cos(this._time / 1000);
-	        var sinv = Math.sin(this._time / 1000);
+	        var cosv = Math.cos(this._time / 1500);
+	        var sinv = Math.sin(this._time / 1500);
 	        var radius = 5;
 	        this._pointLight1.localPosition.x = radius * cosv * cosv;
 	        this._pointLight1.localPosition.z = radius * sinv * cosv;
-	        this._pointLight1.localPosition.y = 1 + radius * (0.5 + 0.5 * sinv);
+	        this._pointLight1.localPosition.y = 0.5 + radius * (0.5 + 0.5 * sinv) * 0.5;
 
 	        this._pointLight1.setTransformDirty();
 
 	        this._pointLight2.localPosition.x = -radius * cosv * cosv;
 	        this._pointLight2.localPosition.z = -radius * sinv * cosv;
-	        this._pointLight2.localPosition.y = 1 + radius * (0.5 + 0.5 * sinv);
+	        this._pointLight2.localPosition.y = 0.5 + radius * (0.5 + 0.5 * sinv) * 0.5;
 
 	        this._pointLight2.setTransformDirty();
 

@@ -219,7 +219,7 @@ class ObjFileLoader{
         }
 
         if(this.calcTangent){ //TODO: or tanget is load from file
-            format.addAttrib(VertexSemantic.TANGENT, 3);
+            format.addAttrib(VertexSemantic.TANGENT, 4);
         }
 
         let mesh = new Mesh(format);        
@@ -364,7 +364,7 @@ class ObjFileLoader{
         let v_10 = new Vector3(p0.x-p1.x, p0.y-p1.y, p0.z-p1.z);
         let v_12 = new Vector3(p2.x-p1.x, p2.y-p1.y, p2.z-p1.z);
         let normal = new Vector3();
-        Vector3.cross(v_12, v_10, normal);
+        Vector3.cross(v_12, v_10, normal);        
         normal.normalize();
         return normal;
     }
@@ -428,22 +428,25 @@ class ObjFileLoader{
                 vertexTangents[idx0] = new Vector3();
             }              
             vertexTangents[idx0].add(faceT);
+            vertexTangents[idx0].w = faceT.w; //hack w给顶点切线
 
             if(vertexTangents[idx1]==null){
                 vertexTangents[idx1] = new Vector3();
             }            
             vertexTangents[idx1].add(faceT);
+            vertexTangents[idx1].w = faceT.w;
 
             if(vertexTangents[idx2]==null){
                 vertexTangents[idx2] = new Vector3();
             }
             vertexTangents[idx2].add(faceT);
+            vertexTangents[idx2].w = faceT.w;
         }
 
         for(let i=0; i<vertexTangents.length; ++i){
             let t = vertexTangents[i];                                
-            t.normalize();
-            tangents.push(t.x, t.y, t.z);
+            t.normalize();            
+            tangents.push(t.x, t.y, t.z, t.w);
         }
     }
 
@@ -458,6 +461,29 @@ class ObjFileLoader{
         tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
         tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
         tangent.normalize();
+
+        //compute binormal
+        let binormal = new Vector3();
+        binormal.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+        binormal.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+        binormal.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+        binormal.normalize();
+
+        //计算tangent和binormal的叉积，如果得到的向量和normal是反向的
+        //则将tangent.w设置为-1，在shader里面用这个w将计算出来的binormal反向
+        //注：这儿计算的并不会反向，但是如果是外部导入的切线，计算时的坐标系的手向不同是可能反向的
+        //保留这段代码主要是演示作用，此处计算的tanget的w总是1
+
+        let crossTB = new Vector3();
+        Vector3.cross(tangent, binormal, crossTB);
+        let normal = new Vector3();
+        Vector3.cross(edge1, edge2, normal);
+        if(Vector3.dot(crossTB, normal)<0){
+            tangent.w = -1; //由于用了Vector3，所以这里hack一个w           
+        } else {
+            tangent.w = 1;
+        }
+
         return tangent;
     }
 

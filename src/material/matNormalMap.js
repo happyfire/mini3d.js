@@ -9,7 +9,7 @@ import { LightMode } from "./renderPass";
 let vs_forwardbase = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
-attribute vec3 a_Tangent;
+attribute vec4 a_Tangent;
 attribute vec2 a_Texcoord;
     
 uniform mat4 u_mvpMatrix;
@@ -31,8 +31,8 @@ void main(){
     v_texcoord.zw = a_Texcoord.xy * u_normalMap_ST.xy + u_normalMap_ST.zw;
 
     vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
-    vec3 worldTangent = normalize(mat3(u_object2World)*a_Tangent.xyz);
-    vec3 worldBinormal = normalize(cross(worldNormal, worldTangent) * -1.0);
+    vec3 worldTangent = normalize(u_object2World*a_Tangent).xyz;
+    vec3 worldBinormal = cross(worldNormal, worldTangent) * a_Tangent.w;
 
     mat3 worldToTangent = mat3(worldTangent, worldBinormal, worldNormal);
 
@@ -53,11 +53,9 @@ void main(){
     }
     v_tangentLightDir = worldToTangent * worldLightDir;
 }
-
-
 `;
 
-let fs_forwardbase = `
+let fs = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -68,7 +66,9 @@ uniform sampler2D u_texMain;
 uniform sampler2D u_normalMap;
 
 uniform vec3 u_colorTint;
+#ifdef USE_AMBIENT
 uniform vec3 u_ambient; // scene ambient
+#endif
 uniform vec3 u_specular; // specular
 uniform float u_gloss; //gloss
 
@@ -81,99 +81,45 @@ void main(){
     vec3 tangentLightDir = normalize(v_tangentLightDir);
     vec3 tangentViewDir = normalize(v_tangentViewDir);
 
-    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb * u_colorTint;
-
+#ifdef PACK_NORMAL_MAP
     vec4 packedNormal = texture2D(u_normalMap, v_texcoord.zw);
     vec3 tangentNormal;
-    float u_bumpScale = 1.0;
-    tangentNormal.xy = (packedNormal.xy * 2.0 - 1.0)*u_bumpScale;
+    tangentNormal.xy = packedNormal.xy * 2.0 - 1.0;
     tangentNormal.z = sqrt(1.0 - clamp(dot(tangentNormal.xy, tangentNormal.xy), 0.0, 1.0));
-    //vec3 tangentNormal = normalize(texture2D(u_normalMap, v_texcoord.zw).xyz * 2.0 - 1.0);
+#else
+    vec3 tangentNormal = texture2D(u_normalMap, v_texcoord.zw).xyz * 2.0 - 1.0;
+#endif
     
-
-    vec3 ambient = u_ambient * albedo;
-    
+    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb * u_colorTint;
     vec3 diffuse = u_LightColor * albedo * max(0.0, dot(tangentNormal, tangentLightDir));
-       
+
+#ifdef LIGHT_MODEL_PHONG
+    vec3 reflectDir = normalize(reflect(-tangentLightDir, tangentNormal));
+    vec3 specular = u_LightColor * u_specular * pow(max(0.0, dot(reflectDir,tangentViewDir)), u_gloss);
+#else
     vec3 halfDir = normalize(tangentLightDir + tangentViewDir);
-    vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(tangentNormal,halfDir)), u_gloss);     
+    vec3 specular = u_LightColor * u_specular * pow(max(0.0, dot(tangentNormal,halfDir)), u_gloss);
+#endif    
 
-
+#ifdef USE_AMBIENT
+    vec3 ambient = u_ambient * albedo;
     gl_FragColor = vec4(ambient + (diffuse + specular) * v_atten, 1.0);
+#else
+    gl_FragColor = vec4((diffuse + specular) * v_atten, 1.0);
+#endif
 }
 `;
+
+let fs_forwardbase = "#define USE_AMBIENT\n" + fs;
 
 //////////// forward add pass shader /////////////////////
 
-let vs_forwardadd = `
-attribute vec4 a_Position;
-attribute vec3 a_Normal;
-attribute vec2 a_Texcoord;
-    
-uniform mat4 u_mvpMatrix;
-uniform mat4 u_object2World;
-uniform mat4 u_world2Object;
-uniform vec4 u_texMain_ST; // Main texture tiling and offset
+// vs和forward base相同
+let vs_forwardadd = vs_forwardbase;
 
-varying vec4 v_worldPos;
-varying vec3 v_worldNormal;
-varying vec2 v_texcoord;
+// fs和forwardbase的区别只是fs里面没有加ambient
+let fs_forwardadd = fs;
 
-void main(){
-    gl_Position = u_mvpMatrix * a_Position;   
-    
-    v_worldPos = u_object2World*a_Position;
-    v_worldNormal = normalize(a_Normal * mat3(u_world2Object));
-    v_texcoord = a_Texcoord.xy * u_texMain_ST.xy + u_texMain_ST.zw;            
-}
-
-`;
-
-let fs_forwardadd = `
-#ifdef GL_ES
-precision mediump float;
-#endif
-
-uniform vec3 u_worldCameraPos; // world space camera position
-uniform vec3 u_LightColor; // Light color
-uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
-
-uniform sampler2D u_texMain;
-uniform vec3 u_colorTint;
-uniform vec3 u_specular; // specular
-uniform float u_gloss; //gloss
-
-varying vec4 v_worldPos;
-varying vec3 v_worldNormal;
-varying vec2 v_texcoord;
-
-
-void main(){    
-    vec3 worldLightDir;
-    float atten = 1.0;    
-
-    if(u_worldLightPos.w==1.0){ //点光源
-        vec3 lightver = u_worldLightPos.xyz - v_worldPos.xyz;
-        float dis = length(lightver);
-        worldLightDir = normalize(lightver);
-        vec3 a = vec3(0.01);
-        atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
-    } else {
-        worldLightDir = normalize(u_worldLightPos.xyz);
-    }
-
-    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint;
-    
-    vec3 diffuse = u_LightColor * albedo * max(0.0, dot(v_worldNormal, worldLightDir));
-    
-    vec3 viewDir = normalize(u_worldCameraPos - v_worldPos.xyz);
-    vec3 halfDir = normalize(worldLightDir + viewDir);
-    vec3 specular = u_specular * u_LightColor * pow(max(0.0, dot(v_worldNormal,halfDir)), u_gloss);     
-
-
-    gl_FragColor = vec4((diffuse + specular) * atten, 1.0);
-}
-`;
 
 let g_shaderForwardBase = null;
 let g_shaderForwardAdd = null;
