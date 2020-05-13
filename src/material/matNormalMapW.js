@@ -1,4 +1,4 @@
-//逐像素光照+法线贴图材质 （切线空间计算光照）
+//逐像素光照+法线贴图材质 （世界空间计算光照）
 
 import { Material, SystemUniforms } from "./material";
 import { VertexSemantic } from "../core/vertexFormat";
@@ -17,13 +17,13 @@ uniform mat4 u_object2World;
 uniform mat4 u_world2Object;
 uniform vec4 u_texMain_ST; // Main texture tiling and offset
 uniform vec4 u_normalMap_ST; // Normal map tiling and offset
-uniform vec3 u_worldCameraPos; // world space camera position
-uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
 
-varying vec3 v_tangentLightDir; // tangent space light dir
-varying vec3 v_tangentViewDir; // tangent space view dir
+// Tangent to World 3x3 matrix and worldPos
+// 每个vec4的xyz是矩阵的一行，w存放了worldPos
+varying vec4 v_TtoW0;
+varying vec4 v_TtoW1;
+varying vec4 v_TtoW2;
 varying vec4 v_texcoord;
-varying float v_atten;
 
 void main(){
     gl_Position = u_mvpMatrix * a_Position;   
@@ -32,30 +32,14 @@ void main(){
 
     vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
     vec3 worldTangent = normalize(u_object2World*a_Tangent).xyz;
-    vec3 worldBinormal = cross(worldNormal, worldTangent) * a_Tangent.w;
-
-    //将TBN向量按行放入矩阵，构造出worldToTangent矩阵
-    //注意glsl中mat3是列主的
-    mat3 worldToTangent = mat3(worldTangent.x, worldBinormal.x, worldNormal.x,
-                               worldTangent.y, worldBinormal.y, worldNormal.y, 
-                               worldTangent.z, worldBinormal.z, worldNormal.z);
-
+    vec3 worldBinormal = cross(worldNormal, worldTangent) * a_Tangent.w;    
     vec4 worldPos = u_object2World*a_Position;
-    vec3 worldViewDir = normalize(u_worldCameraPos - worldPos.xyz);
-    v_tangentViewDir = worldToTangent * worldViewDir;
-
-    vec3 worldLightDir;
-    v_atten = 1.0;
-    if(u_worldLightPos.w==1.0){ //点光源
-        vec3 lightver = u_worldLightPos.xyz - worldPos.xyz;
-        float dis = length(lightver);
-        worldLightDir = normalize(lightver);
-        vec3 a = vec3(0.01);
-        v_atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
-    } else {
-        worldLightDir = normalize(u_worldLightPos.xyz);
-    }
-    v_tangentLightDir = worldToTangent * worldLightDir;
+    
+    //TBN向量按列放入矩阵，构造出 TangentToWorld矩阵,使用三个向量保存矩阵的三行，传入fs
+    //同时将worldPos存入三个向量的w中
+    v_TtoW0 = vec4(worldTangent.x, worldBinormal.x, worldNormal.x, worldPos.x);
+    v_TtoW1 = vec4(worldTangent.y, worldBinormal.y, worldNormal.y, worldPos.y);
+    v_TtoW2 = vec4(worldTangent.z, worldBinormal.z, worldNormal.z, worldPos.z);
 }
 `;
 
@@ -69,6 +53,9 @@ uniform vec3 u_LightColor; // Light color
 uniform sampler2D u_texMain;
 uniform sampler2D u_normalMap;
 
+uniform vec3 u_worldCameraPos; // world space camera position
+uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
+
 uniform vec3 u_colorTint;
 #ifdef USE_AMBIENT
 uniform vec3 u_ambient; // scene ambient
@@ -76,40 +63,55 @@ uniform vec3 u_ambient; // scene ambient
 uniform vec3 u_specular; // specular
 uniform float u_gloss; //gloss
 
-varying vec3 v_tangentLightDir; // tangent space light dir
-varying vec3 v_tangentViewDir; // tangent space view dir
+varying vec4 v_TtoW0;
+varying vec4 v_TtoW1;
+varying vec4 v_TtoW2;
 varying vec4 v_texcoord;
-varying float v_atten;
 
-void main(){        
-    vec3 tangentLightDir = normalize(v_tangentLightDir);
-    vec3 tangentViewDir = normalize(v_tangentViewDir);
+void main(){    
+    vec3 worldPos = vec3(v_TtoW0.w, v_TtoW1.w, v_TtoW2.w);
+
+    vec3 worldViewDir = normalize(u_worldCameraPos - worldPos.xyz);
+
+    vec3 worldLightDir;
+    float atten = 1.0;
+    if(u_worldLightPos.w==1.0){ //点光源
+        vec3 lightver = u_worldLightPos.xyz - worldPos.xyz;
+        float dis = length(lightver);
+        worldLightDir = normalize(lightver);
+        vec3 a = vec3(0.01);
+        atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
+    } else {
+        worldLightDir = normalize(u_worldLightPos.xyz);
+    }
 
 #ifdef PACK_NORMAL_MAP
     vec4 packedNormal = texture2D(u_normalMap, v_texcoord.zw);
-    vec3 tangentNormal;
-    tangentNormal.xy = packedNormal.xy * 2.0 - 1.0;
-    tangentNormal.z = sqrt(1.0 - clamp(dot(tangentNormal.xy, tangentNormal.xy), 0.0, 1.0));
+    vec3 normal;
+    normal.xy = packedNormal.xy * 2.0 - 1.0;
+    normal.z = sqrt(1.0 - clamp(dot(normal.xy, normal.xy), 0.0, 1.0));
 #else
-    vec3 tangentNormal = texture2D(u_normalMap, v_texcoord.zw).xyz * 2.0 - 1.0;
+    vec3 normal = texture2D(u_normalMap, v_texcoord.zw).xyz * 2.0 - 1.0;
 #endif
+    //Transform the normal from tangent space to world space
+    normal = normalize(vec3(dot(v_TtoW0.xyz, normal), dot(v_TtoW1.xyz, normal), dot(v_TtoW2.xyz, normal)));
     
     vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb * u_colorTint;
-    vec3 diffuse = u_LightColor * albedo * max(0.0, dot(tangentNormal, tangentLightDir));
+    vec3 diffuse = u_LightColor * albedo * max(0.0, dot(normal, worldLightDir));
 
 #ifdef LIGHT_MODEL_PHONG
-    vec3 reflectDir = normalize(reflect(-tangentLightDir, tangentNormal));
-    vec3 specular = u_LightColor * u_specular * pow(max(0.0, dot(reflectDir,tangentViewDir)), u_gloss);
+    vec3 reflectDir = normalize(reflect(-worldLightDir, normal));
+    vec3 specular = u_LightColor * u_specular * pow(max(0.0, dot(reflectDir,worldViewDir)), u_gloss);
 #else
-    vec3 halfDir = normalize(tangentLightDir + tangentViewDir);
-    vec3 specular = u_LightColor * u_specular * pow(max(0.0, dot(tangentNormal,halfDir)), u_gloss);
+    vec3 halfDir = normalize(worldLightDir + worldViewDir);
+    vec3 specular = u_LightColor * u_specular * pow(max(0.0, dot(normal,halfDir)), u_gloss);
 #endif    
 
 #ifdef USE_AMBIENT
     vec3 ambient = u_ambient * albedo;
-    gl_FragColor = vec4(ambient + (diffuse + specular) * v_atten, 1.0);
+    gl_FragColor = vec4(ambient + (diffuse + specular) * atten, 1.0);
 #else
-    gl_FragColor = vec4((diffuse + specular) * v_atten, 1.0);
+    gl_FragColor = vec4((diffuse + specular) * atten, 1.0);
 #endif
 }
 `;
@@ -128,7 +130,7 @@ let fs_forwardadd = "#define LIGHT_MODEL_PHONG\n" + fs;
 let g_shaderForwardBase = null;
 let g_shaderForwardAdd = null;
 
-class MatNormalMap extends Material{
+class MatNormalMapW extends Material{
     constructor(){
         super();
         
@@ -229,4 +231,4 @@ class MatNormalMap extends Material{
 
 }
 
-export { MatNormalMap };
+export { MatNormalMapW };

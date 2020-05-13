@@ -136,7 +136,7 @@ class AppNormalMap {
         this._mesh1.localPosition.set(1, 1, 0);        
         
         // Create mesh node 2
-        let material2 = new mini3d.MatNormalMap();
+        let material2 = new mini3d.MatNormalMapW();
         material2.mainTexture = mini3d.textureManager.getTexture(box_main_texture);
         material2.normalMap = mini3d.textureManager.getTexture(box_normal_map);        
         material2.colorTint = [1.0, 1.0, 1.0];

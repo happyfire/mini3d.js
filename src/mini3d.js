@@ -29,4 +29,5 @@ export {MatVertexLight} from './material/matVertexLight';
 export {MatPixelLight} from './material/matPixelLight';
 export {MatSolidColor} from './material/matSolidColor';
 export {MatNormalMap} from './material/matNormalMap';
+export {MatNormalMapW} from './material/matNormalMapW';
 

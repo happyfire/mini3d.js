@@ -4470,7 +4470,11 @@ void main(){
     vec3 worldTangent = normalize(u_object2World*a_Tangent).xyz;
     vec3 worldBinormal = cross(worldNormal, worldTangent) * a_Tangent.w;
 
-    mat3 worldToTangent = mat3(worldTangent, worldBinormal, worldNormal);
+    //将TBN向量按行放入矩阵，构造出worldToTangent矩阵
+    //注意glsl中mat3是列主的
+    mat3 worldToTangent = mat3(worldTangent.x, worldBinormal.x, worldNormal.x,
+                               worldTangent.y, worldBinormal.y, worldNormal.y, 
+                               worldTangent.z, worldBinormal.z, worldNormal.z);
 
     vec4 worldPos = u_object2World*a_Position;
     vec3 worldViewDir = normalize(u_worldCameraPos - worldPos.xyz);
@@ -4661,6 +4665,235 @@ void main(){
 
     }
 
+    //逐像素光照+法线贴图材质 （世界空间计算光照）
+
+    //////////// forward base pass shader /////////////////////
+
+    let vs_forwardbase$3 = `
+attribute vec4 a_Position;
+attribute vec3 a_Normal;
+attribute vec4 a_Tangent;
+attribute vec2 a_Texcoord;
+    
+uniform mat4 u_mvpMatrix;
+uniform mat4 u_object2World;
+uniform mat4 u_world2Object;
+uniform vec4 u_texMain_ST; // Main texture tiling and offset
+uniform vec4 u_normalMap_ST; // Normal map tiling and offset
+
+// Tangent to World 3x3 matrix and worldPos
+// 每个vec4的xyz是矩阵的一行，w存放了worldPos
+varying vec4 v_TtoW0;
+varying vec4 v_TtoW1;
+varying vec4 v_TtoW2;
+varying vec4 v_texcoord;
+
+void main(){
+    gl_Position = u_mvpMatrix * a_Position;   
+    v_texcoord.xy = a_Texcoord.xy * u_texMain_ST.xy + u_texMain_ST.zw;
+    v_texcoord.zw = a_Texcoord.xy * u_normalMap_ST.xy + u_normalMap_ST.zw;
+
+    vec3 worldNormal = normalize(a_Normal * mat3(u_world2Object));
+    vec3 worldTangent = normalize(u_object2World*a_Tangent).xyz;
+    vec3 worldBinormal = cross(worldNormal, worldTangent) * a_Tangent.w;    
+    vec4 worldPos = u_object2World*a_Position;
+    
+    //TBN向量按列放入矩阵，构造出 TangentToWorld矩阵,使用三个向量保存矩阵的三行，传入fs
+    //同时将worldPos存入三个向量的w中
+    v_TtoW0 = vec4(worldTangent.x, worldBinormal.x, worldNormal.x, worldPos.x);
+    v_TtoW1 = vec4(worldTangent.y, worldBinormal.y, worldNormal.y, worldPos.y);
+    v_TtoW2 = vec4(worldTangent.z, worldBinormal.z, worldNormal.z, worldPos.z);
+}
+`;
+
+    let fs$4 = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform vec3 u_LightColor; // Light color
+
+uniform sampler2D u_texMain;
+uniform sampler2D u_normalMap;
+
+uniform vec3 u_worldCameraPos; // world space camera position
+uniform vec4 u_worldLightPos;   // World space light direction or position, if w==0 the light is directional
+
+uniform vec3 u_colorTint;
+#ifdef USE_AMBIENT
+uniform vec3 u_ambient; // scene ambient
+#endif
+uniform vec3 u_specular; // specular
+uniform float u_gloss; //gloss
+
+varying vec4 v_TtoW0;
+varying vec4 v_TtoW1;
+varying vec4 v_TtoW2;
+varying vec4 v_texcoord;
+
+void main(){    
+    vec3 worldPos = vec3(v_TtoW0.w, v_TtoW1.w, v_TtoW2.w);
+
+    vec3 worldViewDir = normalize(u_worldCameraPos - worldPos.xyz);
+
+    vec3 worldLightDir;
+    float atten = 1.0;
+    if(u_worldLightPos.w==1.0){ //点光源
+        vec3 lightver = u_worldLightPos.xyz - worldPos.xyz;
+        float dis = length(lightver);
+        worldLightDir = normalize(lightver);
+        vec3 a = vec3(0.01);
+        atten = 1.0/(a.x + a.y*dis + a.z*dis*dis);
+    } else {
+        worldLightDir = normalize(u_worldLightPos.xyz);
+    }
+
+#ifdef PACK_NORMAL_MAP
+    vec4 packedNormal = texture2D(u_normalMap, v_texcoord.zw);
+    vec3 normal;
+    normal.xy = packedNormal.xy * 2.0 - 1.0;
+    normal.z = sqrt(1.0 - clamp(dot(normal.xy, normal.xy), 0.0, 1.0));
+#else
+    vec3 normal = texture2D(u_normalMap, v_texcoord.zw).xyz * 2.0 - 1.0;
+#endif
+    //Transform the normal from tangent space to world space
+    normal = normalize(vec3(dot(v_TtoW0.xyz, normal), dot(v_TtoW1.xyz, normal), dot(v_TtoW2.xyz, normal)));
+    
+    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb * u_colorTint;
+    vec3 diffuse = u_LightColor * albedo * max(0.0, dot(normal, worldLightDir));
+
+#ifdef LIGHT_MODEL_PHONG
+    vec3 reflectDir = normalize(reflect(-worldLightDir, normal));
+    vec3 specular = u_LightColor * u_specular * pow(max(0.0, dot(reflectDir,worldViewDir)), u_gloss);
+#else
+    vec3 halfDir = normalize(worldLightDir + worldViewDir);
+    vec3 specular = u_LightColor * u_specular * pow(max(0.0, dot(normal,halfDir)), u_gloss);
+#endif    
+
+#ifdef USE_AMBIENT
+    vec3 ambient = u_ambient * albedo;
+    gl_FragColor = vec4(ambient + (diffuse + specular) * atten, 1.0);
+#else
+    gl_FragColor = vec4((diffuse + specular) * atten, 1.0);
+#endif
+}
+`;
+
+    let fs_forwardbase$3 = "#define LIGHT_MODEL_PHONG\n #define USE_AMBIENT\n" + fs$4;
+
+    //////////// forward add pass shader /////////////////////
+
+    // vs和forward base相同
+    let vs_forwardadd$3 = vs_forwardbase$3;
+
+    // fs和forwardbase的区别只是fs里面没有加ambient
+    let fs_forwardadd$3 = "#define LIGHT_MODEL_PHONG\n" + fs$4;
+
+
+    let g_shaderForwardBase$3 = null;
+    let g_shaderForwardAdd$3 = null;
+
+    class MatNormalMapW extends Material{
+        constructor(){
+            super();
+            
+            if(g_shaderForwardBase$3==null){
+                g_shaderForwardBase$3 = Material.createShader(vs_forwardbase$3, fs_forwardbase$3, [
+                    {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
+                    {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
+                    {'semantic':VertexSemantic.TANGENT , 'name':'a_Tangent'},
+                    {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
+                ]);
+            }
+            if(g_shaderForwardAdd$3==null){
+                g_shaderForwardAdd$3 = Material.createShader(vs_forwardadd$3, fs_forwardadd$3, [
+                    {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
+                    {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
+                    {'semantic':VertexSemantic.TANGENT , 'name':'a_Tangent'},
+                    {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
+                ]);
+            }        
+
+            this.addRenderPass(g_shaderForwardBase$3, LightMode.ForwardBase);  
+            this.addRenderPass(g_shaderForwardAdd$3, LightMode.ForwardAdd);                
+
+            //default uniforms
+            this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
+            this._mainTexture_ST = [1,1,0,0];
+            this._normalMap = null;
+            this._normalMap_ST = [1,1,0,0];
+            this._specular = [1.0, 1.0, 1.0];
+            this._gloss = 20.0;  
+            this._colorTint = [1.0, 1.0, 1.0];  
+        }
+
+        //Override
+        get systemUniforms(){
+            return [SystemUniforms.MvpMatrix,
+                SystemUniforms.World2Object,
+                SystemUniforms.Object2World,
+                SystemUniforms.WorldCameraPos,
+                SystemUniforms.SceneAmbient,
+                SystemUniforms.LightColor, SystemUniforms.WorldLightPos]; 
+        }
+
+        //Override
+        setCustomUniformValues(pass){                           
+            pass.shader.setUniformSafe('u_specular', this._specular);
+            pass.shader.setUniformSafe('u_gloss', this._gloss);
+            pass.shader.setUniformSafe('u_colorTint', this._colorTint);
+            pass.shader.setUniformSafe('u_texMain_ST', this._mainTexture_ST); 
+            pass.shader.setUniformSafe('u_normalMap_ST', this._normalMap_ST);     
+            if(this._mainTexture){
+                this._mainTexture.bind(0);
+                pass.shader.setUniformSafe('u_texMain', 0);
+            }  
+            if(this._normalMap){
+                this._normalMap.bind(1);
+                pass.shader.setUniformSafe('u_normalMap', 1);
+            }
+            
+        }
+
+        set specular(v){
+            this._specular = v;
+        }
+
+        set gloss(v){
+            this._gloss = v;
+        }
+
+        set colorTint(v){
+            this._colorTint = v;
+        }
+
+        set mainTexture(v){
+            this._mainTexture = v;
+        }
+
+        get mainTexture(){
+            return this._mainTexture;
+        }
+
+        set mainTextureST(v){
+            this._mainTexture_ST = v;
+        }
+
+        set normalMap(v){
+            this._normalMap = v;
+        }
+
+        get normalMap(){
+            return this._normalMap;
+        }
+
+        set normalMapST(v){
+            this._normalMap_ST = v;
+        }
+
+
+    }
+
     exports.AssetType = AssetType;
     exports.Camera = Camera;
     exports.Cube = Cube;
@@ -4668,6 +4901,7 @@ void main(){
     exports.Light = Light;
     exports.LightType = LightType;
     exports.MatNormalMap = MatNormalMap;
+    exports.MatNormalMapW = MatNormalMapW;
     exports.MatPixelLight = MatPixelLight;
     exports.MatSolidColor = MatSolidColor;
     exports.MatVertexLight = MatVertexLight;
