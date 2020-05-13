@@ -1,3 +1,5 @@
+import { Vector3 } from "../../src/math/vector3";
+
 let obj_file_capsule = './models/capsule.obj';
 let obj_file_sphere = './models/sphere.obj';
 let obj_main_texture = './imgs/wall01_diffuse.jpg';
@@ -46,15 +48,9 @@ class AppNormalMap {
     start() {
         this.createWorld();
         
-        mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
-            let factor = 0.01;
+        mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {            
             let dx = data.dx;
             let dy = data.dy;
-
-            // this._tempVec3.copyFrom(this._mesh2.localPosition);
-            // this._tempVec3.z += dy * factor;
-            // this._tempVec3.x += dx * factor;
-            // this._mesh2.localPosition = this._tempVec3;
 
             let clampAngle = function (angle, min, max) {
                 if (angle < -360) angle += 360;
@@ -74,6 +70,33 @@ class AppNormalMap {
         }.bind(this));
     }
 
+    createGround(){
+        let groundMesh = mini3d.Plane.createMesh(20, 10, 20, 10);
+        let matGround = new mini3d.MatNormalMap();
+        matGround.mainTexture = mini3d.textureManager.getTexture(plane_main_texture);
+        matGround.mainTexture.setRepeat();
+        matGround.mainTextureST = [3,3,0,0];
+        matGround.normalMap = mini3d.textureManager.getTexture(plane_normal_map);
+        matGround.normalMap.setRepeat();
+        matGround.normalMapST = [3,3,0,0];
+        matGround.specular = [0.8, 0.8, 0.8];
+        let groundNode = this._scene.root.addMeshNode(groundMesh, matGround);
+        groundNode.localPosition.set(0,0,0); 
+    }
+
+    createWall(){
+        let wallMesh = mini3d.Plane.createMesh(20, 10, 20, 10);
+        let matWall = new mini3d.MatNormalMap();
+        matWall.mainTexture =  mini3d.textureManager.getTexture(brick_main_texture);
+        matWall.mainTexture.setRepeat();
+        matWall.mainTextureST = [3,3,0,0];
+        matWall.normalMap = mini3d.textureManager.getTexture(brick_normal_map);
+        matWall.normalMap.setRepeat();
+        matWall.normalMapST = [3,3,0,0];
+        matWall.specular = [0.8, 0.8, 0.8];
+        return this._scene.root.addMeshNode(wallMesh, matWall);
+    }
+
     createWorld() {
 
         // Load meshes
@@ -87,15 +110,14 @@ class AppNormalMap {
         // Create scene
         this._scene = new mini3d.Scene();
 
-        // Create a plane
-        let planeMesh = mini3d.Plane.createMesh(20, 20, 20, 20);
-        let matPlane = new mini3d.MatPixelLight();
-        matPlane.mainTexture = mini3d.textureManager.getTexture(plane_main_texture);
-        matPlane.mainTexture.setRepeat();
-        matPlane.mainTextureST = [2,2,0,0];
-        matPlane.specular = [0.8, 0.8, 0.8];
-        this._planeNode = this._scene.root.addMeshNode(planeMesh, matPlane);
-        this._planeNode.localPosition.set(0,0,0);       
+        // Create the ground
+        this.createGround();  
+        
+        // Create walls
+        let wall1 = this.createWall();
+        wall1.localPosition.set(0, 5, -5);
+        wall1.localRotation.setFromEulerAngles(new Vector3(90,0,0));
+        
 
         // Create an empty mesh root node
         let meshRoot = this._scene.root.addEmptyNode();        
@@ -115,15 +137,15 @@ class AppNormalMap {
         
         // Create mesh node 2
         let material2 = new mini3d.MatNormalMap();
-        material2.mainTexture = mini3d.textureManager.getTexture(brick_main_texture);
-        material2.normalMap = mini3d.textureManager.getTexture(brick_normal_map);        
+        material2.mainTexture = mini3d.textureManager.getTexture(box_main_texture);
+        material2.normalMap = mini3d.textureManager.getTexture(box_normal_map);        
         material2.colorTint = [1.0, 1.0, 1.0];
         material2.specular = [0.8, 0.8, 0.8];
         material2.gloss = 10;
 
-        this._mesh2 = meshRoot.addMeshNode(sphereMesh, material2);
+        this._mesh2 = meshRoot.addMeshNode(mini3d.Cube.createMesh(), material2);
         this._mesh2.localPosition.set(-1, 1, 0);
-        this._mesh2.localScale.set(2, 2, 2);
+        this._mesh2.localScale.set(0.8, 0.8, 0.8);
         
         // Add a directional light node to scene
         this._scene.root.addDirectionalLight([0.8,0.8,0.8]);
@@ -146,7 +168,7 @@ class AppNormalMap {
         
         // Add a perspective camera
         this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 1000);        
-        this._cameraNode.localPosition.set(0, 1, 5.5);
+        this._cameraNode.localPosition.set(0, 2, 6);
         this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
         this._cameraNode.camera.clearColor = [0.34,0.98,1];
 

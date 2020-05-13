@@ -110,7 +110,7 @@ void main(){
 }
 `;
 
-let fs_forwardbase = "#define USE_AMBIENT\n" + fs;
+let fs_forwardbase = "#define LIGHT_MODEL_PHONG\n #define USE_AMBIENT\n" + fs;
 
 //////////// forward add pass shader /////////////////////
 
@@ -118,7 +118,7 @@ let fs_forwardbase = "#define USE_AMBIENT\n" + fs;
 let vs_forwardadd = vs_forwardbase;
 
 // fs和forwardbase的区别只是fs里面没有加ambient
-let fs_forwardadd = fs;
+let fs_forwardadd = "#define LIGHT_MODEL_PHONG\n" + fs;
 
 
 let g_shaderForwardBase = null;

@@ -1024,6 +1024,241 @@ var main = (function () {
 	  return AppSimpleScene;
 	}();
 
+	var MathUtils =
+	/*#__PURE__*/
+	function () {
+	  function MathUtils() {
+	    _classCallCheck(this, MathUtils);
+
+	    this.Pi = 3.141592654;
+	    this.TwoPi = 6.283185307;
+	    this.HalfPi = 1.570796327;
+	    this.Epsilon = 0.000001;
+	    this.ZeroEpsilon = 32.0 * 1.175494351e-38; // Very small epsilon for checking against 0.0f
+	  }
+
+	  _createClass(MathUtils, [{
+	    key: "degToRad",
+	    value: function degToRad(degree) {
+	      return degree * 0.017453293;
+	    }
+	  }, {
+	    key: "radToDeg",
+	    value: function radToDeg(rad) {
+	      return rad * 57.29577951;
+	    }
+	  }, {
+	    key: "clamp",
+	    value: function clamp(f, min, max) {
+	      if (f < min) f = min;else if (f > max) f = max;
+	      return f;
+	    }
+	  }]);
+
+	  return MathUtils;
+	}();
+
+	var math = new MathUtils();
+
+	var Vector3 =
+	/*#__PURE__*/
+	function () {
+	  function Vector3() {
+	    var x = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
+	    var y = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+	    var z = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+
+	    _classCallCheck(this, Vector3);
+
+	    this.x = x;
+	    this.y = y;
+	    this.z = z;
+	  }
+
+	  _createClass(Vector3, [{
+	    key: "clone",
+	    value: function clone() {
+	      return new Vector3(this.x, this.y, this.z);
+	    }
+	  }, {
+	    key: "set",
+	    value: function set(x, y, z) {
+	      this.x = x;
+	      this.y = y;
+	      this.z = z;
+	      return this;
+	    }
+	  }, {
+	    key: "length",
+	    value: function length() {
+	      return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+	    }
+	  }, {
+	    key: "lengthSquare",
+	    value: function lengthSquare() {
+	      return this.x * this.x + this.y * this.y + this.z * this.z;
+	    }
+	  }, {
+	    key: "equals",
+	    value: function equals(rhs) {
+	      var eps = math.Epsilon;
+	      return this.x > rhs.x - eps && this.x < rhs.x + eps && this.y > rhs.y - eps && this.y < rhs.y + eps && this.z > rhs.z - eps && this.z < rhs.z + eps;
+	    }
+	  }, {
+	    key: "copyFrom",
+	    value: function copyFrom(rhs) {
+	      this.x = rhs.x;
+	      this.y = rhs.y;
+	      this.z = rhs.z;
+	      return this;
+	    }
+	  }, {
+	    key: "negative",
+	    value: function negative() {
+	      this.x = -this.x;
+	      this.y = -this.y;
+	      this.z = -this.z;
+	      return this;
+	    }
+	  }, {
+	    key: "add",
+	    value: function add(rhs) {
+	      this.x += rhs.x;
+	      this.y += rhs.y;
+	      this.z += rhs.z;
+	      return this;
+	    }
+	  }, {
+	    key: "sub",
+	    value: function sub(rhs) {
+	      this.x -= rhs.x;
+	      this.y -= rhs.y;
+	      this.z -= rhs.z;
+	      return this;
+	    }
+	  }, {
+	    key: "multiply",
+	    value: function multiply(rhs) {
+	      this.x *= rhs.x;
+	      this.y *= rhs.y;
+	      this.z *= rhs.z;
+	      return this;
+	    }
+	  }, {
+	    key: "scale",
+	    value: function scale(s) {
+	      this.x *= s;
+	      this.y *= s;
+	      this.z *= s;
+	      return this;
+	    }
+	  }, {
+	    key: "normalize",
+	    value: function normalize() {
+	      var lensq = this.x * this.x + this.y * this.y + this.z * this.z;
+
+	      if (lensq > 0) {
+	        var g = 1 / Math.sqrt(lensq);
+	        this.x *= g;
+	        this.y *= g;
+	        this.z *= g;
+	      }
+
+	      return this;
+	    }
+	  }], [{
+	    key: "copyTo",
+	    value: function copyTo(src, dst) {
+	      dst.x = src.x;
+	      dst.y = src.y;
+	      dst.z = src.z;
+	      return dst;
+	    }
+	  }, {
+	    key: "negativeTo",
+	    value: function negativeTo(src, dst) {
+	      dst.x = -src.x;
+	      dst.y = -src.y;
+	      dst.z = -src.z;
+	      return dst;
+	    }
+	  }, {
+	    key: "add",
+	    value: function add(a, b, dst) {
+	      dst.x = a.x + b.x;
+	      dst.y = a.y + b.y;
+	      dst.z = a.z + b.z;
+	      return dst;
+	    }
+	  }, {
+	    key: "sub",
+	    value: function sub(a, b, dst) {
+	      dst.x = a.x - b.x;
+	      dst.y = a.y - b.y;
+	      dst.z = a.z - b.z;
+	      return dst;
+	    }
+	  }, {
+	    key: "multiply",
+	    value: function multiply(a, b, dst) {
+	      dst.x = a.x * b.x;
+	      dst.y = a.y * b.y;
+	      dst.z = a.z * b.z;
+	      return dst;
+	    }
+	  }, {
+	    key: "scaleTo",
+	    value: function scaleTo(a, s, dst) {
+	      dst.x = a.x * s;
+	      dst.y = a.y * s;
+	      dst.z = a.z * s;
+	      return dst;
+	    }
+	  }, {
+	    key: "dot",
+	    value: function dot(a, b) {
+	      return a.x * b.x + a.y * b.y + a.z * b.z;
+	    }
+	  }, {
+	    key: "cross",
+	    value: function cross(a, b, dst) {
+	      dst.x = a.y * b.z - a.z * b.y;
+	      dst.y = a.z * b.x - a.x * b.z;
+	      dst.z = a.x * b.y - a.y * b.x;
+	      return dst;
+	    }
+	  }, {
+	    key: "lerp",
+	    value: function lerp(a, b, f, dst) {
+	      dst.x = a.x + (b.x - a.x) * f;
+	      dst.y = a.y + (b.y - a.y) * f;
+	      dst.z = a.z + (b.z - a.z) * f;
+	      return dst;
+	    }
+	  }, {
+	    key: "distance",
+	    value: function distance(a, b) {
+	      var dx = a.x - b.x;
+	      var dy = a.y - b.y;
+	      var dz = a.z - b.z;
+	      return Math.sqrt(dx * dx + dy * dy + dz * dz);
+	    }
+	  }, {
+	    key: "distanceSquare",
+	    value: function distanceSquare(a, b) {
+	      var dx = a.x - b.x;
+	      var dy = a.y - b.y;
+	      var dz = a.z - b.z;
+	      return dx * dx + dy * dy + dz * dz;
+	    }
+	  }]);
+
+	  return Vector3;
+	}();
+
+	Vector3.Right = new Vector3(1, 0, 0);
+	Vector3.Up = new Vector3(0, 1, 0);
+
 	var obj_file_capsule$1 = './models/capsule.obj';
 	var obj_file_sphere$1 = './models/sphere.obj';
 	var obj_main_texture$1 = './imgs/wall01_diffuse.jpg';
@@ -1069,10 +1304,7 @@ var main = (function () {
 	      this.createWorld();
 	      mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
 	        var dx = data.dx;
-	        var dy = data.dy; // this._tempVec3.copyFrom(this._mesh2.localPosition);
-	        // this._tempVec3.z += dy * factor;
-	        // this._tempVec3.x += dx * factor;
-	        // this._mesh2.localPosition = this._tempVec3;
+	        var dy = data.dy;
 
 	        var clampAngle = function clampAngle(angle, min, max) {
 	          if (angle < -360) angle += 360;
@@ -1091,6 +1323,37 @@ var main = (function () {
 	      }.bind(this));
 	    }
 	  }, {
+	    key: "createGround",
+	    value: function createGround() {
+	      var groundMesh = mini3d.Plane.createMesh(20, 10, 20, 10);
+	      var matGround = new mini3d.MatNormalMap();
+	      matGround.mainTexture = mini3d.textureManager.getTexture(plane_main_texture$1);
+	      matGround.mainTexture.setRepeat();
+	      matGround.mainTextureST = [3, 3, 0, 0];
+	      matGround.normalMap = mini3d.textureManager.getTexture(plane_normal_map);
+	      matGround.normalMap.setRepeat();
+	      matGround.normalMapST = [3, 3, 0, 0];
+	      matGround.specular = [0.8, 0.8, 0.8];
+
+	      var groundNode = this._scene.root.addMeshNode(groundMesh, matGround);
+
+	      groundNode.localPosition.set(0, 0, 0);
+	    }
+	  }, {
+	    key: "createWall",
+	    value: function createWall() {
+	      var wallMesh = mini3d.Plane.createMesh(20, 10, 20, 10);
+	      var matWall = new mini3d.MatNormalMap();
+	      matWall.mainTexture = mini3d.textureManager.getTexture(brick_main_texture);
+	      matWall.mainTexture.setRepeat();
+	      matWall.mainTextureST = [3, 3, 0, 0];
+	      matWall.normalMap = mini3d.textureManager.getTexture(brick_normal_map);
+	      matWall.normalMap.setRepeat();
+	      matWall.normalMapST = [3, 3, 0, 0];
+	      matWall.specular = [0.8, 0.8, 0.8];
+	      return this._scene.root.addMeshNode(wallMesh, matWall);
+	    }
+	  }, {
 	    key: "createWorld",
 	    value: function createWorld() {
 	      // Load meshes
@@ -1099,18 +1362,13 @@ var main = (function () {
 	      var sphereData = mini3d.assetManager.getAsset(obj_file_sphere$1).data;
 	      var sphereMesh = mini3d.objFileLoader.load(sphereData, 1.0, true); // Create scene
 
-	      this._scene = new mini3d.Scene(); // Create a plane
+	      this._scene = new mini3d.Scene(); // Create the ground
 
-	      var planeMesh = mini3d.Plane.createMesh(20, 20, 20, 20);
-	      var matPlane = new mini3d.MatPixelLight();
-	      matPlane.mainTexture = mini3d.textureManager.getTexture(plane_main_texture$1);
-	      matPlane.mainTexture.setRepeat();
-	      matPlane.mainTextureST = [2, 2, 0, 0];
-	      matPlane.specular = [0.8, 0.8, 0.8];
-	      this._planeNode = this._scene.root.addMeshNode(planeMesh, matPlane);
+	      this.createGround(); // Create walls
 
-	      this._planeNode.localPosition.set(0, 0, 0); // Create an empty mesh root node
-
+	      var wall1 = this.createWall();
+	      wall1.localPosition.set(0, 5, -5);
+	      wall1.localRotation.setFromEulerAngles(new Vector3(90, 0, 0)); // Create an empty mesh root node
 
 	      var meshRoot = this._scene.root.addEmptyNode(); //meshRoot.localPosition.set(-1, 1, 1);
 	      //meshRoot.localScale.set(0.8, 1, 1);
@@ -1129,16 +1387,16 @@ var main = (function () {
 
 
 	      var material2 = new mini3d.MatNormalMap();
-	      material2.mainTexture = mini3d.textureManager.getTexture(brick_main_texture);
-	      material2.normalMap = mini3d.textureManager.getTexture(brick_normal_map);
+	      material2.mainTexture = mini3d.textureManager.getTexture(box_main_texture);
+	      material2.normalMap = mini3d.textureManager.getTexture(box_normal_map);
 	      material2.colorTint = [1.0, 1.0, 1.0];
 	      material2.specular = [0.8, 0.8, 0.8];
 	      material2.gloss = 10;
-	      this._mesh2 = meshRoot.addMeshNode(sphereMesh, material2);
+	      this._mesh2 = meshRoot.addMeshNode(mini3d.Cube.createMesh(), material2);
 
 	      this._mesh2.localPosition.set(-1, 1, 0);
 
-	      this._mesh2.localScale.set(2, 2, 2); // Add a directional light node to scene
+	      this._mesh2.localScale.set(0.8, 0.8, 0.8); // Add a directional light node to scene
 
 
 	      this._scene.root.addDirectionalLight([0.8, 0.8, 0.8]); // Add point light 1
@@ -1163,7 +1421,7 @@ var main = (function () {
 
 	      this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 1000);
 
-	      this._cameraNode.localPosition.set(0, 1, 5.5);
+	      this._cameraNode.localPosition.set(0, 2, 6);
 
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
 

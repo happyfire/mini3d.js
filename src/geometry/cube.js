@@ -1,9 +1,12 @@
+import { GeomertyHelper } from "./geometryHelper";
+
 class Cube{
     static createMesh(){
 
         let format = new mini3d.VertexFormat();
         format.addAttrib(mini3d.VertexSemantic.POSITION, 3);
         format.addAttrib(mini3d.VertexSemantic.NORMAL, 3);
+        format.addAttrib(mini3d.VertexSemantic.TANGENT, 4);
         format.addAttrib(mini3d.VertexSemantic.UV0, 2);
     
         // cube
@@ -75,10 +78,14 @@ class Cube{
             12,13,14, 12,14,15, //left
             16,17,18, 16,18,19, //bottom
             20,21,22, 20,22,23  //back
-        ]
+        ];
+
+        let tangent_data = [];
+        GeomertyHelper.calcMeshTangents(triangels, position_data, uv_data, tangent_data);
     
         mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);    
-        mesh.setVertexData(mini3d.VertexSemantic.NORMAL, normal_data);   
+        mesh.setVertexData(mini3d.VertexSemantic.NORMAL, normal_data); 
+        mesh.setVertexData(mini3d.VertexSemantic.TANGENT, tangent_data);   
         mesh.setVertexData(mini3d.VertexSemantic.UV0, uv_data);
         mesh.setTriangles(triangels);
         mesh.upload();            
