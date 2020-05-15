@@ -86,6 +86,10 @@ class MeshRenderer extends Component{
             }
         }    
 
+        //避免render to texture时渲染使用了该RT的材质，否则会出现错误 Feedback loop formed between Framebuffer and active Texture.
+        if(camera.target!=null && camera.target.texture2D == this.material.mainTexture){
+            return;
+        }
 
         //逐pass渲染，对于 ForwardAdd pass 会渲染多次叠加效果
         for(let pass of this.material.renderPasses){            

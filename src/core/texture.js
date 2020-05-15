@@ -29,6 +29,13 @@ class Texture2D {
 
     }
 
+    createEmpty(width, height){
+        gl.bindTexture(gl.TEXTURE_2D, this._id);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+
     get id(){
         return this._id;
     }

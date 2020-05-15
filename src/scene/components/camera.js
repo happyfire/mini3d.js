@@ -26,6 +26,10 @@ class Camera extends Component{
         this._onTargetResize(this._renderTexture.width, this._renderTexture.height);
     }
 
+    get target(){
+        return this._renderTexture;
+    }
+
     getViewProjMatrix(){
         return this._viewProjMatrix;
     }
@@ -60,7 +64,7 @@ class Camera extends Component{
 
     beforeRender(){
         if(this._renderTexture!=null){
-            this._renderTexture.bind();
+            this._renderTexture.beforeRender();
         }
 
         this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
@@ -79,7 +83,7 @@ class Camera extends Component{
 
     afterRender(){
         if(this._renderTexture!=null){
-            this._renderTexture.unbind();
+            this._renderTexture.afterRender();
         }
     }
 

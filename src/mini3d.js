@@ -31,4 +31,5 @@ export {MatPixelLight} from './material/matPixelLight';
 export {MatSolidColor} from './material/matSolidColor';
 export {MatNormalMap} from './material/matNormalMap';
 export {MatNormalMapW} from './material/matNormalMapW';
+export {MatMirror} from './material/matMirror';
 

@@ -97,6 +97,15 @@ class AppNormalMap {
         return this._scene.root.addMeshNode(wallMesh, matWall);
     }
 
+    createMirror(texture){
+        let mirrorMesh = mini3d.Plane.createMesh(6,6,2,2);
+        let matMirror = new mini3d.MatMirror();
+        matMirror.mainTexture = texture;
+        let node = this._scene.root.addMeshNode(mirrorMesh, matMirror);
+        node.localPosition.set(0, 2, -4);
+        node.localRotation.setFromEulerAngles(this._tempVec3.set(90,0,0));
+    }
+
     createWorld() {
 
         // Load meshes
@@ -168,7 +177,7 @@ class AppNormalMap {
         lightball = pointLight.addMeshNode(sphereMesh, new mini3d.MatSolidColor([0.9,0.9,0.9]));
         lightball.localScale.set(0.2,0.2,0.2);
         this._pointLight2 = pointLight;
-        
+
         // Add a perspective camera
         this._cameraNode = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 1000);        
         this._cameraNode.localPosition.set(0, 2, 6);
@@ -177,11 +186,13 @@ class AppNormalMap {
 
         // Add a render texture
         this._renderTexture = new mini3d.RenderTexture(512,512);
-        this._renderCamera = this._scene.root.addPerspectiveCamera(60, mini3d.canvas.width / mini3d.canvas.height, 1.0, 1000);        
-        this._renderCamera.localPosition.set(0, 2, 6);
+        this._renderCamera = this._scene.root.addPerspectiveCamera(60, 1.0, 1.0, 1000);        
+        this._renderCamera.localPosition.set(0, 2, -6);
         this._renderCamera.lookAt(new mini3d.Vector3(0, 1, 0));
-        this._renderCamera.camera.clearColor = [0, 0, 1];
+        this._renderCamera.camera.clearColor = [0.34,0.98,1];
         this._renderCamera.camera.target = this._renderTexture;
+
+        this.createMirror(this._renderTexture.texture2D);
     }
 
     onUpdate(dt) {
