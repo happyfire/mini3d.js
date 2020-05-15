@@ -78,7 +78,7 @@ class Quaternion {
 
     /**
      * Sets the euler angle representation of the rotation.
-     * @param {Vector3} eulerAngles 
+     * @param {Vector3} eulerAngles order is ZXY 
      */
     setFromEulerAngles(eulerAngles) {
         let ex = math.degToRad(eulerAngles.x * 0.5);

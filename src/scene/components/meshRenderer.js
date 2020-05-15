@@ -88,8 +88,9 @@ class MeshRenderer extends Component{
         //逐pass渲染，对于 ForwardAdd pass 会渲染多次叠加效果
         for(let pass of this.material.renderPasses){            
             if(pass.lightMode == LightMode.ForwardBase && mainLight!=null){
-
-                uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
+                 //平行光的方向为Light结点的z轴朝向,但是shader里面用的光的方向是指向光源的，所以这里取反
+                let lightForward = mainLight.node.forward.negative();
+                uniformContext[SystemUniforms.WorldLightPos] = [lightForward.x, lightForward.y, lightForward.z, 0.0];
                 uniformContext[SystemUniforms.LightColor] = mainLight.color;
                 this.material.renderPass(this.mesh, uniformContext, pass);
 
@@ -97,7 +98,8 @@ class MeshRenderer extends Component{
                 let idx = 1;
                 for(let light of pixelLights){
                     if(light.type == LightType.Directional){
-                        uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
+                        let lightForward = mainLight.node.forward.negative();
+                        uniformContext[SystemUniforms.WorldLightPos] = [lightForward.x, lightForward.y, lightForward.z, 0.0];                        
                     } else {
                         let pos =  light.node.worldPosition;
                         uniformContext[SystemUniforms.WorldLightPos] = [pos.x, pos.y, pos.z, 1.0];

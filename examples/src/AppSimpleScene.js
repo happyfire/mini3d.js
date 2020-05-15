@@ -96,7 +96,10 @@ class AppSimpleScene {
         this._mesh2.localScale.set(1, 1, 1);
         
         // Add a directional light node to scene
-        this._scene.root.addDirectionalLight([0.5,0.5,0.5]);
+        let mainLight = this._scene.root.addDirectionalLight([0.5,0.5,0.5]);
+        //this._tempQuat.setFromEulerAngles(this._tempVec3.set(135,45,0));
+        //mainLight.localRotation = this._tempQuat;
+        mainLight.lookAt(this._tempVec3.set(-1,-1,-1));
 
         // Add point light 1
         let lightColor = [0,0.1,0];

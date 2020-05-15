@@ -949,8 +949,11 @@ var main = (function () {
 	      this._mesh2.localScale.set(1, 1, 1); // Add a directional light node to scene
 
 
-	      this._scene.root.addDirectionalLight([0.5, 0.5, 0.5]); // Add point light 1
+	      var mainLight = this._scene.root.addDirectionalLight([0.5, 0.5, 0.5]); //this._tempQuat.setFromEulerAngles(this._tempVec3.set(135,45,0));
+	      //mainLight.localRotation = this._tempQuat;
 
+
+	      mainLight.lookAt(this._tempVec3.set(-1, -1, -1)); // Add point light 1
 
 	      var lightColor = [0, 0.1, 0];
 
@@ -1396,11 +1399,14 @@ var main = (function () {
 
 	      this._mesh2.localPosition.set(-1, 1, 0);
 
-	      this._mesh2.localScale.set(0.8, 0.8, 0.8); // Add a directional light node to scene
+	      this._mesh2.localScale.set(0.8, 0.8, 0.8); // Add a directional light node to scene        
 
 
-	      this._scene.root.addDirectionalLight([0.8, 0.8, 0.8]); // Add point light 1
+	      var mainLight = this._scene.root.addDirectionalLight([0.8, 0.8, 0.8]); //this._tempQuat.setFromEulerAngles(this._tempVec3.set(135,-45,0));
+	      //mainLight.localRotation = this._tempQuat;
 
+
+	      mainLight.lookAt(this._tempVec3.set(-1, -1, -1)); // Add point light 1
 
 	      var lightColor = [0.05, 0.05, 0.05];
 

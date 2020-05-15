@@ -1346,7 +1346,7 @@ var mini3d = (function (exports) {
 
         /**
          * Sets the euler angle representation of the rotation.
-         * @param {Vector3} eulerAngles 
+         * @param {Vector3} eulerAngles order is ZXY 
          */
         setFromEulerAngles(eulerAngles) {
             let ex = math.degToRad(eulerAngles.x * 0.5);
@@ -3167,8 +3167,9 @@ void main(){
             //逐pass渲染，对于 ForwardAdd pass 会渲染多次叠加效果
             for(let pass of this.material.renderPasses){            
                 if(pass.lightMode == LightMode.ForwardBase && mainLight!=null){
-
-                    uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
+                     //平行光的方向为Light结点的z轴朝向,但是shader里面用的光的方向是指向光源的，所以这里取反
+                    let lightForward = mainLight.node.forward.negative();
+                    uniformContext[SystemUniforms.WorldLightPos] = [lightForward.x, lightForward.y, lightForward.z, 0.0];
                     uniformContext[SystemUniforms.LightColor] = mainLight.color;
                     this.material.renderPass(this.mesh, uniformContext, pass);
 
@@ -3176,7 +3177,8 @@ void main(){
                     let idx = 1;
                     for(let light of pixelLights){
                         if(light.type == LightType.Directional){
-                            uniformContext[SystemUniforms.WorldLightPos] = [5.0, 5.0, 5.0, 0.0]; //TODO:平行光的方向根据z轴朝向计算
+                            let lightForward = mainLight.node.forward.negative();
+                            uniformContext[SystemUniforms.WorldLightPos] = [lightForward.x, lightForward.y, lightForward.z, 0.0];                        
                         } else {
                             let pos =  light.node.worldPosition;
                             uniformContext[SystemUniforms.WorldLightPos] = [pos.x, pos.y, pos.z, 1.0];
@@ -3396,7 +3398,33 @@ void main(){
                 this.localRotation = _tempQuat2.clone();
             }
         }
+
+        get forward(){
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }
+            let worldMat = this.worldMatrix.elements;
+            _tempVec3.set(worldMat[8], worldMat[9], worldMat[10]);
+            return _tempVec3;
+        }
         
+        get up(){
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }
+            let worldMat = this.worldMatrix.elements;
+            _tempVec3.set(worldMat[4], worldMat[5], worldMat[6]);
+            return _tempVec3;
+        }
+
+        get right(){
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }
+            let worldMat = this.worldMatrix.elements;
+            _tempVec3.set(worldMat[0], worldMat[1], worldMat[2]);
+            return _tempVec3;
+        }
 
         removeFromParent(){
             if(this.parent){
@@ -3669,7 +3697,33 @@ void main(){
                 this.localRotation = _tempQuat2$1.clone();
             }
         }
+
+        get forward(){
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }
+            let worldMat = this.worldMatrix.elements;
+            _tempVec3$1.set(worldMat[8], worldMat[9], worldMat[10]);
+            return _tempVec3$1;
+        }
         
+        get up(){
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }
+            let worldMat = this.worldMatrix.elements;
+            _tempVec3$1.set(worldMat[4], worldMat[5], worldMat[6]);
+            return _tempVec3$1;
+        }
+
+        get right(){
+            if(this._worldDirty){
+                this.updateWorldMatrix();
+            }
+            let worldMat = this.worldMatrix.elements;
+            _tempVec3$1.set(worldMat[0], worldMat[1], worldMat[2]);
+            return _tempVec3$1;
+        }
 
         removeFromParent(){
             if(this.parent){

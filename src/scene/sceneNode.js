@@ -117,7 +117,33 @@ class SceneNode {
             this.localRotation = _tempQuat2.clone();
         }
     }
+
+    get forward(){
+        if(this._worldDirty){
+            this.updateWorldMatrix();
+        }
+        let worldMat = this.worldMatrix.elements;
+        _tempVec3.set(worldMat[8], worldMat[9], worldMat[10]);
+        return _tempVec3;
+    }
     
+    get up(){
+        if(this._worldDirty){
+            this.updateWorldMatrix();
+        }
+        let worldMat = this.worldMatrix.elements;
+        _tempVec3.set(worldMat[4], worldMat[5], worldMat[6]);
+        return _tempVec3;
+    }
+
+    get right(){
+        if(this._worldDirty){
+            this.updateWorldMatrix();
+        }
+        let worldMat = this.worldMatrix.elements;
+        _tempVec3.set(worldMat[0], worldMat[1], worldMat[2]);
+        return _tempVec3;
+    }
 
     removeFromParent(){
         if(this.parent){

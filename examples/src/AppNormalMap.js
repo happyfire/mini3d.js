@@ -147,8 +147,11 @@ class AppNormalMap {
         this._mesh2.localPosition.set(-1, 1, 0);
         this._mesh2.localScale.set(0.8, 0.8, 0.8);
         
-        // Add a directional light node to scene
-        this._scene.root.addDirectionalLight([0.8,0.8,0.8]);
+        // Add a directional light node to scene        
+        let mainLight = this._scene.root.addDirectionalLight([0.8,0.8,0.8]);
+        //this._tempQuat.setFromEulerAngles(this._tempVec3.set(135,-45,0));
+        //mainLight.localRotation = this._tempQuat;
+        mainLight.lookAt(this._tempVec3.set(-1,-1,-1));
 
         // Add point light 1
         let lightColor = [0.05,0.05,0.05];
@@ -194,7 +197,6 @@ class AppNormalMap {
             this._pointLight2.localPosition.y = 0.5 + radius*(0.5+0.5*sinv)*0.5;
             this._pointLight2.setTransformDirty();
 
-           
             this._scene.render();
         }
     }
