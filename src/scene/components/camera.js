@@ -14,10 +14,16 @@ class Camera extends Component{
         this._viewProjMatrix = new Matrix4();
 
         this._clearColor = [0, 0, 0];
+        this._renderTexture = null;
     }
 
     set clearColor(v){
         this._clearColor = v;
+    }
+
+    set target(v){
+        this._renderTexture = v;
+        this._onTargetResize(this._renderTexture.width, this._renderTexture.height);
     }
 
     getViewProjMatrix(){
@@ -37,9 +43,14 @@ class Camera extends Component{
     }
 
     onScreenResize(width, height){
+        if(this._renderTexture==null){
+            this._onTargetResize(width, height);
+        }                    
+    }
+
+    _onTargetResize(width, height){
         this._aspect = width/height;
-        this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);     
-        
+        this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far); 
     }
 
     _updateViewProjMatrix(){
@@ -48,6 +59,10 @@ class Camera extends Component{
     }
 
     beforeRender(){
+        if(this._renderTexture!=null){
+            this._renderTexture.bind();
+        }
+
         this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
         
         this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
@@ -59,12 +74,13 @@ class Camera extends Component{
         gl.clearDepth(1.0);
         gl.enable(gl.DEPTH_TEST);
 
-        gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-        
+        gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);                
     }
 
     afterRender(){
-
+        if(this._renderTexture!=null){
+            this._renderTexture.unbind();
+        }
     }
 
 

@@ -52,7 +52,7 @@ class MeshRenderer extends Component{
                     break;
                 }
                 case SystemUniforms.World2Object:{
-                    this._worldToObject.setInverseOf(this.node.worldMatrix);
+                    this._worldToObject.setInverseOf(this.node.worldMatrix);//TODO: 此矩阵缓存到node
                     uniformContext[SystemUniforms.World2Object] = this._worldToObject.elements;
                     break;
                 }
@@ -69,7 +69,9 @@ class MeshRenderer extends Component{
             }
         }
 
-        //TODO:灯光规则，选出最亮的平行光为主光（传入forwardbase pass)，选择 N 个光为逐像素光（传入forwardadd pass)，其他的光为逐顶点光（传入forwardbase pass)
+        //TODO:灯光规则，选出最亮的平行光为主光（传入forwardbase pass)，
+        //如果存在forwardadd pass, 则剩下的灯光中选择不大于MaxForwardAddLights的数量的光为逐像素光（传入forwardadd pass)
+        //如果不存在forwardadd pass，则剩下的灯光中选择MaxVertexLights数量的光为逐顶点光（传入forwardbase pass)
         let mainLight = null;
         let pixelLights = [];
         for(let light of lights){                

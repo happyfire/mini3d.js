@@ -2237,6 +2237,108 @@ var mini3d = (function (exports) {
         }
     }
 
+    class RenderTexture{
+        constructor(width, height){
+            this._width = width;
+            this._height = height;
+            this._fbo = null;
+            this._texture = null;
+            this._depthBuffer = null;
+
+            this._initFBO();
+        }
+
+        get width(){
+            return this._width;
+        }
+
+        get height(){
+            return this._height;
+        }
+
+        destroy(){
+            if(this._fbo){
+                exports.gl.deleteFramebuffer(this._fbo);
+                this._fbo = null;
+            } 
+            if(this._texture){
+                exports.gl.deleteTexture(this._texture);
+                this._texture = null;
+            } 
+            if(this._depthBuffer){
+                exports.gl.deleteRenderbuffer(this._depthBuffer);  
+                this._depthBuffer = null;
+            } 
+        }
+
+        _initFBO(){
+            // Create FBO
+            this._fbo = exports.gl.createFramebuffer();
+            if(!this._fbo){
+                console.error('Failed to create frame buffer object');
+                this.destroy();
+                return;
+            }
+
+            // Create a texture object and set its size and parameters
+            this._texture = exports.gl.createTexture();
+            if(!this._texture){
+                console.error('Failed to create texture object');
+                this.destroy();
+                return;
+            }
+
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._texture);
+            exports.gl.texImage2D(exports.gl.TEXTURE_2D, 0, exports.gl.RGBA, this._width, this._height, 0, exports.gl.RGBA, exports.gl.UNSIGNED_BYTE, null);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.LINEAR);
+
+            // Create a renderbuffer object and set its size and parameters
+            this._depthBuffer = exports.gl.createRenderbuffer();
+            if(!this._depthBuffer){
+                console.error('Failed to create renderbuffer object');
+                this.destroy();
+                return;
+            }
+
+            exports.gl.bindRenderbuffer(exports.gl.RENDERBUFFER, this._depthBuffer);
+            exports.gl.renderbufferStorage(exports.gl.RENDERBUFFER, exports.gl.DEPTH_COMPONENT16, this._width, this._height);
+
+            // Attach the texture and the renderbuffer object to the FBO
+            exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, this._fbo);
+            exports.gl.framebufferTexture2D(exports.gl.FRAMEBUFFER, exports.gl.COLOR_ATTACHMENT0, exports.gl.TEXTURE_2D, this._texture, 0);
+            exports.gl.framebufferRenderbuffer(exports.gl.FRAMEBUFFER, exports.gl.DEPTH_ATTACHMENT, exports.gl.RENDERBUFFER, this._depthBuffer);
+
+            // Check if FBO is configured correctly
+            let e = exports.gl.checkFramebufferStatus(exports.gl.FRAMEBUFFER);
+            if(exports.gl.FRAMEBUFFER_COMPLETE !== e){
+                console.error('Frame buffer object is incomplete: '+ e.toString());
+                this.destroy();
+                return;
+            }
+
+            // Unbind the buffer object
+            exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, null);
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
+            exports.gl.bindRenderbuffer(exports.gl.RENDERBUFFER, null);        
+        }
+
+        bind(){
+            if(!this._fbo || !this._texture || !this._depthBuffer){
+                console.error("Render texture is invalid.");
+                return;
+            }
+            exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, this._vbo);
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._texture);
+            exports.gl.viewport(0, 0, this._width, this._height);
+        }
+
+        unbind(){
+            exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, null);
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
+            exports.gl.viewport(0, 0, exports.canvas.width, exports.canvas.height);
+        }
+    }
+
     class Texture2D {
         constructor(){
             this._id = exports.gl.createTexture();
@@ -3131,7 +3233,7 @@ void main(){
                         break;
                     }
                     case SystemUniforms.World2Object:{
-                        this._worldToObject.setInverseOf(this.node.worldMatrix);
+                        this._worldToObject.setInverseOf(this.node.worldMatrix);//TODO: 此矩阵缓存到node
                         uniformContext[SystemUniforms.World2Object] = this._worldToObject.elements;
                         break;
                     }
@@ -3148,7 +3250,9 @@ void main(){
                 }
             }
 
-            //TODO:灯光规则，选出最亮的平行光为主光（传入forwardbase pass)，选择 N 个光为逐像素光（传入forwardadd pass)，其他的光为逐顶点光（传入forwardbase pass)
+            //TODO:灯光规则，选出最亮的平行光为主光（传入forwardbase pass)，
+            //如果存在forwardadd pass, 则剩下的灯光中选择不大于MaxForwardAddLights的数量的光为逐像素光（传入forwardadd pass)
+            //如果不存在forwardadd pass，则剩下的灯光中选择MaxVertexLights数量的光为逐顶点光（传入forwardbase pass)
             let mainLight = null;
             let pixelLights = [];
             for(let light of lights){                
@@ -3232,10 +3336,16 @@ void main(){
             this._viewProjMatrix = new Matrix4();
 
             this._clearColor = [0, 0, 0];
+            this._renderTexture = null;
         }
 
         set clearColor(v){
             this._clearColor = v;
+        }
+
+        set target(v){
+            this._renderTexture = v;
+            this._onTargetResize(this._renderTexture.width, this._renderTexture.height);
         }
 
         getViewProjMatrix(){
@@ -3255,9 +3365,14 @@ void main(){
         }
 
         onScreenResize(width, height){
+            if(this._renderTexture==null){
+                this._onTargetResize(width, height);
+            }                    
+        }
+
+        _onTargetResize(width, height){
             this._aspect = width/height;
-            this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);     
-            
+            this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far); 
         }
 
         _updateViewProjMatrix(){
@@ -3266,6 +3381,10 @@ void main(){
         }
 
         beforeRender(){
+            if(this._renderTexture!=null){
+                this._renderTexture.bind();
+            }
+
             this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
             
             this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
@@ -3277,12 +3396,13 @@ void main(){
             gl.clearDepth(1.0);
             gl.enable(gl.DEPTH_TEST);
 
-            gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-            
+            gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);                
         }
 
         afterRender(){
-
+            if(this._renderTexture!=null){
+                this._renderTexture.unbind();
+            }
         }
 
 
@@ -5040,6 +5160,7 @@ void main(){
     exports.MeshRenderer = MeshRenderer;
     exports.Plane = Plane;
     exports.Quaternion = Quaternion;
+    exports.RenderTexture = RenderTexture;
     exports.Scene = Scene;
     exports.SceneNode = SceneNode;
     exports.Shader = Shader;

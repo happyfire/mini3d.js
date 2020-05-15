@@ -1,4 +1,4 @@
-import { gl } from "./gl";
+import { gl, canvas } from "./gl";
 
 class RenderTexture{
     constructor(width, height){
@@ -9,6 +9,14 @@ class RenderTexture{
         this._depthBuffer = null;
 
         this._initFBO();
+    }
+
+    get width(){
+        return this._width;
+    }
+
+    get height(){
+        return this._height;
     }
 
     destroy(){
@@ -46,7 +54,6 @@ class RenderTexture{
         gl.bindTexture(gl.TEXTURE_2D, this._texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this._width, this._height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        this._fbo.texture = this._texture; // Store the texture object
 
         // Create a renderbuffer object and set its size and parameters
         this._depthBuffer = gl.createRenderbuffer();
@@ -76,6 +83,22 @@ class RenderTexture{
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.bindTexture(gl.TEXTURE_2D, null);
         gl.bindRenderbuffer(gl.RENDERBUFFER, null);        
+    }
+
+    bind(){
+        if(!this._fbo || !this._texture || !this._depthBuffer){
+            console.error("Render texture is invalid.");
+            return;
+        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this._vbo);
+        gl.bindTexture(gl.TEXTURE_2D, this._texture);
+        gl.viewport(0, 0, this._width, this._height);
+    }
+
+    unbind(){
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.viewport(0, 0, canvas.width, canvas.height);
     }
 }
 
