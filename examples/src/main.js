@@ -2,6 +2,7 @@ import AppTexturedCube from "./AppTexturedCube";
 import AppObjLoader from "./AppObjLoader";
 import AppSimpleScene from "./AppSimpleScene";
 import AppNormalMap from "./AppNormalMap";
+import AppMirror from "./AppMirror";
 
 function exampleTexturedCube(){
     let app = new AppTexturedCube();    
@@ -24,6 +25,11 @@ function exampleNormalMap(){
     mini3d.init('webgl', app);
 }
 
+function exampleMirror(){
+    let app = new AppMirror();
+    mini3d.init('webgl', app);
+}
+
 let examples = [
     {
         name:'Textured Cube',
@@ -40,6 +46,10 @@ let examples = [
     {
         name:'Normal Map',
         entry:exampleNormalMap
+    },
+    {
+        name:'Mirror',
+        entry:exampleMirror
     }
 ]
 
