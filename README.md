@@ -1,6 +1,7 @@
 # mini3d.js
 一个实验性的WebGL项目，旨在使用WebGL从头实现一些渲染效果，并尽量提供可用性，以在一些网页展示/游戏中使用。
 
+* 演示视频：https://space.bilibili.com/582093241/channel/detail?cid=131730
 * 在线示例: http://happyfirecn.gitee.io/mini3djs_examples/
 * 开发笔记：https://blog.csdn.net/n5/category_9647112.html
 
@@ -13,14 +14,15 @@
 * 模型载入
 * ShadowMap阴影
 * 后期处理框架
-* 水体渲染
+* 水体/海洋渲染
+* 地形系统
+* 大规模草地
 * 骨骼动画
 * 实例化绘制
 * 动态Batch
 * 其他
 
-## 示例截图
-![简单场景](http://happyfirecn.gitee.io/mini3djs_examples/examples/previews/ex3.png)
+
 
 
 
