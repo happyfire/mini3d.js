@@ -296,10 +296,10 @@ class SceneNode {
         return this.components[type];
     }
 
-    render(camera, lights){
+    render(scene, camera, lights){
         let renderer = this.components[SystemComponents.Renderer];
         if(renderer){
-            renderer.render(camera, lights);
+            renderer.render(scene, camera, lights);
         }
     }
 

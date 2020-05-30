@@ -8,6 +8,8 @@ class SharedTexture{
     }
 }
 
+//TODO: LRU or LFU cache, if the GPU texture memory is out of some limit, remove from GPU and cache data in RAM
+
 class TextureManager {
     constructor(){
         this._textures = {};
@@ -36,6 +38,22 @@ class TextureManager {
                 delete this._textures[texturePath];
             }
         }
+    }
+
+    getDefaultTexture(){
+        if(this._defaultTexture==null){
+            this._defaultTexture = new Texture2D();
+            this._defaultTexture.createDefault();
+        }
+        return this._defaultTexture;
+    }
+
+    getDefaultBumpTexture(){
+        if(this._defaultBumpTexture==null){
+            this._defaultBumpTexture = new Texture2D();
+            this._defaultBumpTexture.createDefaultBump();
+        }
+        return this._defaultBumpTexture;
     }
 
 }

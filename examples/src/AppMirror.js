@@ -110,7 +110,7 @@ class AppMirror {
 
         
         // Create scene
-        this._scene = new mini3d.Scene();
+        this._scene = new mini3d.Scene();        
 
         // Create the ground
         this.createGround();  

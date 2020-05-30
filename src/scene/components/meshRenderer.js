@@ -14,7 +14,6 @@ class MeshRenderer extends Component{
         this.material = null;
 
         this._mvpMatrix = new Matrix4();
-        this._normalMatrix = new Matrix4();
         this._objectToWorld = new Matrix4();
         this._worldToObject = new Matrix4();
     }
@@ -27,7 +26,7 @@ class MeshRenderer extends Component{
         this.mesh = mesh;
     }
 
-    render(camera, lights){
+    render(scene, camera, lights){
 
         let systemUniforms = this.material.systemUniforms;
         let uniformContext = {};
@@ -38,12 +37,6 @@ class MeshRenderer extends Component{
                     this._mvpMatrix.set(camera.getViewProjMatrix());
                     this._mvpMatrix.multiply(this.node.worldMatrix);
                     uniformContext[SystemUniforms.MvpMatrix] = this._mvpMatrix.elements;
-                    break;
-                }
-                case SystemUniforms.NormalMatrix:{
-                    this._normalMatrix.setInverseOf(this.node.worldMatrix);
-                    this._normalMatrix.transpose();  
-                    uniformContext[SystemUniforms.NormalMatrix] = this._normalMatrix.elements;
                     break;
                 }
                 case SystemUniforms.Object2World:{
@@ -62,7 +55,7 @@ class MeshRenderer extends Component{
                     break;
                 }
                 case SystemUniforms.SceneAmbient:{
-                    uniformContext[SystemUniforms.SceneAmbient] = [0.1,0.1,0.1];//TODO:get from scene
+                    uniformContext[SystemUniforms.SceneAmbient] = scene.ambientColor;
                     break;
                 }
 

@@ -2250,7 +2250,7 @@ var mini3d = (function (exports) {
             this._id = 0;
         }
 
-        create(image){
+        create(image, withAlpha=false){
             // Bind the texture object to the target
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
             
@@ -2260,16 +2260,75 @@ var mini3d = (function (exports) {
             this.setClamp();
             
             // Set the texture image data
-            exports.gl.texImage2D(exports.gl.TEXTURE_2D, 0, exports.gl.RGB, exports.gl.RGB, exports.gl.UNSIGNED_BYTE, image);
+            const level = 0;
+            const internalFormat = withAlpha ? exports.gl.RGBA : exports.gl.RGB;        
+            const srcFormat = withAlpha ? exports.gl.RGBA : exports.gl.RGB;
+            const srcType = exports.gl.UNSIGNED_BYTE;
+            exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
 
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
 
         }
 
-        createEmpty(width, height){
+        createEmpty(width, height, withAlpha=false){
+            const level = 0;
+            const internalFormat = withAlpha ? exports.gl.RGBA : exports.gl.RGB;        
+            const border = 0;
+            const srcFormat = withAlpha ? exports.gl.RGBA : exports.gl.RGB;
+            const srcType = exports.gl.UNSIGNED_BYTE;
+
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
-            exports.gl.texImage2D(exports.gl.TEXTURE_2D, 0, exports.gl.RGBA, width, height, 0, exports.gl.RGBA, exports.gl.UNSIGNED_BYTE, null);
+            exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, null);
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.LINEAR);
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
+        }
+
+        createDefault(){
+            const level = 0;
+            const internalFormat = exports.gl.RGBA;  
+            let n = 8;
+            const width = n;
+            const height = n;    
+            const border = 0;
+            const srcFormat = exports.gl.RGBA;
+            const srcType = exports.gl.UNSIGNED_BYTE;
+            let colors = [];        
+            for(let i=0; i<n; ++i){
+                for(let j=0; j<n; ++j){
+                    (i+j)%2==0 ? colors.push(255,255,255,255) : colors.push(0,0,0,255); //RGBA                
+                }
+            }
+            console.log(colors);
+            const pixelData = new Uint8Array(colors);
+
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
+            exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixelData);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.NEAREST);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MAG_FILTER, exports.gl.NEAREST);
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
+        }
+
+        createDefaultBump(){
+            const level = 0;
+            const internalFormat = exports.gl.RGB;  
+            let n = 2;
+            const width = n;
+            const height = n;    
+            const border = 0;
+            const srcFormat = exports.gl.RGB;
+            const srcType = exports.gl.UNSIGNED_BYTE;
+            let colors = [];        
+            for(let i=0; i<n; ++i){
+                for(let j=0; j<n; ++j){            
+                    colors.push(128,128,255); //RGB                          
+                }
+            }
+            const pixelData = new Uint8Array(colors);
+
+            exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
+            exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixelData);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.NEAREST);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MAG_FILTER, exports.gl.NEAREST);
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
         }
 
@@ -2525,6 +2584,8 @@ var mini3d = (function (exports) {
         }
     }
 
+    //TODO: LRU or LFU cache, if the GPU texture memory is out of some limit, remove from GPU and cache data in RAM
+
     class TextureManager {
         constructor(){
             this._textures = {};
@@ -2553,6 +2614,22 @@ var mini3d = (function (exports) {
                     delete this._textures[texturePath];
                 }
             }
+        }
+
+        getDefaultTexture(){
+            if(this._defaultTexture==null){
+                this._defaultTexture = new Texture2D();
+                this._defaultTexture.createDefault();
+            }
+            return this._defaultTexture;
+        }
+
+        getDefaultBumpTexture(){
+            if(this._defaultBumpTexture==null){
+                this._defaultBumpTexture = new Texture2D();
+                this._defaultBumpTexture.createDefaultBump();
+            }
+            return this._defaultBumpTexture;
         }
 
     }
@@ -3200,7 +3277,6 @@ void main(){
             this.material = null;
 
             this._mvpMatrix = new Matrix4();
-            this._normalMatrix = new Matrix4();
             this._objectToWorld = new Matrix4();
             this._worldToObject = new Matrix4();
         }
@@ -3213,7 +3289,7 @@ void main(){
             this.mesh = mesh;
         }
 
-        render(camera, lights){
+        render(scene, camera, lights){
 
             let systemUniforms = this.material.systemUniforms;
             let uniformContext = {};
@@ -3224,12 +3300,6 @@ void main(){
                         this._mvpMatrix.set(camera.getViewProjMatrix());
                         this._mvpMatrix.multiply(this.node.worldMatrix);
                         uniformContext[SystemUniforms.MvpMatrix] = this._mvpMatrix.elements;
-                        break;
-                    }
-                    case SystemUniforms.NormalMatrix:{
-                        this._normalMatrix.setInverseOf(this.node.worldMatrix);
-                        this._normalMatrix.transpose();  
-                        uniformContext[SystemUniforms.NormalMatrix] = this._normalMatrix.elements;
                         break;
                     }
                     case SystemUniforms.Object2World:{
@@ -3248,7 +3318,7 @@ void main(){
                         break;
                     }
                     case SystemUniforms.SceneAmbient:{
-                        uniformContext[SystemUniforms.SceneAmbient] = [0.1,0.1,0.1];//TODO:get from scene
+                        uniformContext[SystemUniforms.SceneAmbient] = scene.ambientColor;
                         break;
                     }
 
@@ -3398,7 +3468,7 @@ void main(){
                 this._renderTexture.beforeRender();
             }
 
-            this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
+            this._viewMatrix.setInverseOf(this.node.worldMatrix);
             
             this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
 
@@ -3710,10 +3780,10 @@ void main(){
             return this.components[type];
         }
 
-        render(camera, lights){
+        render(scene, camera, lights){
             let renderer = this.components[SystemComponents.Renderer];
             if(renderer){
-                renderer.render(camera, lights);
+                renderer.render(scene, camera, lights);
             }
         }
 
@@ -4009,10 +4079,10 @@ void main(){
             return this.components[type];
         }
 
-        render(camera, lights){
+        render(scene, camera, lights){
             let renderer = this.components[SystemComponents.Renderer];
             if(renderer){
-                renderer.render(camera, lights);
+                renderer.render(scene, camera, lights);
             }
         }
 
@@ -4026,6 +4096,16 @@ void main(){
             this.cameras = [];
             this.lights = [];
             this.renderNodes = [];
+
+            this._ambientColor = [0.1,0.1,0.1];
+        }
+
+        set ambientColor(v){
+            this._ambientColor = v;
+        }
+
+        get ambientColor(){
+            return this._ambientColor;
         }
 
         get root(){
@@ -4077,7 +4157,10 @@ void main(){
 
         onScreenResize(width, height){
             for(let camera of this.cameras){
-                camera.onScreenResize(width, height); //TODO:渲染目前如果是texture则不需要执行
+                if(camera.target==null){
+                    camera.onScreenResize(width, height); //如果不是RT则不需要执行
+                }
+                
             }
         }
 
@@ -4098,7 +4181,7 @@ void main(){
 
                 //TODO：按优先级和范围选择灯光，灯光总数要有限制
                 for(let rnode of this.renderNodes){
-                    rnode.render(camera, this.lights);
+                    rnode.render(this, camera, this.lights);
                 }
 
                 camera.afterRender();
@@ -4402,7 +4485,7 @@ void main(){
             this.addRenderPass(g_shaderForwardAdd, LightMode.ForwardAdd);                
 
             //default uniforms
-            this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
+            this._mainTexture = textureManager.getDefaultTexture();
             this._mainTexture_ST = [1,1,0,0];
             this._specular = [1.0, 1.0, 1.0];
             this._gloss = 20.0;  
@@ -4579,7 +4662,7 @@ void main(){
             this.addRenderPass(g_shaderForwardAdd$1, LightMode.ForwardAdd);                
 
             //default uniforms
-            this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
+            this._mainTexture = textureManager.getDefaultTexture();
             this._mainTexture_ST = [1,1,0,0];
             this._specular = [1.0, 1.0, 1.0];
             this._gloss = 20.0;  
@@ -4850,9 +4933,9 @@ void main(){
             this.addRenderPass(g_shaderForwardAdd$2, LightMode.ForwardAdd);                
 
             //default uniforms
-            this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
+            this._mainTexture = textureManager.getDefaultTexture();
             this._mainTexture_ST = [1,1,0,0];
-            this._normalMap = null;
+            this._normalMap = textureManager.getDefaultBumpTexture();
             this._normalMap_ST = [1,1,0,0];
             this._specular = [1.0, 1.0, 1.0];
             this._gloss = 20.0;  
@@ -5079,9 +5162,9 @@ void main(){
             this.addRenderPass(g_shaderForwardAdd$3, LightMode.ForwardAdd);                
 
             //default uniforms
-            this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
+            this._mainTexture = textureManager.getDefaultTexture();
             this._mainTexture_ST = [1,1,0,0];
-            this._normalMap = null;
+            this._normalMap = textureManager.getDefaultBumpTexture();
             this._normalMap_ST = [1,1,0,0];
             this._specular = [1.0, 1.0, 1.0];
             this._gloss = 20.0;  

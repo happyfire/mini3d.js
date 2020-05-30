@@ -8,6 +8,16 @@ class Scene{
         this.cameras = [];
         this.lights = [];
         this.renderNodes = [];
+
+        this._ambientColor = [0.1,0.1,0.1];
+    }
+
+    set ambientColor(v){
+        this._ambientColor = v;
+    }
+
+    get ambientColor(){
+        return this._ambientColor;
     }
 
     get root(){
@@ -59,7 +69,10 @@ class Scene{
 
     onScreenResize(width, height){
         for(let camera of this.cameras){
-            camera.onScreenResize(width, height); //TODO:渲染目前如果是texture则不需要执行
+            if(camera.target==null){
+                camera.onScreenResize(width, height); //如果不是RT则不需要执行
+            }
+            
         }
     }
 
@@ -80,7 +93,7 @@ class Scene{
 
             //TODO：按优先级和范围选择灯光，灯光总数要有限制
             for(let rnode of this.renderNodes){
-                rnode.render(camera, this.lights);
+                rnode.render(this, camera, this.lights);
             }
 
             camera.afterRender();

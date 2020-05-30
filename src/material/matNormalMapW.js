@@ -3,6 +3,7 @@
 import { Material, SystemUniforms } from "./material";
 import { VertexSemantic } from "../core/vertexFormat";
 import { LightMode } from "./renderPass";
+import { textureManager } from "../core/textureManager";
 
 //////////// forward base pass shader /////////////////////
 
@@ -155,9 +156,9 @@ class MatNormalMapW extends Material{
         this.addRenderPass(g_shaderForwardAdd, LightMode.ForwardAdd);                
 
         //default uniforms
-        this._mainTexture = null; //TODO: 系统提供默认纹理（如白色，黑白格）
+        this._mainTexture = textureManager.getDefaultTexture();
         this._mainTexture_ST = [1,1,0,0];
-        this._normalMap = null;
+        this._normalMap = textureManager.getDefaultBumpTexture();
         this._normalMap_ST = [1,1,0,0];
         this._specular = [1.0, 1.0, 1.0];
         this._gloss = 20.0;  

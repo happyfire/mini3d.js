@@ -13,7 +13,7 @@ class Texture2D {
         this._id = 0;
     }
 
-    create(image){
+    create(image, withAlpha=false){
         // Bind the texture object to the target
         gl.bindTexture(gl.TEXTURE_2D, this._id);
         
@@ -23,16 +23,75 @@ class Texture2D {
         this.setClamp();
         
         // Set the texture image data
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+        const level = 0;
+        const internalFormat = withAlpha ? gl.RGBA : gl.RGB;        
+        const srcFormat = withAlpha ? gl.RGBA : gl.RGB;
+        const srcType = gl.UNSIGNED_BYTE;
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
 
         gl.bindTexture(gl.TEXTURE_2D, null);
 
     }
 
-    createEmpty(width, height){
+    createEmpty(width, height, withAlpha=false){
+        const level = 0;
+        const internalFormat = withAlpha ? gl.RGBA : gl.RGB;        
+        const border = 0;
+        const srcFormat = withAlpha ? gl.RGBA : gl.RGB;
+        const srcType = gl.UNSIGNED_BYTE;
+
         gl.bindTexture(gl.TEXTURE_2D, this._id);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, null);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+
+    createDefault(){
+        const level = 0;
+        const internalFormat = gl.RGBA;  
+        let n = 8;
+        const width = n;
+        const height = n;    
+        const border = 0;
+        const srcFormat = gl.RGBA;
+        const srcType = gl.UNSIGNED_BYTE;
+        let colors = [];        
+        for(let i=0; i<n; ++i){
+            for(let j=0; j<n; ++j){
+                (i+j)%2==0 ? colors.push(255,255,255,255) : colors.push(0,0,0,255); //RGBA                
+            }
+        }
+        console.log(colors);
+        const pixelData = new Uint8Array(colors);
+
+        gl.bindTexture(gl.TEXTURE_2D, this._id);
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixelData);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+
+    createDefaultBump(){
+        const level = 0;
+        const internalFormat = gl.RGB;  
+        let n = 2;
+        const width = n;
+        const height = n;    
+        const border = 0;
+        const srcFormat = gl.RGB;
+        const srcType = gl.UNSIGNED_BYTE;
+        let colors = [];        
+        for(let i=0; i<n; ++i){
+            for(let j=0; j<n; ++j){            
+                colors.push(128,128,255); //RGB                          
+            }
+        }
+        const pixelData = new Uint8Array(colors);
+
+        gl.bindTexture(gl.TEXTURE_2D, this._id);
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixelData);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.bindTexture(gl.TEXTURE_2D, null);
     }
 

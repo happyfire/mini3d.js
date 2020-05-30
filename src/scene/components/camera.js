@@ -67,7 +67,7 @@ class Camera extends Component{
             this._renderTexture.beforeRender();
         }
 
-        this._viewMatrix.setInverseOf(this.node.worldMatrix); //TODO: use this, when look at done.
+        this._viewMatrix.setInverseOf(this.node.worldMatrix);
         
         this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
 
