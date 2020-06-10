@@ -4,10 +4,9 @@ import { Material, SystemUniforms } from "./material";
 import { VertexSemantic } from "../core/vertexFormat";
 import { LightMode } from "./renderPass";
 import { textureManager } from "../core/textureManager";
+import { sysConfig } from "../core/gl";
 
-//////////// forward base pass shader /////////////////////
-
-let vs_forwardbase = `
+let vs = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec4 a_Tangent;
@@ -95,7 +94,12 @@ void main(){
     vec3 tangentNormal = texture2D(u_normalMap, v_texcoord.zw).xyz * 2.0 - 1.0;
 #endif
     
-    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb * u_colorTint;
+    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb;
+#ifdef GAMMA_CORRECTION
+    albedo = pow(albedo, vec3(2.2));
+#endif
+    albedo = albedo * u_colorTint;
+
     vec3 diffuse = u_LightColor * albedo * max(0.0, dot(tangentNormal, tangentLightDir));
 
 #ifdef LIGHT_MODEL_PHONG
@@ -112,18 +116,12 @@ void main(){
 #else
     gl_FragColor = vec4((diffuse + specular) * v_atten, 1.0);
 #endif
+
+#ifdef GAMMA_CORRECTION
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1.0/2.2));
+#endif
 }
 `;
-
-let fs_forwardbase = "#define LIGHT_MODEL_PHONG\n #define USE_AMBIENT\n" + fs;
-
-//////////// forward add pass shader /////////////////////
-
-// vs和forward base相同
-let vs_forwardadd = vs_forwardbase;
-
-// fs和forwardbase的区别只是fs里面没有加ambient
-let fs_forwardadd = "#define LIGHT_MODEL_PHONG\n" + fs;
 
 
 let g_shaderForwardBase = null;
@@ -134,7 +132,7 @@ class MatNormalMap extends Material{
         super();
         
         if(g_shaderForwardBase==null){
-            g_shaderForwardBase = Material.createShader(vs_forwardbase, fs_forwardbase, [
+            g_shaderForwardBase = Material.createShader(this.getVS_forwardbase(), this.getFS_forwardbase(), [
                 {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                 {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                 {'semantic':VertexSemantic.TANGENT , 'name':'a_Tangent'},
@@ -142,7 +140,7 @@ class MatNormalMap extends Material{
             ]);
         }
         if(g_shaderForwardAdd==null){
-            g_shaderForwardAdd = Material.createShader(vs_forwardadd, fs_forwardadd, [
+            g_shaderForwardAdd = Material.createShader(this.getVS_forwardadd(), this.getFS_forwardadd(), [
                 {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                 {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                 {'semantic':VertexSemantic.TANGENT , 'name':'a_Tangent'},
@@ -161,6 +159,37 @@ class MatNormalMap extends Material{
         this._specular = [1.0, 1.0, 1.0];
         this._gloss = 20.0;  
         this._colorTint = [1.0, 1.0, 1.0];  
+    }
+
+    getVS_Common(){
+        return vs;
+    }
+
+    getFS_Common(){
+        let fs_common = "#define LIGHT_MODEL_PHONG\n";
+        if(sysConfig.gammaCorrection){
+            fs_common += "#define GAMMA_CORRECTION\n";
+        }
+        fs_common += fs;
+        return fs_common;
+    }
+
+    getVS_forwardbase(){
+        return this.getVS_Common();
+    }
+
+    getFS_forwardbase(){
+        let fs_forwardbase = "#define USE_AMBIENT\n" + this.getFS_Common();
+        return fs_forwardbase;
+    }
+
+    getVS_forwardadd(){
+        return this.getVS_Common();
+    }
+
+    getFS_forwardadd(){
+        // fs和forwardbase的区别只是fs里面没有加ambient
+        return this.getFS_Common();
     }
 
     //Override

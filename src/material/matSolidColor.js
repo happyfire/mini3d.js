@@ -1,5 +1,6 @@
 import { Material, SystemUniforms } from "./material";
 import { VertexSemantic } from "../core/vertexFormat";
+import { sysConfig } from "../core/gl";
 
 let vs = `
 attribute vec4 a_Position;
@@ -21,6 +22,10 @@ uniform vec3 u_Color;
 
 void main(){
     gl_FragColor = vec4(u_Color, 1.0);
+
+#ifdef GAMMA_CORRECTION
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1.0/2.2));
+#endif
 }
 
 `;
@@ -32,7 +37,7 @@ class MatSolidColor extends Material{
         super();
 
         if(g_shader==null){
-            g_shader = Material.createShader(vs, fs, [
+            g_shader = Material.createShader(vs, this.getFS(), [
                 {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}               
             ]);
         }
@@ -45,6 +50,15 @@ class MatSolidColor extends Material{
         } else {
             this.color = [1.0, 1.0, 1.0];
         }
+    }
+
+    getFS(){
+        let fs_common = "";
+        if(sysConfig.gammaCorrection){
+            fs_common += "#define GAMMA_CORRECTION\n";
+        }
+        fs_common += fs;
+        return fs_common;
     }
 
     //Override

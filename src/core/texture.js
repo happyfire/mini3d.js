@@ -1,4 +1,4 @@
-import { gl } from "./gl";
+import { gl, glExt, glAbility, sysConfig } from "./gl";
 
 class Texture2D {
     constructor(){
@@ -24,8 +24,20 @@ class Texture2D {
         
         // Set the texture image data
         const level = 0;
-        const internalFormat = withAlpha ? gl.RGBA : gl.RGB;        
-        const srcFormat = withAlpha ? gl.RGBA : gl.RGB;
+        let internalFormat = withAlpha ? gl.RGBA : gl.RGB;
+        let srcFormat = withAlpha ? gl.RGBA : gl.RGB;
+
+        //TODO:暂时不使用sRGB，因为还要区分是普通diffuse贴图还是mask, normal map等贴图，只有颜色相关的贴图需要使用sRGB
+        //实际上贴图是否使用sRGB需要根据贴图类型指定，暂时不设置，直接在shader里面处理贴图
+        // if(sysConfig.gammaCorrection){
+        //     if(glAbility.WebGL2){
+        //         internalFormat = withAlpha ? gl.SRGB8_ALPHA8 : gl.SRGB8;
+        //     } else if(glExt.sRGB){
+        //         internalFormat = withAlpha ? glExt.sRGB.SRGB_ALPHA_EXT : glExt.sRGB.SRGB_EXT;
+        //         srcFormat = withAlpha ? glExt.sRGB.SRGB_ALPHA_EXT : glExt.sRGB.SRGB_EXT;
+        //     }
+        // }
+        
         const srcType = gl.UNSIGNED_BYTE;
         gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
 

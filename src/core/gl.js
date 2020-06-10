@@ -6,8 +6,10 @@ let _app = null;
 let _prevTime = Date.now();
 
 let glAbility = {};
+let glExt = {};
+let sysConfig = {};
 
-function init(canvasId, app){    
+function init(canvasId, app, config=null){    
     if(canvasId != null){
         canvas = document.getElementById(canvasId);
         if(canvas === undefined){
@@ -40,6 +42,19 @@ function init(canvasId, app){
 
     
     glCheck();
+
+    //Extensions
+    glExt.sRGB = gl.getExtension('EXT_sRGB');
+
+    if(config==null){
+        sysConfig.gammaCorrection = true;
+    } else {
+        sysConfig = config;
+    }
+
+    if(glAbility.WebGL2==null && glExt.sRGB==null){
+        glAbility._NO_sRGB = true;
+    }
 
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); //Flip the image's y axis    
 
@@ -152,5 +167,5 @@ let isMobile = function(){
     }        
 }();
 
-export { init, gl, canvas, glAbility, isMobile };
+export { init, gl, glExt, canvas, glAbility, sysConfig, isMobile };
 

@@ -1,4 +1,4 @@
-export {init, gl, canvas, isMobile} from "./core/gl";
+export {init, gl, glExt, canvas, isMobile, sysConfig} from "./core/gl";
 export {math} from "./math/math";
 export {Vector3} from "./math/vector3";
 export {Matrix4} from "./math/matrix4";

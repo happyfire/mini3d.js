@@ -128,8 +128,10 @@ var mini3d = (function (exports) {
     let _prevTime = Date.now();
 
     let glAbility = {};
+    let glExt = {};
+    exports.sysConfig = {};
 
-    function init(canvasId, app){    
+    function init(canvasId, app, config=null){    
         if(canvasId != null){
             exports.canvas = document.getElementById(canvasId);
             if(exports.canvas === undefined){
@@ -162,6 +164,19 @@ var mini3d = (function (exports) {
 
         
         glCheck();
+
+        //Extensions
+        glExt.sRGB = exports.gl.getExtension('EXT_sRGB');
+
+        if(config==null){
+            exports.sysConfig.gammaCorrection = true;
+        } else {
+            exports.sysConfig = config;
+        }
+
+        if(glAbility.WebGL2==null && glExt.sRGB==null){
+            glAbility._NO_sRGB = true;
+        }
 
         exports.gl.pixelStorei(exports.gl.UNPACK_FLIP_Y_WEBGL, 1); //Flip the image's y axis    
 
@@ -2261,8 +2276,20 @@ var mini3d = (function (exports) {
             
             // Set the texture image data
             const level = 0;
-            const internalFormat = withAlpha ? exports.gl.RGBA : exports.gl.RGB;        
-            const srcFormat = withAlpha ? exports.gl.RGBA : exports.gl.RGB;
+            let internalFormat = withAlpha ? exports.gl.RGBA : exports.gl.RGB;
+            let srcFormat = withAlpha ? exports.gl.RGBA : exports.gl.RGB;
+
+            //TODO:暂时不使用sRGB，因为还要区分是普通diffuse贴图还是mask, normal map等贴图，只有颜色相关的贴图需要使用sRGB
+            //实际上贴图是否使用sRGB需要根据贴图类型指定，暂时不设置，直接在shader里面处理贴图
+            // if(sysConfig.gammaCorrection){
+            //     if(glAbility.WebGL2){
+            //         internalFormat = withAlpha ? gl.SRGB8_ALPHA8 : gl.SRGB8;
+            //     } else if(glExt.sRGB){
+            //         internalFormat = withAlpha ? glExt.sRGB.SRGB_ALPHA_EXT : glExt.sRGB.SRGB_EXT;
+            //         srcFormat = withAlpha ? glExt.sRGB.SRGB_ALPHA_EXT : glExt.sRGB.SRGB_EXT;
+            //     }
+            // }
+            
             const srcType = exports.gl.UNSIGNED_BYTE;
             exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
 
@@ -4358,9 +4385,7 @@ void main(){
 
     //逐顶点光照材质，支持 diffuse 贴图和color tint, 使用blinn-phong高光
 
-    //////////// forward base pass shader /////////////////////
-
-    let vs_forwardbase = `
+    let vs = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec2 a_Texcoord;
@@ -4436,8 +4461,13 @@ varying float v_atten;
 varying vec2 v_texcoord;
 
 
-void main(){    
-    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint;
+void main(){
+    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb;
+    #ifdef GAMMA_CORRECTION
+        albedo = pow(albedo, vec3(2.2));
+    #endif
+        albedo = albedo * u_colorTint;
+        
     vec3 diffuse = v_diffuse * albedo;
 
 #ifdef USE_AMBIENT
@@ -4446,18 +4476,12 @@ void main(){
 #else
     gl_FragColor = vec4((diffuse + v_specular) * v_atten, 1.0);
 #endif
+
+#ifdef GAMMA_CORRECTION
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1.0/2.2));
+#endif
 }
 `;
-
-    let fs_forwardbase = "#define USE_AMBIENT\n" + fs;
-
-    //////////// forward add pass shader /////////////////////
-
-    // vs和forward base相同
-    let vs_forwardadd = vs_forwardbase;
-
-    // fs和forwardbase的区别只是fs里面没有加ambient
-    let fs_forwardadd = fs;
 
     let g_shaderForwardBase = null;
     let g_shaderForwardAdd = null;
@@ -4467,14 +4491,14 @@ void main(){
             super();
             
             if(g_shaderForwardBase==null){
-                g_shaderForwardBase = Material.createShader(vs_forwardbase, fs_forwardbase, [
+                g_shaderForwardBase = Material.createShader(this.getVS_forwardbase(), this.getFS_forwardbase(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
                 ]);
             }
             if(g_shaderForwardAdd==null){
-                g_shaderForwardAdd = Material.createShader(vs_forwardadd, fs_forwardadd, [
+                g_shaderForwardAdd = Material.createShader(this.getVS_forwardadd(), this.getFS_forwardadd(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
@@ -4490,6 +4514,37 @@ void main(){
             this._specular = [1.0, 1.0, 1.0];
             this._gloss = 20.0;  
             this._colorTint = [1.0, 1.0, 1.0];  
+        }
+
+        getVS_Common(){
+            return vs;
+        }
+
+        getFS_Common(){
+            let fs_common = "#define LIGHT_MODEL_PHONG\n";
+            if(exports.sysConfig.gammaCorrection){
+                fs_common += "#define GAMMA_CORRECTION\n";
+            }
+            fs_common += fs;
+            return fs_common;
+        }
+
+        getVS_forwardbase(){
+            return this.getVS_Common();
+        }
+
+        getFS_forwardbase(){
+            let fs_forwardbase = "#define USE_AMBIENT\n" + this.getFS_Common();
+            return fs_forwardbase;
+        }
+
+        getVS_forwardadd(){
+            return this.getVS_Common();
+        }
+
+        getFS_forwardadd(){
+            // fs和forwardbase的区别只是fs里面没有加ambient
+            return this.getFS_Common();
         }
 
         //Override
@@ -4543,9 +4598,7 @@ void main(){
 
     //逐像素光照材质，支持 diffuse 贴图和color tint, 使用blinn-phong高光
 
-    //////////// forward base pass shader /////////////////////
-
-    let vs_forwardbase$1 = `
+    let vs$1 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec2 a_Texcoord;
@@ -4604,8 +4657,13 @@ void main(){
     } else {
         worldLightDir = normalize(u_worldLightPos.xyz);
     }
+    
+    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb;
+    #ifdef GAMMA_CORRECTION
+        albedo = pow(albedo, vec3(2.2));
+    #endif
+        albedo = albedo * u_colorTint;
 
-    vec3 albedo = texture2D(u_texMain, v_texcoord).rgb * u_colorTint;        
     vec3 diffuse = u_LightColor * albedo * max(0.0, dot(v_worldNormal, worldLightDir));
     
     vec3 viewDir = normalize(u_worldCameraPos - v_worldPos.xyz);
@@ -4622,19 +4680,13 @@ void main(){
     gl_FragColor = vec4(ambient + (diffuse + specular) * atten, 1.0);
 #else
     gl_FragColor = vec4((diffuse + specular) * atten, 1.0);
-#endif    
+#endif   
+
+#ifdef GAMMA_CORRECTION
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1.0/2.2));
+#endif
 }
 `;
-
-    let fs_forwardbase$1 = "#define LIGHT_MODEL_PHONG\n #define USE_AMBIENT\n" + fs$1;
-
-    //////////// forward add pass shader /////////////////////
-
-    // vs和forward base相同
-    let vs_forwardadd$1 = vs_forwardbase$1;
-
-    // fs和forwardbase的区别只是fs里面没有加ambient
-    let fs_forwardadd$1 = "#define LIGHT_MODEL_PHONG\n" + fs$1;
 
     let g_shaderForwardBase$1 = null;
     let g_shaderForwardAdd$1 = null;
@@ -4644,14 +4696,14 @@ void main(){
             super();
             
             if(g_shaderForwardBase$1==null){
-                g_shaderForwardBase$1 = Material.createShader(vs_forwardbase$1, fs_forwardbase$1, [
+                g_shaderForwardBase$1 = Material.createShader(this.getVS_forwardbase(), this.getFS_forwardbase(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
                 ]);
             }
             if(g_shaderForwardAdd$1==null){
-                g_shaderForwardAdd$1 = Material.createShader(vs_forwardadd$1, fs_forwardadd$1, [
+                g_shaderForwardAdd$1 = Material.createShader(this.getVS_forwardadd(), this.getFS_forwardadd(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
@@ -4667,6 +4719,37 @@ void main(){
             this._specular = [1.0, 1.0, 1.0];
             this._gloss = 20.0;  
             this._colorTint = [1.0, 1.0, 1.0];  
+        }
+
+        getVS_Common(){
+            return vs$1;
+        }
+
+        getFS_Common(){
+            let fs_common = "#define LIGHT_MODEL_PHONG\n";
+            if(exports.sysConfig.gammaCorrection){
+                fs_common += "#define GAMMA_CORRECTION\n";
+            }
+            fs_common += fs$1;
+            return fs_common;
+        }
+
+        getVS_forwardbase(){
+            return this.getVS_Common();
+        }
+
+        getFS_forwardbase(){
+            let fs_forwardbase = "#define USE_AMBIENT\n" + this.getFS_Common();
+            return fs_forwardbase;
+        }
+
+        getVS_forwardadd(){
+            return this.getVS_Common();
+        }
+
+        getFS_forwardadd(){
+            // fs和forwardbase的区别只是fs里面没有加ambient
+            return this.getFS_Common();
         }
 
         //Override
@@ -4719,7 +4802,7 @@ void main(){
 
     }
 
-    let vs = `
+    let vs$2 = `
 attribute vec4 a_Position;
 
 uniform mat4 u_mvpMatrix;
@@ -4739,6 +4822,10 @@ uniform vec3 u_Color;
 
 void main(){
     gl_FragColor = vec4(u_Color, 1.0);
+
+#ifdef GAMMA_CORRECTION
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1.0/2.2));
+#endif
 }
 
 `;
@@ -4750,7 +4837,7 @@ void main(){
             super();
 
             if(g_shader==null){
-                g_shader = Material.createShader(vs, fs$2, [
+                g_shader = Material.createShader(vs$2, this.getFS(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}               
                 ]);
             }
@@ -4763,6 +4850,15 @@ void main(){
             } else {
                 this.color = [1.0, 1.0, 1.0];
             }
+        }
+
+        getFS(){
+            let fs_common = "";
+            if(exports.sysConfig.gammaCorrection){
+                fs_common += "#define GAMMA_CORRECTION\n";
+            }
+            fs_common += fs$2;
+            return fs_common;
         }
 
         //Override
@@ -4784,9 +4880,7 @@ void main(){
 
     //逐像素光照+法线贴图材质 （切线空间计算光照）
 
-    //////////// forward base pass shader /////////////////////
-
-    let vs_forwardbase$2 = `
+    let vs$3 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec4 a_Tangent;
@@ -4874,7 +4968,12 @@ void main(){
     vec3 tangentNormal = texture2D(u_normalMap, v_texcoord.zw).xyz * 2.0 - 1.0;
 #endif
     
-    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb * u_colorTint;
+    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb;
+#ifdef GAMMA_CORRECTION
+    albedo = pow(albedo, vec3(2.2));
+#endif
+    albedo = albedo * u_colorTint;
+
     vec3 diffuse = u_LightColor * albedo * max(0.0, dot(tangentNormal, tangentLightDir));
 
 #ifdef LIGHT_MODEL_PHONG
@@ -4891,18 +4990,12 @@ void main(){
 #else
     gl_FragColor = vec4((diffuse + specular) * v_atten, 1.0);
 #endif
+
+#ifdef GAMMA_CORRECTION
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1.0/2.2));
+#endif
 }
 `;
-
-    let fs_forwardbase$2 = "#define LIGHT_MODEL_PHONG\n #define USE_AMBIENT\n" + fs$3;
-
-    //////////// forward add pass shader /////////////////////
-
-    // vs和forward base相同
-    let vs_forwardadd$2 = vs_forwardbase$2;
-
-    // fs和forwardbase的区别只是fs里面没有加ambient
-    let fs_forwardadd$2 = "#define LIGHT_MODEL_PHONG\n" + fs$3;
 
 
     let g_shaderForwardBase$2 = null;
@@ -4913,7 +5006,7 @@ void main(){
             super();
             
             if(g_shaderForwardBase$2==null){
-                g_shaderForwardBase$2 = Material.createShader(vs_forwardbase$2, fs_forwardbase$2, [
+                g_shaderForwardBase$2 = Material.createShader(this.getVS_forwardbase(), this.getFS_forwardbase(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.TANGENT , 'name':'a_Tangent'},
@@ -4921,7 +5014,7 @@ void main(){
                 ]);
             }
             if(g_shaderForwardAdd$2==null){
-                g_shaderForwardAdd$2 = Material.createShader(vs_forwardadd$2, fs_forwardadd$2, [
+                g_shaderForwardAdd$2 = Material.createShader(this.getVS_forwardadd(), this.getFS_forwardadd(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.TANGENT , 'name':'a_Tangent'},
@@ -4940,6 +5033,37 @@ void main(){
             this._specular = [1.0, 1.0, 1.0];
             this._gloss = 20.0;  
             this._colorTint = [1.0, 1.0, 1.0];  
+        }
+
+        getVS_Common(){
+            return vs$3;
+        }
+
+        getFS_Common(){
+            let fs_common = "#define LIGHT_MODEL_PHONG\n";
+            if(exports.sysConfig.gammaCorrection){
+                fs_common += "#define GAMMA_CORRECTION\n";
+            }
+            fs_common += fs$3;
+            return fs_common;
+        }
+
+        getVS_forwardbase(){
+            return this.getVS_Common();
+        }
+
+        getFS_forwardbase(){
+            let fs_forwardbase = "#define USE_AMBIENT\n" + this.getFS_Common();
+            return fs_forwardbase;
+        }
+
+        getVS_forwardadd(){
+            return this.getVS_Common();
+        }
+
+        getFS_forwardadd(){
+            // fs和forwardbase的区别只是fs里面没有加ambient
+            return this.getFS_Common();
         }
 
         //Override
@@ -5011,9 +5135,7 @@ void main(){
 
     //逐像素光照+法线贴图材质 （世界空间计算光照）
 
-    //////////// forward base pass shader /////////////////////
-
-    let vs_forwardbase$3 = `
+    let vs$4 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec4 a_Tangent;
@@ -5103,7 +5225,12 @@ void main(){
     //Transform the normal from tangent space to world space
     normal = normalize(vec3(dot(v_TtoW0.xyz, normal), dot(v_TtoW1.xyz, normal), dot(v_TtoW2.xyz, normal)));
     
-    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb * u_colorTint;
+    vec3 albedo = texture2D(u_texMain, v_texcoord.xy).rgb;
+#ifdef GAMMA_CORRECTION
+    albedo = pow(albedo, vec3(2.2));
+#endif
+    albedo = albedo * u_colorTint;
+    
     vec3 diffuse = u_LightColor * albedo * max(0.0, dot(normal, worldLightDir));
 
 #ifdef LIGHT_MODEL_PHONG
@@ -5120,19 +5247,12 @@ void main(){
 #else
     gl_FragColor = vec4((diffuse + specular) * atten, 1.0);
 #endif
+
+#ifdef GAMMA_CORRECTION
+    gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1.0/2.2));
+#endif
 }
 `;
-
-    let fs_forwardbase$3 = "#define LIGHT_MODEL_PHONG\n #define USE_AMBIENT\n" + fs$4;
-
-    //////////// forward add pass shader /////////////////////
-
-    // vs和forward base相同
-    let vs_forwardadd$3 = vs_forwardbase$3;
-
-    // fs和forwardbase的区别只是fs里面没有加ambient
-    let fs_forwardadd$3 = "#define LIGHT_MODEL_PHONG\n" + fs$4;
-
 
     let g_shaderForwardBase$3 = null;
     let g_shaderForwardAdd$3 = null;
@@ -5142,7 +5262,7 @@ void main(){
             super();
             
             if(g_shaderForwardBase$3==null){
-                g_shaderForwardBase$3 = Material.createShader(vs_forwardbase$3, fs_forwardbase$3, [
+                g_shaderForwardBase$3 = Material.createShader(this.getVS_forwardbase(), this.getFS_forwardbase(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.TANGENT , 'name':'a_Tangent'},
@@ -5150,7 +5270,7 @@ void main(){
                 ]);
             }
             if(g_shaderForwardAdd$3==null){
-                g_shaderForwardAdd$3 = Material.createShader(vs_forwardadd$3, fs_forwardadd$3, [
+                g_shaderForwardAdd$3 = Material.createShader(this.getVS_forwardadd(), this.getFS_forwardadd(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.NORMAL , 'name':'a_Normal'},
                     {'semantic':VertexSemantic.TANGENT , 'name':'a_Tangent'},
@@ -5169,6 +5289,37 @@ void main(){
             this._specular = [1.0, 1.0, 1.0];
             this._gloss = 20.0;  
             this._colorTint = [1.0, 1.0, 1.0];  
+        }
+
+        getVS_Common(){
+            return vs$4;
+        }
+
+        getFS_Common(){
+            let fs_common = "#define LIGHT_MODEL_PHONG\n";
+            if(exports.sysConfig.gammaCorrection){
+                fs_common += "#define GAMMA_CORRECTION\n";
+            }
+            fs_common += fs$4;
+            return fs_common;
+        }
+
+        getVS_forwardbase(){
+            return this.getVS_Common();
+        }
+
+        getFS_forwardbase(){
+            let fs_forwardbase = "#define USE_AMBIENT\n" + this.getFS_Common();
+            return fs_forwardbase;
+        }
+
+        getVS_forwardadd(){
+            return this.getVS_Common();
+        }
+
+        getFS_forwardadd(){
+            // fs和forwardbase的区别只是fs里面没有加ambient
+            return this.getFS_Common();
         }
 
         //Override
@@ -5240,7 +5391,7 @@ void main(){
 
     //镜子材质
 
-    let vs$1 = `
+    let vs$5 = `
 attribute vec4 a_Position;
 attribute vec2 a_Texcoord;
 uniform mat4 u_mvpMatrix;
@@ -5271,7 +5422,7 @@ void main(){
             super();
             
             if(g_shader$1==null){
-                g_shader$1 = Material.createShader(vs$1, fs$5, [
+                g_shader$1 = Material.createShader(vs$5, fs$5, [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
                 ]);
@@ -5338,6 +5489,7 @@ void main(){
     exports.VertexSemantic = VertexSemantic;
     exports.assetManager = assetManager;
     exports.eventManager = eventManager;
+    exports.glExt = glExt;
     exports.init = init;
     exports.inputManager = inputManager;
     exports.isMobile = isMobile;
