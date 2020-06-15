@@ -67,6 +67,7 @@ class RenderTexture{
 
         gl.bindRenderbuffer(gl.RENDERBUFFER, this._depthBuffer);
         gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, this._width, this._height);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
 
         // Attach the texture and the renderbuffer object to the FBO
         gl.bindFramebuffer(gl.FRAMEBUFFER, this._fbo);
@@ -82,8 +83,7 @@ class RenderTexture{
         }
 
         // Unbind the buffer object
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.bindRenderbuffer(gl.RENDERBUFFER, null);        
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);        
     }
 
     beforeRender(){

@@ -2338,7 +2338,7 @@ var mini3d = (function (exports) {
         createDefaultBump(){
             const level = 0;
             const internalFormat = exports.gl.RGB;  
-            let n = 2;
+            let n = 4;
             const width = n;
             const height = n;    
             const border = 0;
@@ -2452,6 +2452,7 @@ var mini3d = (function (exports) {
 
             exports.gl.bindRenderbuffer(exports.gl.RENDERBUFFER, this._depthBuffer);
             exports.gl.renderbufferStorage(exports.gl.RENDERBUFFER, exports.gl.DEPTH_COMPONENT16, this._width, this._height);
+            exports.gl.bindRenderbuffer(exports.gl.RENDERBUFFER, null);
 
             // Attach the texture and the renderbuffer object to the FBO
             exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, this._fbo);
@@ -2467,8 +2468,7 @@ var mini3d = (function (exports) {
             }
 
             // Unbind the buffer object
-            exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, null);
-            exports.gl.bindRenderbuffer(exports.gl.RENDERBUFFER, null);        
+            exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, null);        
         }
 
         beforeRender(){

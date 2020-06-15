@@ -86,7 +86,7 @@ class Texture2D {
     createDefaultBump(){
         const level = 0;
         const internalFormat = gl.RGB;  
-        let n = 2;
+        let n = 4;
         const width = n;
         const height = n;    
         const border = 0;

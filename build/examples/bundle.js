@@ -1655,8 +1655,8 @@ var main = (function () {
 
 	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1]; // Add a render texture and mirror node
 
-	      var mirrorWidth = 512.0;
-	      var mirrorHeight = 256.0;
+	      var mirrorWidth = 2048;
+	      var mirrorHeight = 1024;
 	      this._renderTexture = new mini3d.RenderTexture(mirrorWidth, mirrorHeight);
 	      var mirror = this.createMirror(this._renderTexture.texture2D);
 	      this._mirror = mirror; // Add a camera to the mirror

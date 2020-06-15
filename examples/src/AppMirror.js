@@ -196,8 +196,8 @@ class AppMirror {
         this._cameraNode.camera.clearColor = [0.34,0.98,1];
 
         // Add a render texture and mirror node
-        let mirrorWidth = 512.0;
-        let mirrorHeight = 256.0;
+        let mirrorWidth = 2048;
+        let mirrorHeight = 1024;
         this._renderTexture = new mini3d.RenderTexture(mirrorWidth,mirrorHeight);
         let mirror = this.createMirror(this._renderTexture.texture2D);
         this._mirror = mirror;
