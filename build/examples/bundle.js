@@ -1886,6 +1886,14 @@ var main = (function () {
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
 
 	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1];
+	      var matPP = new mini3d.MatPP_ColorBSC();
+	      matPP.brightness = 1.0;
+	      matPP.saturation = 0.5;
+	      matPP.contrast = 2.0;
+
+	      this._cameraNode.camera.addPostProcessing(matPP);
+
+	      this._cameraNode.camera.addPostProcessing(new mini3d.MatPP_Inversion());
 
 	      this._cameraNode.camera.addPostProcessing(new mini3d.MatPP_Grayscale());
 	    }

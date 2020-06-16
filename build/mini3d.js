@@ -2325,7 +2325,6 @@ var mini3d = (function (exports) {
                     (i+j)%2==0 ? colors.push(255,255,255,255) : colors.push(0,0,0,255); //RGBA                
                 }
             }
-            console.log(colors);
             const pixelData = new Uint8Array(colors);
 
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
@@ -3173,8 +3172,7 @@ var mini3d = (function (exports) {
         Renderer:'renderer',
         Mesh:'mesh',
         Camera:'camera',
-        Light:'light',
-        PostProcessing:'postProcessing'
+        Light:'light'
     };
 
     let LightMode = {
@@ -3465,29 +3463,54 @@ void main(){
         }
     }
 
-    class PostProcessing extends Component$1{
+    class PostProcessing {
         constructor(){
-            super();
-            this._camera = null;
             this._quardMesh = ScreenQuard.createMesh();
+            this._materials = [];
         }
 
-        init(camera, material){
-            this._camera = camera;
-            this._material = material;
+        add(material){
+            this._materials.push(material);
         }
 
-        render(){
+        render(camera){
+            exports.gl.depthFunc(exports.gl.ALWAYS);
+            exports.gl.depthMask(false);
 
-            if(this._camera != null && this._camera.target!= null && this._material!=null){
-                for(let pass of this._material.renderPasses){
-                    this._material.mainTexture = this._camera.target.texture2D;
-                    this._material.renderPass(this._quardMesh, null, pass);
+            let matCnt = this._materials.length;
+
+            let srcTexture = camera._renderTexture;
+            let dstTexture = matCnt > 1 ? camera._tempRenderTexture : null;
+
+            for(let i=0; i<matCnt; ++i){
+                let material = this._materials[i];
+
+                if(dstTexture){
+                    dstTexture.beforeRender();
+                }
+
+                for(let pass of material.renderPasses){
+                    material.mainTexture = srcTexture.texture2D;
+                    material.renderPass(this._quardMesh, null, pass);
+                }
+
+                let tmp = srcTexture;
+                srcTexture = dstTexture;
+                dstTexture = tmp;
+
+                if(i==matCnt-2){
+                    if(dstTexture){
+                        dstTexture.afterRender();
+                        dstTexture = null;
+                    }   
                 }
             }
+
+            
+
+            exports.gl.depthFunc(exports.gl.LESS);
+            exports.gl.depthMask(true);
         }
-
-
     }
 
     class Camera extends Component$1{
@@ -3504,6 +3527,8 @@ void main(){
 
             this._clearColor = [0, 0, 0];
             this._renderTexture = null;
+            this._tempRenderTexture = null;
+            this._postProcessing = null;
         }
 
         set clearColor(v){
@@ -3563,28 +3588,51 @@ void main(){
             
             this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
 
-            let gl = mini3d.gl;
-
             //TODO:每个camera设置自己的clear color，并且在gl层缓存，避免重复设置相同的值
-            gl.clearColor(this._clearColor[0], this._clearColor[1], this._clearColor[2], 1);
-            gl.clearDepth(1.0);
-            gl.enable(gl.DEPTH_TEST);
+            exports.gl.clearColor(this._clearColor[0], this._clearColor[1], this._clearColor[2], 1);
+            exports.gl.clearDepth(1.0);
+            exports.gl.enable(exports.gl.DEPTH_TEST);
 
-            gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);                
+            exports.gl.clear(exports.gl.COLOR_BUFFER_BIT|exports.gl.DEPTH_BUFFER_BIT);                
         }
 
         afterRender(){
             if(this._renderTexture!=null){
                 this._renderTexture.afterRender();
             }
+
+            if(this._postProcessing){
+                this._postProcessing.render(this);
+            }
+        }
+
+        enablePostProcessing(enabled){
+            if(enabled){
+                this._tempRenderTexture = new RenderTexture(exports.canvas.width, exports.canvas.height, true);
+                this.target = new RenderTexture(exports.canvas.width, exports.canvas.height, true);
+                this._postProcessing = new PostProcessing(this);
+            } else {
+                if(this._tempRenderTexture){
+                    this._tempRenderTexture.destroy();
+                    this._tempRenderTexture = null;
+                }
+                if(this._renderTexture){
+                    this._renderTexture.destroy();
+                    this._renderTexture = null;
+                }
+                if(this._postProcessing){
+                    this._postProcessing.destroy();
+                    this._postProcessing = null;
+                }
+            }
         }
 
         addPostProcessing(material){
-            this.target = new RenderTexture(exports.canvas.width, exports.canvas.height, true);
-
-            let postProcessing = new PostProcessing();
-            postProcessing.init(this, material);
-            this.node.addComponent(SystemComponents.PostProcessing, postProcessing);
+            if(this._postProcessing==null){
+                this.enablePostProcessing(true);
+            }
+            
+            this._postProcessing.add(material);
         }
 
 
@@ -4281,10 +4329,6 @@ void main(){
                 }
 
                 camera.afterRender();
-                let postProcessing = camera.node.getComponent(SystemComponents.PostProcessing);
-                if(postProcessing){
-                    postProcessing.render();
-                }
             }
 
             
@@ -5553,22 +5597,19 @@ void main(){
 }
 `;
 
-    let g_shader$2 = null;
-
     class MatPP_Base extends Material{
         constructor(fshader){
             super();
 
             fshader = fshader || fs$6;
             
-            if(g_shader$2==null){
-                g_shader$2 = Material.createShader(vs$6, fshader, [
+            //TODO:使用shader manager管理返回对应一对vs/fs唯一的shader
+            this._shader = Material.createShader(vs$6, fshader, [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
-                ]);
-            }     
+                ]);   
 
-            this.addRenderPass(g_shader$2, LightMode.None);              
+            this.addRenderPass(this._shader, LightMode.None);              
 
             //default uniforms
             this._mainTexture = null;
@@ -5637,6 +5678,79 @@ void main(){
         }
     }
 
+    //PostProcessing: Modify brightness, saturation and contrast
+
+    let fs$9 = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+uniform sampler2D u_texMain;
+uniform float u_brightness;
+uniform float u_saturation;
+uniform float u_contrast;
+
+varying vec2 v_texcoord;
+void main(){  
+    vec4 tex = texture2D(u_texMain, v_texcoord);
+    
+    //Apply brightness
+    vec3 final = tex.rgb * u_brightness;
+
+    //Apply saturation
+    float luminance = 0.2125 * tex.r + 0.7154 * tex.g + 0.0721 * tex.b;  
+    vec3 luminanceColor = vec3(luminance,luminance,luminance);
+    final = mix(luminanceColor, final, u_saturation);
+
+    //Apply contrast
+    vec3 avgColor = vec3(0.5, 0.5, 0.5);
+    final = mix(avgColor, final, u_contrast);
+
+    gl_FragColor = vec4(final, tex.a);
+}
+`;
+
+    class MatPP_ColorBSC extends MatPP_Base{
+        constructor(){
+            super(fs$9);  
+            
+            this._brightness = 1.0;
+            this._saturation = 1.0;
+            this._contrast = 1.0;
+        }
+
+        //Override
+        setCustomUniformValues(pass){                           
+            super.setCustomUniformValues(pass);
+            pass.shader.setUniformSafe('u_brightness', this._brightness);
+            pass.shader.setUniformSafe('u_saturation', this._saturation);
+            pass.shader.setUniformSafe('u_contrast', this._contrast);
+        }
+
+        set brightness(v){
+            this._brightness = v;
+        }
+
+        get brightness(){
+            return this._brightness;
+        }
+
+        set saturation(v){
+            this._saturation = v;
+        }
+
+        get saturation(){
+            return this._saturation;
+        }
+
+        set contrast(v){
+            this._contrast = v;
+        }
+
+        get contrast(){
+            return this._contrast;
+        }
+    }
+
     exports.AssetType = AssetType;
     exports.Camera = Camera;
     exports.Cube = Cube;
@@ -5647,6 +5761,7 @@ void main(){
     exports.MatNormalMap = MatNormalMap;
     exports.MatNormalMapW = MatNormalMapW;
     exports.MatPP_Base = MatPP_Base;
+    exports.MatPP_ColorBSC = MatPP_ColorBSC;
     exports.MatPP_Grayscale = MatPP_Grayscale;
     exports.MatPP_Inversion = MatPP_Inversion;
     exports.MatPixelLight = MatPixelLight;

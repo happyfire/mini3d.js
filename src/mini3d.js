@@ -37,4 +37,5 @@ export {MatMirror} from './material/matMirror';
 export {MatPP_Base} from './material/postProcessing/matPP_Base';
 export {MatPP_Inversion} from './material/postProcessing/matPP_Inversion';
 export {MatPP_Grayscale} from './material/postProcessing/matPP_Grayscale';
+export {MatPP_ColorBSC} from './material/postProcessing/matPP_ColorBSC';
 

@@ -73,7 +73,6 @@ class Texture2D {
                 (i+j)%2==0 ? colors.push(255,255,255,255) : colors.push(0,0,0,255); //RGBA                
             }
         }
-        console.log(colors);
         const pixelData = new Uint8Array(colors);
 
         gl.bindTexture(gl.TEXTURE_2D, this._id);

@@ -24,22 +24,19 @@ void main(){
 }
 `;
 
-let g_shader = null;
-
 class MatPP_Base extends Material{
     constructor(fshader){
         super();
 
         fshader = fshader || fs;
         
-        if(g_shader==null){
-            g_shader = Material.createShader(vs, fshader, [
+        //TODO:使用shader manager管理返回对应一对vs/fs唯一的shader
+        this._shader = Material.createShader(vs, fshader, [
                 {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                 {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
-            ]);
-        }     
+            ]);   
 
-        this.addRenderPass(g_shader, LightMode.None);              
+        this.addRenderPass(this._shader, LightMode.None);              
 
         //default uniforms
         this._mainTexture = null;

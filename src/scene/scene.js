@@ -94,10 +94,6 @@ class Scene{
             }
 
             camera.afterRender();
-            let postProcessing = camera.node.getComponent(SystemComponents.PostProcessing);
-            if(postProcessing){
-                postProcessing.render();
-            }
         }
 
         

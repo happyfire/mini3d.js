@@ -1,30 +1,54 @@
-import { Component } from './Component';
-import { SystemComponents } from '../systemComps';
 import { ScreenQuard } from '../../geometry/screenQuard';
+import { gl } from '../../core/gl';
 
-class PostProcessing extends Component{
+class PostProcessing {
     constructor(){
-        super();
-        this._camera = null;
         this._quardMesh = ScreenQuard.createMesh();
+        this._materials = [];
     }
 
-    init(camera, material){
-        this._camera = camera;
-        this._material = material;
+    add(material){
+        this._materials.push(material);
     }
 
-    render(){
+    render(camera){
+        gl.depthFunc(gl.ALWAYS);
+        gl.depthMask(false);
 
-        if(this._camera != null && this._camera.target!= null && this._material!=null){
-            for(let pass of this._material.renderPasses){
-                this._material.mainTexture = this._camera.target.texture2D;
-                this._material.renderPass(this._quardMesh, null, pass);
+        let matCnt = this._materials.length;
+
+        let srcTexture = camera._renderTexture;
+        let dstTexture = matCnt > 1 ? camera._tempRenderTexture : null;
+
+        for(let i=0; i<matCnt; ++i){
+            let material = this._materials[i];
+
+            if(dstTexture){
+                dstTexture.beforeRender();
+            }
+
+            for(let pass of material.renderPasses){
+                material.mainTexture = srcTexture.texture2D;
+                material.renderPass(this._quardMesh, null, pass);
+            }
+
+            let tmp = srcTexture;
+            srcTexture = dstTexture;
+            dstTexture = tmp;
+
+            if(i==matCnt-2){
+                if(dstTexture){
+                    dstTexture.afterRender();
+                    dstTexture = null;
+                }   
             }
         }
+
+        
+
+        gl.depthFunc(gl.LESS);
+        gl.depthMask(true);
     }
-
-
 }
 
 export { PostProcessing };

@@ -2,7 +2,7 @@ import { Matrix4 } from '../../math/matrix4'
 import { Component } from './Component';
 import { SystemComponents } from '../systemComps';
 import { RenderTexture } from '../../core/renderTexture';
-import { canvas } from '../../core/gl';
+import { canvas, gl } from '../../core/gl';
 import { PostProcessing } from './postProcessing';
 
 class Camera extends Component{
@@ -19,6 +19,8 @@ class Camera extends Component{
 
         this._clearColor = [0, 0, 0];
         this._renderTexture = null;
+        this._tempRenderTexture = null;
+        this._postProcessing = null;
     }
 
     set clearColor(v){
@@ -78,8 +80,6 @@ class Camera extends Component{
         
         this._updateViewProjMatrix();//TODO:不需要每次渲染之前都重新计算，当proj矩阵需重新计算（例如screen resize，动态修改fov之后），或camera的world matrix变化了需要重新计算view matrix
 
-        let gl = mini3d.gl;
-
         //TODO:每个camera设置自己的clear color，并且在gl层缓存，避免重复设置相同的值
         gl.clearColor(this._clearColor[0], this._clearColor[1], this._clearColor[2], 1);
         gl.clearDepth(1.0);
@@ -92,14 +92,39 @@ class Camera extends Component{
         if(this._renderTexture!=null){
             this._renderTexture.afterRender();
         }
+
+        if(this._postProcessing){
+            this._postProcessing.render(this);
+        }
+    }
+
+    enablePostProcessing(enabled){
+        if(enabled){
+            this._tempRenderTexture = new RenderTexture(canvas.width, canvas.height, true);
+            this.target = new RenderTexture(canvas.width, canvas.height, true);
+            this._postProcessing = new PostProcessing(this);
+        } else {
+            if(this._tempRenderTexture){
+                this._tempRenderTexture.destroy();
+                this._tempRenderTexture = null;
+            }
+            if(this._renderTexture){
+                this._renderTexture.destroy();
+                this._renderTexture = null;
+            }
+            if(this._postProcessing){
+                this._postProcessing.destroy();
+                this._postProcessing = null;
+            }
+        }
     }
 
     addPostProcessing(material){
-        this.target = new RenderTexture(canvas.width, canvas.height, true);
-
-        let postProcessing = new PostProcessing();
-        postProcessing.init(this, material);
-        this.node.addComponent(SystemComponents.PostProcessing, postProcessing);
+        if(this._postProcessing==null){
+            this.enablePostProcessing(true);
+        }
+        
+        this._postProcessing.add(material);
     }
 
 
