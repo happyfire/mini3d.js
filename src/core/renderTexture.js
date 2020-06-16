@@ -2,13 +2,13 @@ import { gl, canvas } from "./gl";
 import { Texture2D } from "./texture";
 
 class RenderTexture{
-    constructor(width, height){
+    constructor(width, height, fullScreen=false){
         this._width = width;
         this._height = height;
+        this._fullScreen = fullScreen;
         this._fbo = null;
         this._texture2D = null;
         this._depthBuffer = null;
-
         this._init();
     }
 
@@ -20,8 +20,21 @@ class RenderTexture{
         return this._height;
     }
 
+    get isFullScreen(){
+        return this._fullScreen;
+    }
+
     get texture2D(){
         return this._texture2D;
+    }
+
+    onScreenResize(width, height){
+        if(this._fullScreen){
+            this.destroy();
+            this._width = width;
+            this._height = height;
+            this._init();
+        }
     }
 
     destroy(){

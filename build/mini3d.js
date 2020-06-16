@@ -2387,13 +2387,13 @@ var mini3d = (function (exports) {
     }
 
     class RenderTexture{
-        constructor(width, height){
+        constructor(width, height, fullScreen=false){
             this._width = width;
             this._height = height;
+            this._fullScreen = fullScreen;
             this._fbo = null;
             this._texture2D = null;
             this._depthBuffer = null;
-
             this._init();
         }
 
@@ -2405,8 +2405,21 @@ var mini3d = (function (exports) {
             return this._height;
         }
 
+        get isFullScreen(){
+            return this._fullScreen;
+        }
+
         get texture2D(){
             return this._texture2D;
+        }
+
+        onScreenResize(width, height){
+            if(this._fullScreen){
+                this.destroy();
+                this._width = width;
+                this._height = height;
+                this._init();
+            }
         }
 
         destroy(){
@@ -3160,7 +3173,8 @@ var mini3d = (function (exports) {
         Renderer:'renderer',
         Mesh:'mesh',
         Camera:'camera',
-        Light:'light'
+        Light:'light',
+        PostProcessing:'postProcessing'
     };
 
     let LightMode = {
@@ -3429,6 +3443,53 @@ void main(){
         }
     }
 
+    // Clip Space 全屏矩形，用于PostProcessing
+
+    class ScreenQuard{
+        static createMesh(wireframe){    
+            let position_data = [-1.0, 1.0, -1.0, -1.0, 1.0, -1.0,
+                                 -1.0, 1.0,  1.0, -1.0, 1.0,  1.0];
+            let uv_data = [0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+                           0.0, 1.0, 1.0, 0.0, 1.0, 1.0];
+
+            let format = new VertexFormat();
+            format.addAttrib(VertexSemantic.POSITION, 2);
+            format.addAttrib(VertexSemantic.UV0, 2);
+
+            let mesh = new Mesh(format, wireframe); 
+            mesh.setVertexData(VertexSemantic.POSITION, position_data);    
+            mesh.setVertexData(VertexSemantic.UV0, uv_data);
+            mesh.upload();            
+        
+            return mesh;  
+        }
+    }
+
+    class PostProcessing extends Component$1{
+        constructor(){
+            super();
+            this._camera = null;
+            this._quardMesh = ScreenQuard.createMesh();
+        }
+
+        init(camera, material){
+            this._camera = camera;
+            this._material = material;
+        }
+
+        render(){
+
+            if(this._camera != null && this._camera.target!= null && this._material!=null){
+                for(let pass of this._material.renderPasses){
+                    this._material.mainTexture = this._camera.target.texture2D;
+                    this._material.renderPass(this._quardMesh, null, pass);
+                }
+            }
+        }
+
+
+    }
+
     class Camera extends Component$1{
         constructor(){
             super();
@@ -3477,7 +3538,10 @@ void main(){
         onScreenResize(width, height){
             if(this._renderTexture==null){
                 this._onTargetResize(width, height);
-            }                    
+            } else if(this._renderTexture.isFullScreen){
+                this._onTargetResize(width, height);
+                this._renderTexture.onScreenResize(width, height);
+            }
         }
 
         _onTargetResize(width, height){
@@ -3513,6 +3577,14 @@ void main(){
             if(this._renderTexture!=null){
                 this._renderTexture.afterRender();
             }
+        }
+
+        addPostProcessing(material){
+            this.target = new RenderTexture(exports.canvas.width, exports.canvas.height, true);
+
+            let postProcessing = new PostProcessing();
+            postProcessing.init(this, material);
+            this.node.addComponent(SystemComponents.PostProcessing, postProcessing);
         }
 
 
@@ -4184,10 +4256,7 @@ void main(){
 
         onScreenResize(width, height){
             for(let camera of this.cameras){
-                if(camera.target==null){
-                    camera.onScreenResize(width, height); //如果不是RT则不需要执行
-                }
-                
+                camera.onScreenResize(width, height);
             }
         }
 
@@ -4212,6 +4281,10 @@ void main(){
                 }
 
                 camera.afterRender();
+                let postProcessing = camera.node.getComponent(SystemComponents.PostProcessing);
+                if(postProcessing){
+                    postProcessing.render();
+                }
             }
 
             
@@ -4222,11 +4295,11 @@ void main(){
     class Cube{
         static createMesh(){
 
-            let format = new mini3d.VertexFormat();
-            format.addAttrib(mini3d.VertexSemantic.POSITION, 3);
-            format.addAttrib(mini3d.VertexSemantic.NORMAL, 3);
-            format.addAttrib(mini3d.VertexSemantic.TANGENT, 4);
-            format.addAttrib(mini3d.VertexSemantic.UV0, 2);
+            let format = new VertexFormat();
+            format.addAttrib(VertexSemantic.POSITION, 3);
+            format.addAttrib(VertexSemantic.NORMAL, 3);
+            format.addAttrib(VertexSemantic.TANGENT, 4);
+            format.addAttrib(VertexSemantic.UV0, 2);
         
             // cube
             //       ^ Y
@@ -4245,7 +4318,7 @@ void main(){
             //  |/      |/
             //  v2------v3
         
-            let mesh = new mini3d.Mesh(format);  
+            let mesh = new Mesh(format);  
             //6个面（12个三角形），24个顶点  
             let position_data = [
                 //v0-v1-v2-v3 front (0,1,2,3)
@@ -4302,10 +4375,10 @@ void main(){
             let tangent_data = [];
             GeomertyHelper.calcMeshTangents(triangels, position_data, uv_data, tangent_data);
         
-            mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);    
-            mesh.setVertexData(mini3d.VertexSemantic.NORMAL, normal_data); 
-            mesh.setVertexData(mini3d.VertexSemantic.TANGENT, tangent_data);   
-            mesh.setVertexData(mini3d.VertexSemantic.UV0, uv_data);
+            mesh.setVertexData(VertexSemantic.POSITION, position_data);    
+            mesh.setVertexData(VertexSemantic.NORMAL, normal_data); 
+            mesh.setVertexData(VertexSemantic.TANGENT, tangent_data);   
+            mesh.setVertexData(VertexSemantic.UV0, uv_data);
             mesh.setTriangles(triangels);
             mesh.upload();            
         
@@ -4365,17 +4438,17 @@ void main(){
             //计算切线
             GeomertyHelper.calcMeshTangents(triangels, position_data, uv_data, tangent_data);
 
-            let format = new mini3d.VertexFormat();
-            format.addAttrib(mini3d.VertexSemantic.POSITION, 3);
-            format.addAttrib(mini3d.VertexSemantic.NORMAL, 3);
-            format.addAttrib(mini3d.VertexSemantic.TANGENT, 4);
-            format.addAttrib(mini3d.VertexSemantic.UV0, 2);
+            let format = new VertexFormat();
+            format.addAttrib(VertexSemantic.POSITION, 3);
+            format.addAttrib(VertexSemantic.NORMAL, 3);
+            format.addAttrib(VertexSemantic.TANGENT, 4);
+            format.addAttrib(VertexSemantic.UV0, 2);
 
-            let mesh = new mini3d.Mesh(format, wireframe); 
-            mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);    
-            mesh.setVertexData(mini3d.VertexSemantic.NORMAL, normal_data);
-            mesh.setVertexData(mini3d.VertexSemantic.TANGENT, tangent_data);   
-            mesh.setVertexData(mini3d.VertexSemantic.UV0, uv_data);
+            let mesh = new Mesh(format, wireframe); 
+            mesh.setVertexData(VertexSemantic.POSITION, position_data);    
+            mesh.setVertexData(VertexSemantic.NORMAL, normal_data);
+            mesh.setVertexData(VertexSemantic.TANGENT, tangent_data);   
+            mesh.setVertexData(VertexSemantic.UV0, uv_data);
             mesh.setTriangles(triangels);
             mesh.upload();            
         
@@ -5457,6 +5530,113 @@ void main(){
 
     }
 
+    //PostProcessing base material
+
+    let vs$6 = `
+attribute vec2 a_Position;
+attribute vec2 a_Texcoord;
+varying vec2 v_texcoord;
+void main(){
+    gl_Position = vec4(a_Position, 0.0, 1.0);
+    v_texcoord = a_Texcoord;
+}
+`;
+
+    let fs$6 = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+uniform sampler2D u_texMain;
+varying vec2 v_texcoord;
+void main(){    
+    gl_FragColor = texture2D(u_texMain, v_texcoord);
+}
+`;
+
+    let g_shader$2 = null;
+
+    class MatPP_Base extends Material{
+        constructor(fshader){
+            super();
+
+            fshader = fshader || fs$6;
+            
+            if(g_shader$2==null){
+                g_shader$2 = Material.createShader(vs$6, fshader, [
+                    {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
+                    {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
+                ]);
+            }     
+
+            this.addRenderPass(g_shader$2, LightMode.None);              
+
+            //default uniforms
+            this._mainTexture = null;
+        }
+
+        //Override
+        get systemUniforms(){
+            return []; 
+        }
+
+        //Override
+        setCustomUniformValues(pass){                           
+            if(this._mainTexture){     
+                this._mainTexture.bind();
+                pass.shader.setUniformSafe('u_texMain', 0);
+            }
+        }
+
+        set mainTexture(v){
+            this._mainTexture = v;
+        }
+
+        get mainTexture(){
+            return this._mainTexture;
+        }
+
+    }
+
+    //PostProcessing: Inversion
+
+    let fs$7 = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+uniform sampler2D u_texMain;
+varying vec2 v_texcoord;
+void main(){    
+    gl_FragColor = vec4(vec3(1.0 - texture2D(u_texMain, v_texcoord).rgb), 1.0);
+}
+`;
+
+    class MatPP_Inversion extends MatPP_Base{
+        constructor(){
+            super(fs$7);              
+        }
+    }
+
+    //PostProcessing: Grayscale
+
+    let fs$8 = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+uniform sampler2D u_texMain;
+varying vec2 v_texcoord;
+void main(){  
+    vec3 color = texture2D(u_texMain, v_texcoord).rgb;
+    float gray = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;  
+    gl_FragColor = vec4(gray, gray, gray, 1.0);
+}
+`;
+
+    class MatPP_Grayscale extends MatPP_Base{
+        constructor(){
+            super(fs$8);              
+        }
+    }
+
     exports.AssetType = AssetType;
     exports.Camera = Camera;
     exports.Cube = Cube;
@@ -5466,6 +5646,9 @@ void main(){
     exports.MatMirror = MatMirror;
     exports.MatNormalMap = MatNormalMap;
     exports.MatNormalMapW = MatNormalMapW;
+    exports.MatPP_Base = MatPP_Base;
+    exports.MatPP_Grayscale = MatPP_Grayscale;
+    exports.MatPP_Inversion = MatPP_Inversion;
     exports.MatPixelLight = MatPixelLight;
     exports.MatSolidColor = MatSolidColor;
     exports.MatVertexLight = MatVertexLight;
@@ -5475,10 +5658,12 @@ void main(){
     exports.Mesh = Mesh;
     exports.MeshRenderer = MeshRenderer;
     exports.Plane = Plane;
+    exports.PostProcessing = PostProcessing;
     exports.Quaternion = Quaternion;
     exports.RenderTexture = RenderTexture;
     exports.Scene = Scene;
     exports.SceneNode = SceneNode;
+    exports.ScreenQuard = ScreenQuard;
     exports.Shader = Shader;
     exports.SystemComponents = SystemComponents;
     exports.SystemEvent = SystemEvent;

@@ -2,7 +2,8 @@ let SystemComponents = {
     Renderer:'renderer',
     Mesh:'mesh',
     Camera:'camera',
-    Light:'light'
+    Light:'light',
+    PostProcessing:'postProcessing'
 }
 
 export { SystemComponents };

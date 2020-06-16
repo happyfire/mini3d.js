@@ -1,13 +1,15 @@
 import { GeomertyHelper } from "./geometryHelper";
+import { VertexFormat, VertexSemantic } from "../core/vertexFormat";
+import { Mesh } from "../core/mesh";
 
 class Cube{
     static createMesh(){
 
-        let format = new mini3d.VertexFormat();
-        format.addAttrib(mini3d.VertexSemantic.POSITION, 3);
-        format.addAttrib(mini3d.VertexSemantic.NORMAL, 3);
-        format.addAttrib(mini3d.VertexSemantic.TANGENT, 4);
-        format.addAttrib(mini3d.VertexSemantic.UV0, 2);
+        let format = new VertexFormat();
+        format.addAttrib(VertexSemantic.POSITION, 3);
+        format.addAttrib(VertexSemantic.NORMAL, 3);
+        format.addAttrib(VertexSemantic.TANGENT, 4);
+        format.addAttrib(VertexSemantic.UV0, 2);
     
         // cube
         //       ^ Y
@@ -26,7 +28,7 @@ class Cube{
         //  |/      |/
         //  v2------v3
     
-        let mesh = new mini3d.Mesh(format);  
+        let mesh = new Mesh(format);  
         //6个面（12个三角形），24个顶点  
         let position_data = [
             //v0-v1-v2-v3 front (0,1,2,3)
@@ -83,10 +85,10 @@ class Cube{
         let tangent_data = [];
         GeomertyHelper.calcMeshTangents(triangels, position_data, uv_data, tangent_data);
     
-        mesh.setVertexData(mini3d.VertexSemantic.POSITION, position_data);    
-        mesh.setVertexData(mini3d.VertexSemantic.NORMAL, normal_data); 
-        mesh.setVertexData(mini3d.VertexSemantic.TANGENT, tangent_data);   
-        mesh.setVertexData(mini3d.VertexSemantic.UV0, uv_data);
+        mesh.setVertexData(VertexSemantic.POSITION, position_data);    
+        mesh.setVertexData(VertexSemantic.NORMAL, normal_data); 
+        mesh.setVertexData(VertexSemantic.TANGENT, tangent_data);   
+        mesh.setVertexData(VertexSemantic.UV0, uv_data);
         mesh.setTriangles(triangels);
         mesh.upload();            
     

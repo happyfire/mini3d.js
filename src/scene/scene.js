@@ -69,10 +69,7 @@ class Scene{
 
     onScreenResize(width, height){
         for(let camera of this.cameras){
-            if(camera.target==null){
-                camera.onScreenResize(width, height); //如果不是RT则不需要执行
-            }
-            
+            camera.onScreenResize(width, height);
         }
     }
 
@@ -97,6 +94,10 @@ class Scene{
             }
 
             camera.afterRender();
+            let postProcessing = camera.node.getComponent(SystemComponents.PostProcessing);
+            if(postProcessing){
+                postProcessing.render();
+            }
         }
 
         

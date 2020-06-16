@@ -1,5 +1,9 @@
 import { Matrix4 } from '../../math/matrix4'
 import { Component } from './Component';
+import { SystemComponents } from '../systemComps';
+import { RenderTexture } from '../../core/renderTexture';
+import { canvas } from '../../core/gl';
+import { PostProcessing } from './postProcessing';
 
 class Camera extends Component{
     constructor(){
@@ -49,7 +53,10 @@ class Camera extends Component{
     onScreenResize(width, height){
         if(this._renderTexture==null){
             this._onTargetResize(width, height);
-        }                    
+        } else if(this._renderTexture.isFullScreen){
+            this._onTargetResize(width, height);
+            this._renderTexture.onScreenResize(width, height);
+        }
     }
 
     _onTargetResize(width, height){
@@ -85,6 +92,14 @@ class Camera extends Component{
         if(this._renderTexture!=null){
             this._renderTexture.afterRender();
         }
+    }
+
+    addPostProcessing(material){
+        this.target = new RenderTexture(canvas.width, canvas.height, true);
+
+        let postProcessing = new PostProcessing();
+        postProcessing.init(this, material);
+        this.node.addComponent(SystemComponents.PostProcessing, postProcessing);
     }
 
 
