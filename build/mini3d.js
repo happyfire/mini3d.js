@@ -2308,6 +2308,8 @@ var mini3d = (function (exports) {
             exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, null);
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.LINEAR);
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
+
+            this.setClamp();
         }
 
         createDefault(){
@@ -5638,22 +5640,40 @@ void main(){
 
     }
 
-    //PostProcessing: Inversion
+    //PostProcessing: 简单的波动特效（可以将系数开放出来）
 
     let fs$7 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
 uniform sampler2D u_texMain;
+uniform float u_time;
 varying vec2 v_texcoord;
-void main(){    
-    gl_FragColor = vec4(vec3(1.0 - texture2D(u_texMain, v_texcoord).rgb), 1.0);
+void main(){
+    vec2 dv = v_texcoord - vec2(0.5);
+    float dis = length(dv);
+    float dis_factor = 2.5; //波峰数
+    float time_factor = 1.0;
+    float wave_factor = 0.01; //振幅系数
+    vec2 offset = sin((dis * dis_factor + u_time * time_factor)*3.1415926*2.0) * wave_factor * normalize(dv);
+    gl_FragColor = texture2D(u_texMain, v_texcoord+offset);
 }
 `;
 
-    class MatPP_Inversion extends MatPP_Base{
+    class MatPP_Wave extends MatPP_Base{
         constructor(){
             super(fs$7);              
+            this._time = 0;
+        }
+
+        //Override
+        setCustomUniformValues(pass){                           
+            super.setCustomUniformValues(pass);
+            pass.shader.setUniformSafe('u_time', this._time);
+        }
+
+        set time(v){
+            this._time = v;
         }
     }
 
@@ -5751,6 +5771,50 @@ void main(){
         }
     }
 
+    //PostProcessing: Vignette 简单的晕影效果
+
+    let fs$a = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+uniform sampler2D u_texMain;
+uniform float u_intensity;
+uniform vec3 u_color;
+varying vec2 v_texcoord;
+void main(){
+    vec2 coords = v_texcoord;
+    coords = (coords-0.5)*2.0;
+    float coordDot = dot(coords, coords);
+    float mask = 1.0 - coordDot * u_intensity * 0.1;
+    vec4 tex = texture2D(u_texMain, v_texcoord);
+    vec3 color = mix(u_color, tex.rgb, mask);
+    gl_FragColor = vec4(color * mask, tex.a);
+}
+`;
+
+    class MatPP_Vignette extends MatPP_Base{
+        constructor(){
+            super(fs$a);  
+            this._intensity = 3.0; 
+            this._color = [0.0, 0.0, 0.0];
+        }
+
+        //Override
+        setCustomUniformValues(pass){                           
+            super.setCustomUniformValues(pass);
+            pass.shader.setUniformSafe('u_intensity', this._intensity);
+            pass.shader.setUniformSafe('u_color', this._color);
+        }
+
+        set intensity(v){
+            this._intensity = v;
+        }
+
+        set color(v){
+            this._color = v;
+        }
+    }
+
     exports.AssetType = AssetType;
     exports.Camera = Camera;
     exports.Cube = Cube;
@@ -5763,7 +5827,8 @@ void main(){
     exports.MatPP_Base = MatPP_Base;
     exports.MatPP_ColorBSC = MatPP_ColorBSC;
     exports.MatPP_Grayscale = MatPP_Grayscale;
-    exports.MatPP_Inversion = MatPP_Inversion;
+    exports.MatPP_Vignette = MatPP_Vignette;
+    exports.MatPP_Wave = MatPP_Wave;
     exports.MatPixelLight = MatPixelLight;
     exports.MatSolidColor = MatSolidColor;
     exports.MatVertexLight = MatVertexLight;

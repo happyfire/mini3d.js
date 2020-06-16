@@ -174,13 +174,14 @@ class AppPostProcessing {
         this._cameraNode.localPosition.set(0, 2, 6);
         this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
         this._cameraNode.camera.clearColor = [0.34,0.98,1];
-        let matPP = new mini3d.MatPP_ColorBSC();
-        matPP.brightness = 1.0;
-        matPP.saturation = 0.5;
-        matPP.contrast = 2.0;
+        
+        this._matPPWave = new mini3d.MatPP_Wave();
+        this._cameraNode.camera.addPostProcessing(this._matPPWave);
+
+        let matPP = new mini3d.MatPP_Vignette();
+        matPP.color = [0.1,0.1,1.0];
+        matPP.intensity = 3.0;
         this._cameraNode.camera.addPostProcessing(matPP);
-        this._cameraNode.camera.addPostProcessing(new mini3d.MatPP_Inversion());
-        this._cameraNode.camera.addPostProcessing(new mini3d.MatPP_Grayscale);
         
         
     }
@@ -188,7 +189,9 @@ class AppPostProcessing {
     onUpdate(dt) {
         if (this._scene) {
             this._time += dt;
-            this._scene.update();             
+            this._scene.update();    
+            
+            this._matPPWave.time = this._time/1000;
            
             //灯光做圆周运动
             let cosv = Math.cos(this._time/1500);
