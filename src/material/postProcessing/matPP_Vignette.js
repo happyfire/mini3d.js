@@ -10,9 +10,8 @@ uniform float u_intensity;
 uniform vec3 u_color;
 varying vec2 v_texcoord;
 void main(){
-    vec2 coords = v_texcoord;
-    coords = (coords-0.5)*2.0;
-    float coordDot = dot(coords, coords);
+    vec2 coords = (v_texcoord - 0.5)*2.0; //uv转换到[-1,1]
+    float coordDot = dot(coords, coords);//边缘是1，中间是0
     float mask = 1.0 - coordDot * u_intensity * 0.1;
     vec4 tex = texture2D(u_texMain, v_texcoord);
     vec3 color = mix(u_color, tex.rgb, mask);
