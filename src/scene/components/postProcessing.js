@@ -29,6 +29,9 @@ class PostProcessing {
 
             for(let pass of material.renderPasses){
                 material.mainTexture = srcTexture.texture2D;
+                if(material.texelSize){
+                    material.texelSize = srcTexture.texture2D.texelSize;
+                }
                 material.renderPass(this._quardMesh, null, pass);
             }
 

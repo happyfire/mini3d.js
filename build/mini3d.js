@@ -1844,7 +1844,9 @@ var mini3d = (function (exports) {
             let compiled = exports.gl.getShaderParameter(shader, exports.gl.COMPILE_STATUS);
             if (!compiled) {
                 let error = exports.gl.getShaderInfoLog(shader);
-                console.log('Failed to compile shader: ' + error);
+                console.error('Failed to compile shader: ' + error);
+                console.log('---------shader source----------');
+                console.log(source);
                 exports.gl.deleteShader(shader);
                 return null;
             }
@@ -2255,6 +2257,9 @@ var mini3d = (function (exports) {
     class Texture2D {
         constructor(){
             this._id = exports.gl.createTexture();
+            this._width = 2;
+            this._height = 2;
+
             if (!this._id) {
                 console.error('Failed to create the texture object');            
             }
@@ -2265,7 +2270,22 @@ var mini3d = (function (exports) {
             this._id = 0;
         }
 
+        get width(){
+            return this._width;
+        }
+
+        get height(){
+            return this._height;
+        }
+
+        get texelSize(){
+            return [1.0/this._width, 1.0/this._height];
+        }
+
         create(image, withAlpha=false){
+            this._width = image.width;
+            this._height = image.height;
+
             // Bind the texture object to the target
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
             
@@ -2304,6 +2324,9 @@ var mini3d = (function (exports) {
             const srcFormat = withAlpha ? exports.gl.RGBA : exports.gl.RGB;
             const srcType = exports.gl.UNSIGNED_BYTE;
 
+            this._width = width;
+            this._height = height;
+
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
             exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, null);
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.LINEAR);
@@ -2329,6 +2352,9 @@ var mini3d = (function (exports) {
             }
             const pixelData = new Uint8Array(colors);
 
+            this._width = width;
+            this._height = height;
+
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
             exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixelData);
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.NEAREST);
@@ -2353,6 +2379,9 @@ var mini3d = (function (exports) {
             }
             const pixelData = new Uint8Array(colors);
 
+            this._width = width;
+            this._height = height;
+
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
             exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixelData);
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.NEAREST);
@@ -2373,8 +2402,7 @@ var mini3d = (function (exports) {
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
         }
 
-        setRepeat()
-        {
+        setRepeat(){
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_S, exports.gl.REPEAT);
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_WRAP_T, exports.gl.REPEAT);
@@ -3493,6 +3521,9 @@ void main(){
 
                 for(let pass of material.renderPasses){
                     material.mainTexture = srcTexture.texture2D;
+                    if(material.texelSize){
+                        material.texelSize = srcTexture.texture2D.texelSize;
+                    }
                     material.renderPass(this._quardMesh, null, pass);
                 }
 
@@ -5600,13 +5631,14 @@ void main(){
 `;
 
     class MatPP_Base extends Material{
-        constructor(fshader){
+        constructor(fshader, vshader){
             super();
 
             fshader = fshader || fs$6;
+            vshader = vshader || vs$6;
             
             //TODO:使用shader manager管理返回对应一对vs/fs唯一的shader
-            this._shader = Material.createShader(vs$6, fshader, [
+            this._shader = Material.createShader(vshader, fshader, [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
                 ]);   
@@ -5814,6 +5846,122 @@ void main(){
         }
     }
 
+    //PostProcessing: edge detection
+
+    let vs$7 = `
+attribute vec2 a_Position;
+attribute vec2 a_Texcoord;
+uniform vec2 u_texelSize;
+varying vec2 v_uvs[9];
+
+void main(){
+    gl_Position = vec4(a_Position, 0.0, 1.0);
+    vec2 uv = a_Texcoord;
+
+    v_uvs[0] = uv + u_texelSize * vec2(-1.0, 1.0);
+    v_uvs[1] = uv + u_texelSize * vec2(0.0, 1.0);
+    v_uvs[2] = uv + u_texelSize * vec2(1.0, 1.0);
+    v_uvs[3] = uv + u_texelSize * vec2(-1.0, 0.0);
+    v_uvs[4] = uv;
+    v_uvs[5] = uv + u_texelSize * vec2(1.0, 0.0);
+    v_uvs[6] = uv + u_texelSize * vec2(-1.0, -1.0);
+    v_uvs[7] = uv + u_texelSize * vec2(0.0, -1.0);
+    v_uvs[8] = uv + u_texelSize * vec2(1.0, -1.0);
+}
+`;
+
+    let fs$b = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+uniform sampler2D u_texMain;
+uniform float u_edgeOnly;
+uniform vec3 u_colorEdge;
+uniform vec3 u_colorBg;
+
+varying vec2 v_uvs[9];
+
+float luminance(vec4 color){
+    return dot(color.rgb, vec3(0.2125, 0.7154, 0.0721));
+}
+
+float sobel(){  
+    float Gx[9];
+    Gx[0] = -1.0;
+    Gx[1] = 0.0;
+    Gx[2] = 1.0;
+    Gx[3] = -2.0;
+    Gx[4] = 0.0;
+    Gx[5] = 2.0;
+    Gx[6] = -1.0;
+    Gx[7] = 0.0;
+    Gx[8] = 1.0;
+        
+    float Gy[9];
+    Gy[0] = 1.0;
+    Gy[1] = 2.0;
+    Gy[2] = 1.0;
+    Gy[3] = 0.0;
+    Gy[4] = 0.0;
+    Gy[5] = 0.0;
+    Gy[6] = -1.0;
+    Gy[7] = -2.0;
+    Gy[8] = -1.0;
+
+    float texColor;
+    float edgeX = 0.0;
+    float edgeY = 0.0;
+    for(int i=0; i<9; i++){
+        texColor = luminance(texture2D(u_texMain, v_uvs[i]));
+        edgeX += texColor * Gx[i];
+        edgeY += texColor * Gy[i];
+    }
+    float edge = 1.0 - abs(edgeX) - abs(edgeY);
+    return edge;
+}
+    
+    
+void main(){  
+    float edge = sobel();
+    vec3 withEdgeColor = mix(u_colorEdge, texture2D(u_texMain, v_uvs[4]).rgb, edge);
+    vec3 onlyEdgeColor = mix(u_colorEdge, u_colorBg, edge);
+    gl_FragColor = vec4(mix(withEdgeColor, onlyEdgeColor, u_edgeOnly), 1.0);
+}
+`;
+
+    class MatPP_EdgeDetection extends MatPP_Base{
+        constructor(){
+            super(fs$b, vs$7);  
+            
+            this.texelSize = [1.0/512.0, 1.0/512.0];
+            this._edgeOnly = 1.0;
+            this._colorEdge = [0.0, 0.0, 0.0];
+            this._colorBg = [1.0, 1.0, 1.0];
+        }
+
+        //Override
+        setCustomUniformValues(pass){                           
+            super.setCustomUniformValues(pass);
+            pass.shader.setUniformSafe('u_texelSize', this.texelSize);
+            pass.shader.setUniformSafe('u_edgeOnly', this._edgeOnly);
+            pass.shader.setUniformSafe('u_colorEdge', this._colorEdge);
+            pass.shader.setUniformSafe('u_colorBg', this._colorBg);
+        }
+
+        set edgeOnly(v){
+            this._edgeOnly = v;
+        }
+
+        set colorEdge(c){
+            this._colorEdge = c;
+        }
+
+        set colorBg(c){
+            this._colorBg = c;
+        }
+
+    }
+
     exports.AssetType = AssetType;
     exports.Camera = Camera;
     exports.Cube = Cube;
@@ -5825,6 +5973,7 @@ void main(){
     exports.MatNormalMapW = MatNormalMapW;
     exports.MatPP_Base = MatPP_Base;
     exports.MatPP_ColorBSC = MatPP_ColorBSC;
+    exports.MatPP_EdgeDetection = MatPP_EdgeDetection;
     exports.MatPP_Grayscale = MatPP_Grayscale;
     exports.MatPP_Vignette = MatPP_Vignette;
     exports.MatPP_Wave = MatPP_Wave;

@@ -39,4 +39,5 @@ export {MatPP_Wave} from './material/postProcessing/matPP_Wave';
 export {MatPP_Grayscale} from './material/postProcessing/matPP_Grayscale';
 export {MatPP_ColorBSC} from './material/postProcessing/matPP_ColorBSC';
 export {MatPP_Vignette} from './material/postProcessing/matPP_Vignette';
+export {MatPP_EdgeDetection} from './material/postProcessing/matPP_EdgeDetection';
 

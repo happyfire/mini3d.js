@@ -25,13 +25,14 @@ void main(){
 `;
 
 class MatPP_Base extends Material{
-    constructor(fshader){
+    constructor(fshader, vshader){
         super();
 
         fshader = fshader || fs;
+        vshader = vshader || vs;
         
         //TODO:使用shader manager管理返回对应一对vs/fs唯一的shader
-        this._shader = Material.createShader(vs, fshader, [
+        this._shader = Material.createShader(vshader, fshader, [
                 {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                 {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
             ]);   

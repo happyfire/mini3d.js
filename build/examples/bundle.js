@@ -1890,9 +1890,24 @@ var main = (function () {
 
 	      this._cameraNode.camera.addPostProcessing(this._matPPWave);
 
-	      var matPP = new mini3d.MatPP_Vignette();
-	      matPP.color = [0.1, 0.1, 1.0];
-	      matPP.intensity = 3.0;
+	      var matPP;
+	      matPP = new mini3d.MatPP_ColorBSC();
+	      matPP.brightness = 1.2;
+	      matPP.saturation = 1.6;
+	      matPP.contrast = 1.2;
+
+	      this._cameraNode.camera.addPostProcessing(matPP);
+
+	      matPP = new mini3d.MatPP_EdgeDetection();
+	      matPP.edgeOnly = 0.8;
+	      matPP.colorEdge = [0, 0, 0];
+	      matPP.colorBg = [1, 1, 1];
+
+	      this._cameraNode.camera.addPostProcessing(matPP);
+
+	      matPP = new mini3d.MatPP_Vignette();
+	      matPP.color = [0.1, 0.1, 0.1];
+	      matPP.intensity = 5.0;
 
 	      this._cameraNode.camera.addPostProcessing(matPP);
 	    }

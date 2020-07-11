@@ -90,7 +90,9 @@ class Shader{
         let compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
         if (!compiled) {
             let error = gl.getShaderInfoLog(shader);
-            console.log('Failed to compile shader: ' + error);
+            console.error('Failed to compile shader: ' + error);
+            console.log('---------shader source----------');
+            console.log(source);
             gl.deleteShader(shader);
             return null;
         }

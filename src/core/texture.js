@@ -3,6 +3,9 @@ import { gl, glExt, glAbility, sysConfig } from "./gl";
 class Texture2D {
     constructor(){
         this._id = gl.createTexture();
+        this._width = 2;
+        this._height = 2;
+
         if (!this._id) {
             console.error('Failed to create the texture object');            
         }
@@ -13,7 +16,22 @@ class Texture2D {
         this._id = 0;
     }
 
+    get width(){
+        return this._width;
+    }
+
+    get height(){
+        return this._height;
+    }
+
+    get texelSize(){
+        return [1.0/this._width, 1.0/this._height];
+    }
+
     create(image, withAlpha=false){
+        this._width = image.width;
+        this._height = image.height;
+
         // Bind the texture object to the target
         gl.bindTexture(gl.TEXTURE_2D, this._id);
         
@@ -52,6 +70,9 @@ class Texture2D {
         const srcFormat = withAlpha ? gl.RGBA : gl.RGB;
         const srcType = gl.UNSIGNED_BYTE;
 
+        this._width = width;
+        this._height = height;
+
         gl.bindTexture(gl.TEXTURE_2D, this._id);
         gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, null);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -77,6 +98,9 @@ class Texture2D {
         }
         const pixelData = new Uint8Array(colors);
 
+        this._width = width;
+        this._height = height;
+
         gl.bindTexture(gl.TEXTURE_2D, this._id);
         gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixelData);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -101,6 +125,9 @@ class Texture2D {
         }
         const pixelData = new Uint8Array(colors);
 
+        this._width = width;
+        this._height = height;
+
         gl.bindTexture(gl.TEXTURE_2D, this._id);
         gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixelData);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -121,8 +148,7 @@ class Texture2D {
         gl.bindTexture(gl.TEXTURE_2D, null);
     }
 
-    setRepeat()
-    {
+    setRepeat(){
         gl.bindTexture(gl.TEXTURE_2D, this._id);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
