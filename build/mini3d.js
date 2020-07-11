@@ -2291,6 +2291,7 @@ var mini3d = (function (exports) {
             
             // Set the texture parameters
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.LINEAR);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MAG_FILTER, exports.gl.LINEAR);
             
             this.setClamp();
             
@@ -2330,6 +2331,7 @@ var mini3d = (function (exports) {
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, this._id);
             exports.gl.texImage2D(exports.gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, null);
             exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MIN_FILTER, exports.gl.LINEAR);
+            exports.gl.texParameteri(exports.gl.TEXTURE_2D, exports.gl.TEXTURE_MAG_FILTER, exports.gl.LINEAR);
             exports.gl.bindTexture(exports.gl.TEXTURE_2D, null);
 
             this.setClamp();
@@ -2419,11 +2421,19 @@ var mini3d = (function (exports) {
         constructor(width, height, fullScreen=false){
             this._width = width;
             this._height = height;
+            this.clampTextureSize();
             this._fullScreen = fullScreen;
             this._fbo = null;
             this._texture2D = null;
             this._depthBuffer = null;
             this._init();
+        }
+
+        clampTextureSize(){
+            if(this._width>glAbility.MAX_TEXTURE_SIZE || this._height>glAbility.MAX_TEXTURE_SIZE){
+                this._width /= 2;
+                this._height /= 2;
+            }
         }
 
         get width(){
@@ -2447,6 +2457,7 @@ var mini3d = (function (exports) {
                 this.destroy();
                 this._width = width;
                 this._height = height;
+                this.clampTextureSize();
                 this._init();
             }
         }
@@ -2515,7 +2526,6 @@ var mini3d = (function (exports) {
 
         beforeRender(){
             if(!this._fbo || !this._texture2D || !this._depthBuffer){
-                console.error("Render texture is invalid.");
                 return;
             }
             exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, this._fbo);
@@ -5676,7 +5686,7 @@ void main(){
 
     let fs$7 = `
 #ifdef GL_ES
-precision mediump float;
+precision highp float;
 #endif
 uniform sampler2D u_texMain;
 uniform float u_time;
@@ -5705,7 +5715,7 @@ void main(){
         }
 
         set time(v){
-            this._time = v;
+            this._time = v%10;
         }
     }
 

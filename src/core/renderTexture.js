@@ -1,15 +1,23 @@
-import { gl, canvas } from "./gl";
+import { gl, canvas, glAbility } from "./gl";
 import { Texture2D } from "./texture";
 
 class RenderTexture{
     constructor(width, height, fullScreen=false){
         this._width = width;
         this._height = height;
+        this.clampTextureSize();
         this._fullScreen = fullScreen;
         this._fbo = null;
         this._texture2D = null;
         this._depthBuffer = null;
         this._init();
+    }
+
+    clampTextureSize(){
+        if(this._width>glAbility.MAX_TEXTURE_SIZE || this._height>glAbility.MAX_TEXTURE_SIZE){
+            this._width /= 2;
+            this._height /= 2;
+        }
     }
 
     get width(){
@@ -33,6 +41,7 @@ class RenderTexture{
             this.destroy();
             this._width = width;
             this._height = height;
+            this.clampTextureSize();
             this._init();
         }
     }
@@ -101,7 +110,6 @@ class RenderTexture{
 
     beforeRender(){
         if(!this._fbo || !this._texture2D || !this._depthBuffer){
-            console.error("Render texture is invalid.");
             return;
         }
         gl.bindFramebuffer(gl.FRAMEBUFFER, this._fbo);

@@ -37,6 +37,7 @@ class Texture2D {
         
         // Set the texture parameters
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         
         this.setClamp();
         
@@ -76,6 +77,7 @@ class Texture2D {
         gl.bindTexture(gl.TEXTURE_2D, this._id);
         gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, null);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.bindTexture(gl.TEXTURE_2D, null);
 
         this.setClamp();

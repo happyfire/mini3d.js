@@ -3,7 +3,7 @@ import { MatPP_Base } from "./matPP_Base";
 
 let fs = `
 #ifdef GL_ES
-precision mediump float;
+precision highp float;
 #endif
 uniform sampler2D u_texMain;
 uniform float u_time;
@@ -32,7 +32,7 @@ class MatPP_Wave extends MatPP_Base{
     }
 
     set time(v){
-        this._time = v;
+        this._time = v%10;
     }
 }
 
