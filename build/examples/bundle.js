@@ -1899,7 +1899,7 @@ var main = (function () {
 	      this._cameraNode.camera.addPostProcessing(matPP);
 
 	      matPP = new mini3d.MatPP_EdgeDetection();
-	      matPP.edgeOnly = 0.8;
+	      matPP.edgeOnly = 1.0;
 	      matPP.colorEdge = [0, 0, 0];
 	      matPP.colorBg = [1, 1, 1];
 

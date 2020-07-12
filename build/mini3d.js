@@ -2524,7 +2524,7 @@ var mini3d = (function (exports) {
             exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, null);        
         }
 
-        beforeRender(){
+        bind(){
             if(!this._fbo || !this._texture2D || !this._depthBuffer){
                 return;
             }
@@ -2532,7 +2532,7 @@ var mini3d = (function (exports) {
             exports.gl.viewport(0, 0, this._width, this._height);
         }
 
-        afterRender(){
+        unbind(){
             exports.gl.bindFramebuffer(exports.gl.FRAMEBUFFER, null);
             exports.gl.viewport(0, 0, exports.canvas.width, exports.canvas.height);
         }
@@ -3503,50 +3503,69 @@ void main(){
         }
     }
 
+    class PostEffectLayer {
+        constructor(material){
+            this._material = material;
+            this._quardMesh = ScreenQuard.createMesh();
+        }
+
+        blit(srcRT, dstRT, material, passId){
+            if(dstRT){
+                dstRT.bind();
+            }
+            material.mainTexture = srcRT.texture2D;
+            if(material.texelSize){
+                material.texelSize = srcRT.texture2D.texelSize;
+            }
+            material.renderPass(this._quardMesh, null, material.renderPasses[passId]);
+            if(dstRT){
+                dstRT.unbind();
+            }
+        }
+
+        render(srcRT, dstRT){
+            
+            this.blit(srcRT, dstRT, this._material, 0);
+            
+        }
+    }
+
     class PostProcessing {
         constructor(){
             this._quardMesh = ScreenQuard.createMesh();
-            this._materials = [];
+            this._postEffectLayers = [];
+        }
+
+        destroy(){
+            if(this._quardMesh){
+                this._quardMesh.destroy();
+                this._quardMesh = null;
+            }
         }
 
         add(material){
-            this._materials.push(material);
+            // this._materials.push(material);
+            let layer = new PostEffectLayer(material);
+            this._postEffectLayers.push(layer);
         }
 
         render(camera){
             exports.gl.depthFunc(exports.gl.ALWAYS);
             exports.gl.depthMask(false);
 
-            let matCnt = this._materials.length;
-
+            let layerCnt = this._postEffectLayers.length;
             let srcTexture = camera._renderTexture;
-            let dstTexture = matCnt > 1 ? camera._tempRenderTexture : null;
+            let dstTexture = layerCnt > 1 ? camera._tempRenderTexture : null;
 
-            for(let i=0; i<matCnt; ++i){
-                let material = this._materials[i];
-
-                if(dstTexture){
-                    dstTexture.beforeRender();
+            for(let i=0; i<layerCnt; i++){
+                if(i==layerCnt-1){
+                    dstTexture = null;
                 }
-
-                for(let pass of material.renderPasses){
-                    material.mainTexture = srcTexture.texture2D;
-                    if(material.texelSize){
-                        material.texelSize = srcTexture.texture2D.texelSize;
-                    }
-                    material.renderPass(this._quardMesh, null, pass);
-                }
-
+                let layer = this._postEffectLayers[i];
+                layer.render(srcTexture, dstTexture);
                 let tmp = srcTexture;
                 srcTexture = dstTexture;
                 dstTexture = tmp;
-
-                if(i==matCnt-2){
-                    if(dstTexture){
-                        dstTexture.afterRender();
-                        dstTexture = null;
-                    }   
-                }
             }
 
             
@@ -3554,6 +3573,48 @@ void main(){
             exports.gl.depthFunc(exports.gl.LESS);
             exports.gl.depthMask(true);
         }
+
+        // render(camera){
+        //     gl.depthFunc(gl.ALWAYS);
+        //     gl.depthMask(false);
+
+        //     let matCnt = this._materials.length;
+
+        //     let srcTexture = camera._renderTexture;
+        //     let dstTexture = matCnt > 1 ? camera._tempRenderTexture : null;
+
+        //     for(let i=0; i<matCnt; ++i){
+        //         let material = this._materials[i];
+
+        //         if(dstTexture){
+        //             dstTexture.bind();
+        //         }
+
+        //         for(let pass of material.renderPasses){
+        //             material.mainTexture = srcTexture.texture2D;
+        //             if(material.texelSize){
+        //                 material.texelSize = srcTexture.texture2D.texelSize;
+        //             }
+        //             material.renderPass(this._quardMesh, null, pass);
+        //         }
+
+        //         let tmp = srcTexture;
+        //         srcTexture = dstTexture;
+        //         dstTexture = tmp;
+
+        //         if(i==matCnt-2){
+        //             if(dstTexture){
+        //                 dstTexture.unbind();
+        //                 dstTexture = null;
+        //             }   
+        //         }
+        //     }
+
+            
+
+        //     gl.depthFunc(gl.LESS);
+        //     gl.depthMask(true);
+        // }
     }
 
     class Camera extends Component$1{
@@ -3624,7 +3685,7 @@ void main(){
 
         beforeRender(){
             if(this._renderTexture!=null){
-                this._renderTexture.beforeRender();
+                this._renderTexture.bind();
             }
 
             this._viewMatrix.setInverseOf(this.node.worldMatrix);
@@ -3641,7 +3702,7 @@ void main(){
 
         afterRender(){
             if(this._renderTexture!=null){
-                this._renderTexture.afterRender();
+                this._renderTexture.unbind();
             }
 
             if(this._postProcessing){
@@ -3677,7 +3738,6 @@ void main(){
             
             this._postProcessing.add(material);
         }
-
 
     }
 

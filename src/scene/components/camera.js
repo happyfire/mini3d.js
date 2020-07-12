@@ -73,7 +73,7 @@ class Camera extends Component{
 
     beforeRender(){
         if(this._renderTexture!=null){
-            this._renderTexture.beforeRender();
+            this._renderTexture.bind();
         }
 
         this._viewMatrix.setInverseOf(this.node.worldMatrix);
@@ -90,7 +90,7 @@ class Camera extends Component{
 
     afterRender(){
         if(this._renderTexture!=null){
-            this._renderTexture.afterRender();
+            this._renderTexture.unbind();
         }
 
         if(this._postProcessing){
@@ -126,7 +126,6 @@ class Camera extends Component{
         
         this._postProcessing.add(material);
     }
-
 
 }
 

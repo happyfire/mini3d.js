@@ -108,7 +108,7 @@ class RenderTexture{
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);        
     }
 
-    beforeRender(){
+    bind(){
         if(!this._fbo || !this._texture2D || !this._depthBuffer){
             return;
         }
@@ -116,7 +116,7 @@ class RenderTexture{
         gl.viewport(0, 0, this._width, this._height);
     }
 
-    afterRender(){
+    unbind(){
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, canvas.width, canvas.height);
     }
