@@ -1,8 +1,7 @@
-import { ScreenQuard } from '../../geometry/screenQuard';
-import { gl } from '../../core/gl';
-import { PostEffectLayer } from '../../postprocessing/postEffectLayer';
+import { ScreenQuard } from '../geometry/screenQuard';
+import { gl } from '../core/gl';
 
-class PostProcessing {
+class PostProcessingChain {
     constructor(){
         this._quardMesh = ScreenQuard.createMesh();
         this._postEffectLayers = [];
@@ -15,10 +14,22 @@ class PostProcessing {
         }
     }
 
-    add(material){
-        // this._materials.push(material);
-        let layer = new PostEffectLayer(material);
+    add(layer){
         this._postEffectLayers.push(layer);
+    }
+
+    blit(srcRT, dstRT, material, passId){
+        if(dstRT){
+            dstRT.bind();
+        }
+        material.mainTexture = srcRT.texture2D;
+        if(material.texelSize){
+            material.texelSize = srcRT.texture2D.texelSize;
+        }
+        material.renderPass(this._quardMesh, null, material.renderPasses[passId]);
+        if(dstRT){
+            dstRT.unbind();
+        }
     }
 
     render(camera){
@@ -34,13 +45,11 @@ class PostProcessing {
                 dstTexture = null;
             }
             let layer = this._postEffectLayers[i];
-            layer.render(srcTexture, dstTexture);
+            layer.render(this, srcTexture, dstTexture);
             let tmp = srcTexture;
             srcTexture = dstTexture;
             dstTexture = tmp;
         }
-
-        
 
         gl.depthFunc(gl.LESS);
         gl.depthMask(true);
@@ -89,4 +98,4 @@ class PostProcessing {
     // }
 }
 
-export { PostProcessing };
+export { PostProcessingChain };

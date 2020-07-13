@@ -1,7 +1,7 @@
 //PostProcessing base material
-import { Material } from "../material";
+import { Material } from "../../material/material";
 import { VertexSemantic } from "../../core/vertexFormat";
-import { LightMode } from "../renderPass";
+import { LightMode } from "../../material/renderPass";
 
 let vs = `
 attribute vec2 a_Position;

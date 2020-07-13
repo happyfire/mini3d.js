@@ -1,9 +1,8 @@
 import { Matrix4 } from '../../math/matrix4'
 import { Component } from './Component';
-import { SystemComponents } from '../systemComps';
 import { RenderTexture } from '../../core/renderTexture';
 import { canvas, gl } from '../../core/gl';
-import { PostProcessing } from './postProcessing';
+import { PostProcessingChain } from '../../postprocessing/postProcessingChain';
 
 class Camera extends Component{
     constructor(){
@@ -20,7 +19,7 @@ class Camera extends Component{
         this._clearColor = [0, 0, 0];
         this._renderTexture = null;
         this._tempRenderTexture = null;
-        this._postProcessing = null;
+        this._postProcessingChain = null;
     }
 
     set clearColor(v){
@@ -93,8 +92,8 @@ class Camera extends Component{
             this._renderTexture.unbind();
         }
 
-        if(this._postProcessing){
-            this._postProcessing.render(this);
+        if(this._postProcessingChain){
+            this._postProcessingChain.render(this);
         }
     }
 
@@ -102,7 +101,7 @@ class Camera extends Component{
         if(enabled){
             this._tempRenderTexture = new RenderTexture(canvas.width, canvas.height, true);
             this.target = new RenderTexture(canvas.width, canvas.height, true);
-            this._postProcessing = new PostProcessing(this);
+            this._postProcessingChain = new PostProcessingChain(this);
         } else {
             if(this._tempRenderTexture){
                 this._tempRenderTexture.destroy();
@@ -112,19 +111,19 @@ class Camera extends Component{
                 this._renderTexture.destroy();
                 this._renderTexture = null;
             }
-            if(this._postProcessing){
-                this._postProcessing.destroy();
-                this._postProcessing = null;
+            if(this._postProcessingChain){
+                this._postProcessingChain.destroy();
+                this._postProcessingChain = null;
             }
         }
     }
 
-    addPostProcessing(material){
-        if(this._postProcessing==null){
+    addPostProcessing(postEffectLayer){
+        if(this._postProcessingChain==null){
             this.enablePostProcessing(true);
         }
         
-        this._postProcessing.add(material);
+        this._postProcessingChain.add(postEffectLayer);
     }
 
 }

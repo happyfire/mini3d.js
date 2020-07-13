@@ -3503,10 +3503,21 @@ void main(){
         }
     }
 
-    class PostEffectLayer {
-        constructor(material){
-            this._material = material;
+    class PostProcessingChain {
+        constructor(){
             this._quardMesh = ScreenQuard.createMesh();
+            this._postEffectLayers = [];
+        }
+
+        destroy(){
+            if(this._quardMesh){
+                this._quardMesh.destroy();
+                this._quardMesh = null;
+            }
+        }
+
+        add(layer){
+            this._postEffectLayers.push(layer);
         }
 
         blit(srcRT, dstRT, material, passId){
@@ -3523,32 +3534,6 @@ void main(){
             }
         }
 
-        render(srcRT, dstRT){
-            
-            this.blit(srcRT, dstRT, this._material, 0);
-            
-        }
-    }
-
-    class PostProcessing {
-        constructor(){
-            this._quardMesh = ScreenQuard.createMesh();
-            this._postEffectLayers = [];
-        }
-
-        destroy(){
-            if(this._quardMesh){
-                this._quardMesh.destroy();
-                this._quardMesh = null;
-            }
-        }
-
-        add(material){
-            // this._materials.push(material);
-            let layer = new PostEffectLayer(material);
-            this._postEffectLayers.push(layer);
-        }
-
         render(camera){
             exports.gl.depthFunc(exports.gl.ALWAYS);
             exports.gl.depthMask(false);
@@ -3562,13 +3547,11 @@ void main(){
                     dstTexture = null;
                 }
                 let layer = this._postEffectLayers[i];
-                layer.render(srcTexture, dstTexture);
+                layer.render(this, srcTexture, dstTexture);
                 let tmp = srcTexture;
                 srcTexture = dstTexture;
                 dstTexture = tmp;
             }
-
-            
 
             exports.gl.depthFunc(exports.gl.LESS);
             exports.gl.depthMask(true);
@@ -3632,7 +3615,7 @@ void main(){
             this._clearColor = [0, 0, 0];
             this._renderTexture = null;
             this._tempRenderTexture = null;
-            this._postProcessing = null;
+            this._postProcessingChain = null;
         }
 
         set clearColor(v){
@@ -3705,8 +3688,8 @@ void main(){
                 this._renderTexture.unbind();
             }
 
-            if(this._postProcessing){
-                this._postProcessing.render(this);
+            if(this._postProcessingChain){
+                this._postProcessingChain.render(this);
             }
         }
 
@@ -3714,7 +3697,7 @@ void main(){
             if(enabled){
                 this._tempRenderTexture = new RenderTexture(exports.canvas.width, exports.canvas.height, true);
                 this.target = new RenderTexture(exports.canvas.width, exports.canvas.height, true);
-                this._postProcessing = new PostProcessing(this);
+                this._postProcessingChain = new PostProcessingChain(this);
             } else {
                 if(this._tempRenderTexture){
                     this._tempRenderTexture.destroy();
@@ -3724,19 +3707,19 @@ void main(){
                     this._renderTexture.destroy();
                     this._renderTexture = null;
                 }
-                if(this._postProcessing){
-                    this._postProcessing.destroy();
-                    this._postProcessing = null;
+                if(this._postProcessingChain){
+                    this._postProcessingChain.destroy();
+                    this._postProcessingChain = null;
                 }
             }
         }
 
-        addPostProcessing(material){
-            if(this._postProcessing==null){
+        addPostProcessing(postEffectLayer){
+            if(this._postProcessingChain==null){
                 this.enablePostProcessing(true);
             }
             
-            this._postProcessing.add(material);
+            this._postProcessingChain.add(postEffectLayer);
         }
 
     }
@@ -5677,6 +5660,22 @@ void main(){
 
     }
 
+    class PostEffectLayer {
+        constructor(material){
+            this._material = material;
+        }
+
+        //override
+        render(chain, srcRT, dstRT){
+        }
+    }
+
+    class PostEffectLayerOnePass extends PostEffectLayer{
+        render(chain, srcRT, dstRT){
+            chain.blit(srcRT, dstRT, this._material, 0);
+        }
+    }
+
     //PostProcessing base material
 
     let vs$6 = `
@@ -6056,7 +6055,8 @@ void main(){
     exports.Mesh = Mesh;
     exports.MeshRenderer = MeshRenderer;
     exports.Plane = Plane;
-    exports.PostProcessing = PostProcessing;
+    exports.PostEffectLayerOnePass = PostEffectLayerOnePass;
+    exports.PostProcessingChain = PostProcessingChain;
     exports.Quaternion = Quaternion;
     exports.RenderTexture = RenderTexture;
     exports.Scene = Scene;
