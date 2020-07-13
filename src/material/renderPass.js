@@ -26,6 +26,13 @@ class RenderPass {
         return this._lightMode;
     }
 
+    destroy(){
+        if(this._shader){
+            this._shader.destroy();
+            this._shader = null;
+        }
+    }
+
 }
 
 export { LightMode, RenderPass };

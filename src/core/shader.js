@@ -73,6 +73,11 @@ class Shader{
         return true;
     }
 
+    destroy(){
+        gl.deleteProgram(this.program);
+        this.program = null;
+    }
+
     loadShader(type, source){
         let shader = gl.createShader(type);
         if (shader == null) {

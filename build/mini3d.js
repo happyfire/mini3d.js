@@ -1827,6 +1827,11 @@ var mini3d = (function (exports) {
             return true;
         }
 
+        destroy(){
+            exports.gl.deleteProgram(this.program);
+            this.program = null;
+        }
+
         loadShader(type, source){
             let shader = exports.gl.createShader(type);
             if (shader == null) {
@@ -2430,7 +2435,7 @@ var mini3d = (function (exports) {
         }
 
         clampTextureSize(){
-            if(this._width>glAbility.MAX_TEXTURE_SIZE || this._height>glAbility.MAX_TEXTURE_SIZE){
+            while(this._width>glAbility.MAX_TEXTURE_SIZE || this._height>glAbility.MAX_TEXTURE_SIZE){
                 this._width /= 2;
                 this._height /= 2;
             }
@@ -3241,6 +3246,13 @@ var mini3d = (function (exports) {
             return this._lightMode;
         }
 
+        destroy(){
+            if(this._shader){
+                this._shader.destroy();
+                this._shader = null;
+            }
+        }
+
     }
 
     let SystemUniforms = {
@@ -3281,6 +3293,13 @@ void main(){
             pass.index = this.renderPasses.length;
             this.renderPasses.push(pass);
             return pass;
+        }
+
+        destroy(){
+            for(let pass of this.renderPasses){
+                pass.destroy();
+            }
+            this.renderPasses = [];
         }
 
         //Override
@@ -3503,10 +3522,77 @@ void main(){
         }
     }
 
+    //PostProcessing base material
+
+    let vs = `
+attribute vec2 a_Position;
+attribute vec2 a_Texcoord;
+varying vec2 v_texcoord;
+void main(){
+    gl_Position = vec4(a_Position, 0.0, 1.0);
+    v_texcoord = a_Texcoord;
+}
+`;
+
+    let fs = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+uniform sampler2D u_texMain;
+varying vec2 v_texcoord;
+void main(){    
+    gl_FragColor = texture2D(u_texMain, v_texcoord);
+}
+`;
+
+    class MatPP_Base extends Material{
+        constructor(fshader, vshader){
+            super();
+
+            fshader = fshader || fs;
+            vshader = vshader || vs;
+            
+            //TODO:使用shader manager管理返回对应一对vs/fs唯一的shader
+            this._shader = Material.createShader(vshader, fshader, [
+                    {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
+                    {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
+                ]);   
+
+            this.addRenderPass(this._shader, LightMode.None);              
+
+            //default uniforms
+            this._mainTexture = null;
+        }
+
+        //Override
+        get systemUniforms(){
+            return []; 
+        }
+
+        //Override
+        setCustomUniformValues(pass){                           
+            if(this._mainTexture){     
+                this._mainTexture.bind();
+                pass.shader.setUniformSafe('u_texMain', 0);
+            }
+        }
+
+        set mainTexture(v){
+            this._mainTexture = v;
+        }
+
+        get mainTexture(){
+            return this._mainTexture;
+        }
+
+    }
+
     class PostProcessingChain {
         constructor(){
             this._quardMesh = ScreenQuard.createMesh();
+            this._matPPBase = new MatPP_Base();
             this._postEffectLayers = [];
+            this._tempRTPools = {};
         }
 
         destroy(){
@@ -3514,16 +3600,56 @@ void main(){
                 this._quardMesh.destroy();
                 this._quardMesh = null;
             }
+            this.freeTempRTs();
+            this._matPPBase.destroy();
         }
 
         add(layer){
             this._postEffectLayers.push(layer);
         }
 
-        blit(srcRT, dstRT, material, passId){
+        getTempRT(width, height){
+            let key = width+"_"+height;
+            if(this._tempRTPools[key]==null){
+                this._tempRTPools[key] = [];
+            }
+            let last = this._tempRTPools[key].length - 1;
+            if(last < 0){
+                return new RenderTexture(width, height, true);
+            } else {
+                let rt = this._tempRTPools[key][last];
+                this._tempRTPools[key].length = last;
+                return rt;
+            }
+        }
+
+        releaseTempRT(rt){
+            let key = rt.width+"_"+rt.height;
+            if(this._tempRTPools[key]==null){
+                this._tempRTPools[key] = [];
+            }
+            if(this._tempRTPools[key].indexOf(rt) === -1){
+                this._tempRTPools[key].push(rt);
+            }
+        }
+
+        freeTempRTs(){
+            for(let key in this._tempRTPools){
+                if(this._tempRTPools.hasOwnProperty(key)){
+                    let pool = this._tempRTPools[key];
+                    for(let i=0; i<pool.length; ++i){
+                        pool[i].destroy();
+                    }
+                }
+            }
+            this._tempRTPools = {};
+        }
+
+        blit(srcRT, dstRT, material=null, passId=0){
             if(dstRT){
                 dstRT.bind();
             }
+            material = material || this._matPPBase;
             material.mainTexture = srcRT.texture2D;
             if(material.texelSize){
                 material.texelSize = srcRT.texture2D.texelSize;
@@ -3556,48 +3682,6 @@ void main(){
             exports.gl.depthFunc(exports.gl.LESS);
             exports.gl.depthMask(true);
         }
-
-        // render(camera){
-        //     gl.depthFunc(gl.ALWAYS);
-        //     gl.depthMask(false);
-
-        //     let matCnt = this._materials.length;
-
-        //     let srcTexture = camera._renderTexture;
-        //     let dstTexture = matCnt > 1 ? camera._tempRenderTexture : null;
-
-        //     for(let i=0; i<matCnt; ++i){
-        //         let material = this._materials[i];
-
-        //         if(dstTexture){
-        //             dstTexture.bind();
-        //         }
-
-        //         for(let pass of material.renderPasses){
-        //             material.mainTexture = srcTexture.texture2D;
-        //             if(material.texelSize){
-        //                 material.texelSize = srcTexture.texture2D.texelSize;
-        //             }
-        //             material.renderPass(this._quardMesh, null, pass);
-        //         }
-
-        //         let tmp = srcTexture;
-        //         srcTexture = dstTexture;
-        //         dstTexture = tmp;
-
-        //         if(i==matCnt-2){
-        //             if(dstTexture){
-        //                 dstTexture.unbind();
-        //                 dstTexture = null;
-        //             }   
-        //         }
-        //     }
-
-            
-
-        //     gl.depthFunc(gl.LESS);
-        //     gl.depthMask(true);
-        // }
     }
 
     class Camera extends Component$1{
@@ -4588,7 +4672,7 @@ void main(){
 
     //逐顶点光照材质，支持 diffuse 贴图和color tint, 使用blinn-phong高光
 
-    let vs = `
+    let vs$1 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec2 a_Texcoord;
@@ -4647,7 +4731,7 @@ void main(){
 
 `;
 
-    let fs = `
+    let fs$1 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -4720,7 +4804,7 @@ void main(){
         }
 
         getVS_Common(){
-            return vs;
+            return vs$1;
         }
 
         getFS_Common(){
@@ -4728,7 +4812,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs;
+            fs_common += fs$1;
             return fs_common;
         }
 
@@ -4801,7 +4885,7 @@ void main(){
 
     //逐像素光照材质，支持 diffuse 贴图和color tint, 使用blinn-phong高光
 
-    let vs$1 = `
+    let vs$2 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec2 a_Texcoord;
@@ -4825,7 +4909,7 @@ void main(){
 
 `;
 
-    let fs$1 = `
+    let fs$2 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -4925,7 +5009,7 @@ void main(){
         }
 
         getVS_Common(){
-            return vs$1;
+            return vs$2;
         }
 
         getFS_Common(){
@@ -4933,7 +5017,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs$1;
+            fs_common += fs$2;
             return fs_common;
         }
 
@@ -5005,7 +5089,7 @@ void main(){
 
     }
 
-    let vs$2 = `
+    let vs$3 = `
 attribute vec4 a_Position;
 
 uniform mat4 u_mvpMatrix;
@@ -5016,7 +5100,7 @@ void main(){
 
 `;
 
-    let fs$2 = `
+    let fs$3 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5040,7 +5124,7 @@ void main(){
             super();
 
             if(g_shader==null){
-                g_shader = Material.createShader(vs$2, this.getFS(), [
+                g_shader = Material.createShader(vs$3, this.getFS(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}               
                 ]);
             }
@@ -5060,7 +5144,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs$2;
+            fs_common += fs$3;
             return fs_common;
         }
 
@@ -5083,7 +5167,7 @@ void main(){
 
     //逐像素光照+法线贴图材质 （切线空间计算光照）
 
-    let vs$3 = `
+    let vs$4 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec4 a_Tangent;
@@ -5136,7 +5220,7 @@ void main(){
 }
 `;
 
-    let fs$3 = `
+    let fs$4 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5239,7 +5323,7 @@ void main(){
         }
 
         getVS_Common(){
-            return vs$3;
+            return vs$4;
         }
 
         getFS_Common(){
@@ -5247,7 +5331,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs$3;
+            fs_common += fs$4;
             return fs_common;
         }
 
@@ -5338,7 +5422,7 @@ void main(){
 
     //逐像素光照+法线贴图材质 （世界空间计算光照）
 
-    let vs$4 = `
+    let vs$5 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec4 a_Tangent;
@@ -5375,7 +5459,7 @@ void main(){
 }
 `;
 
-    let fs$4 = `
+    let fs$5 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5495,7 +5579,7 @@ void main(){
         }
 
         getVS_Common(){
-            return vs$4;
+            return vs$5;
         }
 
         getFS_Common(){
@@ -5503,7 +5587,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs$4;
+            fs_common += fs$5;
             return fs_common;
         }
 
@@ -5594,7 +5678,7 @@ void main(){
 
     //镜子材质
 
-    let vs$5 = `
+    let vs$6 = `
 attribute vec4 a_Position;
 attribute vec2 a_Texcoord;
 uniform mat4 u_mvpMatrix;
@@ -5607,7 +5691,7 @@ void main(){
 }
 `;
 
-    let fs$5 = `
+    let fs$6 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5625,7 +5709,7 @@ void main(){
             super();
             
             if(g_shader$1==null){
-                g_shader$1 = Material.createShader(vs$5, fs$5, [
+                g_shader$1 = Material.createShader(vs$6, fs$6, [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
                 ]);
@@ -5676,74 +5760,158 @@ void main(){
         }
     }
 
-    //PostProcessing base material
+    //PostProcessing: gaussian blur
 
-    let vs$6 = `
+    // vs: 竖直方向模糊
+    let vs_vertical = `
 attribute vec2 a_Position;
 attribute vec2 a_Texcoord;
-varying vec2 v_texcoord;
+uniform vec2 u_texelSize;
+uniform float u_blurSize;
+varying vec2 v_uvs[5];
+
 void main(){
     gl_Position = vec4(a_Position, 0.0, 1.0);
-    v_texcoord = a_Texcoord;
+    vec2 uv = a_Texcoord;
+
+    v_uvs[0] = uv;
+    v_uvs[1] = uv + vec2(0.0, u_texelSize.y) * u_blurSize;
+    v_uvs[2] = uv - vec2(0.0, u_texelSize.y) * u_blurSize;
+    v_uvs[3] = uv + vec2(0.0, u_texelSize.y * 2.0) * u_blurSize;
+    v_uvs[4] = uv - vec2(0.0, u_texelSize.y * 2.0) * u_blurSize;
 }
 `;
 
-    let fs$6 = `
+    // vs: 水平方向模糊
+    let vs_horizontal = `
+attribute vec2 a_Position;
+attribute vec2 a_Texcoord;
+uniform vec2 u_texelSize;
+uniform float u_blurSize;
+varying vec2 v_uvs[5];
+
+void main(){
+    gl_Position = vec4(a_Position, 0.0, 1.0);
+    vec2 uv = a_Texcoord;
+
+    v_uvs[0] = uv;
+    v_uvs[1] = uv + vec2(u_texelSize.x, 0.0) * u_blurSize;
+    v_uvs[2] = uv - vec2(u_texelSize.x, 0.0) * u_blurSize;
+    v_uvs[3] = uv + vec2(u_texelSize.x * 2.0, 0.0) * u_blurSize;
+    v_uvs[4] = uv - vec2(u_texelSize.x * 2.0, 0.0) * u_blurSize;
+}
+`;
+
+    let fs$7 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
 uniform sampler2D u_texMain;
-varying vec2 v_texcoord;
-void main(){    
-    gl_FragColor = texture2D(u_texMain, v_texcoord);
+
+varying vec2 v_uvs[5];
+
+void main(){  
+    float weights[3];
+    weights[0] = 0.4026;
+    weights[1] = 0.2442;
+    weights[2] = 0.0545;
+    
+    vec3 sum = texture2D(u_texMain, v_uvs[0]).rgb * weights[0];
+    for(int i=1; i<3; i++){
+        sum += texture2D(u_texMain, v_uvs[i*2-1]).rgb * weights[i];
+        sum += texture2D(u_texMain, v_uvs[i*2]).rgb * weights[i];
+    }
+    
+    gl_FragColor = vec4(sum, 1.0);
 }
 `;
 
-    class MatPP_Base extends Material{
-        constructor(fshader, vshader){
-            super();
-
-            fshader = fshader || fs$6;
-            vshader = vshader || vs$6;
+    class MatPP_Blur extends MatPP_Base{
+        constructor(){ 
+            super(fs$7, vs_vertical); // pass0 create in super constructor
             
-            //TODO:使用shader manager管理返回对应一对vs/fs唯一的shader
-            this._shader = Material.createShader(vshader, fshader, [
-                    {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
-                    {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
-                ]);   
-
-            this.addRenderPass(this._shader, LightMode.None);              
+            this._shaderPass1 = Material.createShader(vs_horizontal, fs$7, [
+                {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
+                {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
+            ]); 
+            this.addRenderPass(this._shaderPass1, LightMode.None);              
 
             //default uniforms
-            this._mainTexture = null;
-        }
-
-        //Override
-        get systemUniforms(){
-            return []; 
+            this.texelSize = [1.0/512.0, 1.0/512.0];
+            this._blurSize = 1.0;
+            
         }
 
         //Override
         setCustomUniformValues(pass){                           
-            if(this._mainTexture){     
-                this._mainTexture.bind();
-                pass.shader.setUniformSafe('u_texMain', 0);
+            super.setCustomUniformValues(pass);
+            pass.shader.setUniformSafe('u_texelSize', this.texelSize);
+            pass.shader.setUniformSafe('u_blurSize', this._blurSize);
+        }
+
+        set blurSize(v){
+            this._blurSize = v;
+        }
+    }
+
+    class PostEffectBlur extends PostEffectLayer{
+        constructor(){
+            super(new MatPP_Blur());
+
+            //模糊迭代次数（每次迭代分别执行一次竖直和水平方向高斯模糊）
+            this._iterations = 3;   //0~4
+
+            //每迭代一次的模糊尺寸扩散速度（值越大越模糊）
+            this._blurSpread = 0.6; //0.2~3
+
+            //RT缩小系数，值越大越模糊
+            this._downSample = 2; //1~8
+        }
+
+        set iterations(v){
+            this._iterations = v;
+        }
+
+        set blurSpread(v){
+            this._blurSpread = v;
+        }
+
+        set downSample(v){
+            this._downSample = v;
+        }
+
+        render(chain, srcRT, dstRT){
+            let rtW = srcRT.width / this._downSample;
+            let rtH = srcRT.height / this._downSample;
+
+            let buffer0 = chain.getTempRT(rtW, rtH);
+            chain.blit(srcRT, buffer0);
+
+            for(let i=0; i<this._iterations; ++i){
+                this._material.blurSize = 1.0 + i * this._blurSpread;
+                let buffer1 = chain.getTempRT(rtW, rtH);
+
+                // render the vertical pass
+                chain.blit(buffer0, buffer1, this._material, 0);
+                chain.releaseTempRT(buffer0);
+                
+                buffer0 = buffer1;
+                buffer1 = chain.getTempRT(rtW, rtH);
+
+                // render the horizontal pass
+                chain.blit(buffer0, buffer1, this._material, 1);
+                chain.releaseTempRT(buffer0);
+                buffer0 = buffer1;
             }
-        }
 
-        set mainTexture(v){
-            this._mainTexture = v;
+            chain.blit(buffer0, dstRT);
+            chain.releaseTempRT(buffer0);
         }
-
-        get mainTexture(){
-            return this._mainTexture;
-        }
-
     }
 
     //PostProcessing: 简单的波动特效（可以将系数开放出来）
 
-    let fs$7 = `
+    let fs$8 = `
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -5763,7 +5931,7 @@ void main(){
 
     class MatPP_Wave extends MatPP_Base{
         constructor(){
-            super(fs$7);              
+            super(fs$8);              
             this._time = 0;
         }
 
@@ -5780,7 +5948,7 @@ void main(){
 
     //PostProcessing: Grayscale
 
-    let fs$8 = `
+    let fs$9 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5795,13 +5963,13 @@ void main(){
 
     class MatPP_Grayscale extends MatPP_Base{
         constructor(){
-            super(fs$8);              
+            super(fs$9);              
         }
     }
 
     //PostProcessing: Modify brightness, saturation and contrast
 
-    let fs$9 = `
+    let fs$a = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5832,7 +6000,7 @@ void main(){
 
     class MatPP_ColorBSC extends MatPP_Base{
         constructor(){
-            super(fs$9);  
+            super(fs$a);  
             
             this._brightness = 1.0;
             this._saturation = 1.0;
@@ -5874,7 +6042,7 @@ void main(){
 
     //PostProcessing: Vignette 简单的晕影效果
 
-    let fs$a = `
+    let fs$b = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5894,7 +6062,7 @@ void main(){
 
     class MatPP_Vignette extends MatPP_Base{
         constructor(){
-            super(fs$a);  
+            super(fs$b);  
             this._intensity = 3.0; 
             this._color = [0.0, 0.0, 0.0];
         }
@@ -5939,7 +6107,7 @@ void main(){
 }
 `;
 
-    let fs$b = `
+    let fs$c = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -6000,7 +6168,7 @@ void main(){
 
     class MatPP_EdgeDetection extends MatPP_Base{
         constructor(){
-            super(fs$b, vs$7);  
+            super(fs$c, vs$7);  
             
             this.texelSize = [1.0/512.0, 1.0/512.0];
             this._edgeOnly = 1.0;
@@ -6041,6 +6209,7 @@ void main(){
     exports.MatNormalMap = MatNormalMap;
     exports.MatNormalMapW = MatNormalMapW;
     exports.MatPP_Base = MatPP_Base;
+    exports.MatPP_Blur = MatPP_Blur;
     exports.MatPP_ColorBSC = MatPP_ColorBSC;
     exports.MatPP_EdgeDetection = MatPP_EdgeDetection;
     exports.MatPP_Grayscale = MatPP_Grayscale;
@@ -6055,6 +6224,7 @@ void main(){
     exports.Mesh = Mesh;
     exports.MeshRenderer = MeshRenderer;
     exports.Plane = Plane;
+    exports.PostEffectBlur = PostEffectBlur;
     exports.PostEffectLayerOnePass = PostEffectLayerOnePass;
     exports.PostProcessingChain = PostProcessingChain;
     exports.Quaternion = Quaternion;

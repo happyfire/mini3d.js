@@ -41,6 +41,13 @@ class Material{
         return pass;
     }
 
+    destroy(){
+        for(let pass of this.renderPasses){
+            pass.destroy();
+        }
+        this.renderPasses = [];
+    }
+
     //Override
     get systemUniforms(){
         return [SystemUniforms.MvpMatrix];

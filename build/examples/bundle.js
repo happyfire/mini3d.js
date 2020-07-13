@@ -1893,7 +1893,7 @@ var main = (function () {
 	      var matPP;
 	      matPP = new mini3d.MatPP_ColorBSC();
 	      matPP.brightness = 1.2;
-	      matPP.saturation = 1.6;
+	      matPP.saturation = 1.4;
 	      matPP.contrast = 1.2;
 
 	      this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
@@ -1904,6 +1904,12 @@ var main = (function () {
 	      matPP.colorBg = [1, 1, 1];
 
 	      this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
+
+	      this._matPPEdge = matPP;
+	      matPP = new mini3d.MatPP_Blur();
+	      this._postEffectBlur = new mini3d.PostEffectBlur(matPP);
+
+	      this._cameraNode.camera.addPostProcessing(this._postEffectBlur);
 
 	      matPP = new mini3d.MatPP_Vignette();
 	      matPP.color = [0.1, 0.1, 0.1];
@@ -1919,7 +1925,10 @@ var main = (function () {
 
 	        this._scene.update();
 
-	        this._matPPWave.time = this._time / 1000; //灯光做圆周运动
+	        this._matPPWave.time = this._time / 1000;
+	        var factor = (1 + Math.sin(this._time / 2000)) * 0.5;
+	        this._matPPEdge.edgeOnly = factor;
+	        this._postEffectBlur.blurSpread = factor < 0.2 ? 0 : factor * 0.6; //灯光做圆周运动
 
 	        var cosv = Math.cos(this._time / 1500);
 	        var sinv = Math.sin(this._time / 1500);

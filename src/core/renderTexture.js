@@ -14,7 +14,7 @@ class RenderTexture{
     }
 
     clampTextureSize(){
-        if(this._width>glAbility.MAX_TEXTURE_SIZE || this._height>glAbility.MAX_TEXTURE_SIZE){
+        while(this._width>glAbility.MAX_TEXTURE_SIZE || this._height>glAbility.MAX_TEXTURE_SIZE){
             this._width /= 2;
             this._height /= 2;
         }
