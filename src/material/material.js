@@ -69,11 +69,18 @@ class Material{
 
     }
 
+    //Override
+    //渲染pass后的清理工作
+    afterRender(pass){
+
+    }
+
     renderPass(mesh, context, pass){
         pass.shader.use();
         this.setSysUniformValues(pass, context);
         this.setCustomUniformValues(pass);
         mesh.render(pass.shader);
+        this.afterRender(pass);
     }
 
     static createShader(vs, fs, attributesMap){

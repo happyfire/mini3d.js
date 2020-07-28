@@ -1885,37 +1885,35 @@ var main = (function () {
 
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
 
-	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1];
-	      this._matPPWave = new mini3d.MatPP_Wave();
+	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1]; //this._matPPWave = new mini3d.MatPP_Wave();
+	      //this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(this._matPPWave));
 
-	      this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(this._matPPWave));
+	      var matPP; // matPP = new mini3d.MatPP_ColorBSC();
+	      // matPP.brightness = 1.2;
+	      // matPP.saturation = 1.0;
+	      // matPP.contrast = 1.0;
+	      // this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
 
-	      var matPP;
-	      matPP = new mini3d.MatPP_ColorBSC();
-	      matPP.brightness = 1.2;
-	      matPP.saturation = 1.4;
-	      matPP.contrast = 1.2;
+	      matPP = new mini3d.MatPP_Bloom();
+	      var bloomEffect = new mini3d.PostEffectBloom(matPP);
+	      bloomEffect.brightThreshold = 0.35;
+	      bloomEffect.blurSpread = 1.0;
+	      bloomEffect.downSample = 8;
 
-	      this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
+	      this._cameraNode.camera.addPostProcessing(bloomEffect); //matPP = new mini3d.MatPP_EdgeDetection();
+	      //matPP.edgeOnly = 1.0;
+	      //matPP.colorEdge = [0, 0, 0];
+	      //matPP.colorBg = [1, 1, 1];
+	      //this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
+	      //this._matPPEdge = matPP;
+	      //matPP = new mini3d.MatPP_Blur();
+	      //this._postEffectBlur = new mini3d.PostEffectBlur(matPP);
+	      //this._cameraNode.camera.addPostProcessing(this._postEffectBlur);
+	      //matPP = new mini3d.MatPP_Vignette();
+	      //matPP.color = [0.1,0.1,0.1];
+	      //matPP.intensity = 5.0;
+	      //this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
 
-	      matPP = new mini3d.MatPP_EdgeDetection();
-	      matPP.edgeOnly = 1.0;
-	      matPP.colorEdge = [0, 0, 0];
-	      matPP.colorBg = [1, 1, 1];
-
-	      this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
-
-	      this._matPPEdge = matPP;
-	      matPP = new mini3d.MatPP_Blur();
-	      this._postEffectBlur = new mini3d.PostEffectBlur(matPP);
-
-	      this._cameraNode.camera.addPostProcessing(this._postEffectBlur);
-
-	      matPP = new mini3d.MatPP_Vignette();
-	      matPP.color = [0.1, 0.1, 0.1];
-	      matPP.intensity = 5.0;
-
-	      this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
 	    }
 	  }, {
 	    key: "onUpdate",
@@ -1923,12 +1921,12 @@ var main = (function () {
 	      if (this._scene) {
 	        this._time += dt;
 
-	        this._scene.update();
+	        this._scene.update(); //this._matPPWave.time = this._time/1000;
+	        //let factor = (1 + Math.sin(this._time/2000))*0.5;
+	        //this._matPPEdge.edgeOnly = factor;
+	        //this._postEffectBlur.blurSpread = factor<0.2? 0: factor*0.6;
+	        //灯光做圆周运动
 
-	        this._matPPWave.time = this._time / 1000;
-	        var factor = (1 + Math.sin(this._time / 2000)) * 0.5;
-	        this._matPPEdge.edgeOnly = factor;
-	        this._postEffectBlur.blurSpread = factor < 0.2 ? 0 : factor * 0.6; //灯光做圆周运动
 
 	        var cosv = Math.cos(this._time / 1500);
 	        var sinv = Math.sin(this._time / 1500);

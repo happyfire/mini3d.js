@@ -1,4 +1,3 @@
-import { Shader } from "../core/shader";
 
 let LightMode = {
     None: 0,
