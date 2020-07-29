@@ -20,6 +20,8 @@
 * 动画系统
 * 骨骼动画
 * 动态Batch
+* Computer Shder
+* Forward+
 * 延迟渲染
 * 其他...
 
