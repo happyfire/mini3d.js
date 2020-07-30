@@ -11,6 +11,7 @@
 * 材质系统和自定义Shader/材质 ✓ 
 * 多光源前向渲染 ✓ 
 * 可自定义的PostProcessing系统 ✓ 
+* glTF支持
 * ShadowMap阴影
 * 地形系统
 * 半透明渲染
@@ -20,7 +21,7 @@
 * 动画系统
 * 骨骼动画
 * 动态Batch
-* Computer Shder
+* Computer Shader
 * Forward+
 * 延迟渲染
 * 其他...
