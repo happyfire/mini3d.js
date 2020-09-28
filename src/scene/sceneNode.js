@@ -6,6 +6,7 @@ import { SystemComponents } from "./systemComps";
 import { MeshRenderer } from "./components/meshRenderer";
 import { Camera } from "./components/camera";
 import { Light, LightType } from "./components/light";
+import { Projector } from "./components/projector";
 
 let _tempVec3 = new Vector3();
 let _tempQuat = new Quaternion();
@@ -199,6 +200,17 @@ class SceneNode {
         return node;
     }
 
+    addProjector(fovy, aspect, near, far){
+        let projector = new Projector();
+        projector.setPerspective(fovy, aspect, near, far);
+
+        let node = new SceneNode();
+        node.addComponent(SystemComponents.Projector, projector);
+        node.setParent(this);
+        node.projector = projector;
+        return node;
+    }
+
     addDirectionalLight(color){
         let light = new Light(LightType.Directional);
         light.color = color;
@@ -231,7 +243,8 @@ class SceneNode {
                 return;
         }
 
-        if(this.getComponent(SystemComponents.Camera)){
+        if(this.getComponent(SystemComponents.Camera) || 
+            this.getComponent(SystemComponents.Projector)){
             _tempQuat.setLookRotation(target, worldPos, up);//因为对于OpenGL的camera来说，LookAt是让局部的-z轴指向target，因此这儿对调一下。
         } else {
             _tempQuat.setLookRotation(worldPos, target, up);
@@ -296,10 +309,10 @@ class SceneNode {
         return this.components[type];
     }
 
-    render(scene, camera, lights){
+    render(scene, camera, lights, projectors){
         let renderer = this.components[SystemComponents.Renderer];
         if(renderer){
-            renderer.render(scene, camera, lights);
+            renderer.render(scene, camera, lights, projectors);
         }
     }
 

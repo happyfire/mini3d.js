@@ -10,6 +10,7 @@ let plane_main_texture = './imgs/wall02_diffuse.png';
 let plane_normal_map = './imgs/wall02_normal.png';
 let brick_main_texture = './imgs/brickwall_diffuse.jpg';
 let brick_normal_map = './imgs/brickwall_normal.jpg';
+let proj_texture = './imgs/t1.png';
 
 class AppNormalMap {
     constructor() {             
@@ -31,7 +32,8 @@ class AppNormalMap {
             [plane_main_texture, mini3d.AssetType.Image],
             [plane_normal_map, mini3d.AssetType.Image],
             [brick_main_texture, mini3d.AssetType.Image],
-            [brick_normal_map, mini3d.AssetType.Image]
+            [brick_normal_map, mini3d.AssetType.Image],
+            [proj_texture, mini3d.AssetType.Image]
         ]
 
         mini3d.assetManager.loadAssetList(assetList, function () {            
@@ -174,6 +176,13 @@ class AppNormalMap {
         this._cameraNode.localPosition.set(0, 2, 6);
         this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
         this._cameraNode.camera.clearColor = [0.34,0.98,1];
+
+        // Add projector
+        this._projector = this._scene.root.addProjector(60, 1.0, 1.0, 1000.0);
+        this._projector.localPosition.set(0, 3, 0);
+        this._projector.lookAt(new mini3d.Vector3(0, 0, 0));
+        this._projector.projector.material.projTexture = mini3d.textureManager.getTexture(proj_texture);
+
     }
 
     onUpdate(dt) {
@@ -195,6 +204,12 @@ class AppNormalMap {
             this._pointLight2.localPosition.z = -radius*sinv*cosv;
             this._pointLight2.localPosition.y = 0.5 + radius*(0.5+0.5*sinv)*0.5;
             this._pointLight2.setTransformDirty();
+
+            //move projector
+            this._projector.localPosition.x = radius*cosv;
+            //this._projector.localPosition.z = radius*sinv;
+            //this._projector.localRotation.setFromEulerAngles(new mini3d.Vector3(60*sinv,0,0));
+            this._projector.setTransformDirty();
 
             this._scene.render();
         }

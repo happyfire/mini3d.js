@@ -26,7 +26,7 @@ class MeshRenderer extends Component{
         this.mesh = mesh;
     }
 
-    render(scene, camera, lights){
+    render(scene, camera, lights, projectors){
 
         let systemUniforms = this.material.systemUniforms;
         let uniformContext = {};
@@ -84,6 +84,8 @@ class MeshRenderer extends Component{
             return;
         }
 
+        let idx = 1;
+
         //逐pass渲染，对于 ForwardAdd pass 会渲染多次叠加效果
         for(let pass of this.material.renderPasses){            
             if(pass.lightMode == LightMode.ForwardBase && mainLight!=null){
@@ -94,7 +96,6 @@ class MeshRenderer extends Component{
                 this.material.renderPass(this.mesh, uniformContext, pass);
 
             } else if(pass.lightMode == LightMode.ForwardAdd){
-                let idx = 1;
                 for(let light of pixelLights){
                     if(light.type == LightType.Directional){
                         let lightForward = mainLight.node.forward.negative();
@@ -116,7 +117,6 @@ class MeshRenderer extends Component{
                     this.material.renderPass(this.mesh, uniformContext, pass);              
                     idx++;
                 }
-
                 gl.disable(gl.BLEND);
                 gl.disable(gl.POLYGON_OFFSET_FILL);
 
@@ -126,7 +126,31 @@ class MeshRenderer extends Component{
                 //非光照pass
                 this.material.renderPass(this.mesh, uniformContext, pass); 
             }
-        }                               
+        }  
+        
+        //使用projector渲染投影材质
+        if(projectors != null && projectors.length > 0){
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.ONE, gl.ONE);
+            gl.enable(gl.POLYGON_OFFSET_FILL);
+
+            let matTmp = new Matrix4();
+            
+            for(let projector of projectors){
+                gl.polygonOffset(0.0, -1.0*idx);
+                idx++;
+                projector.updateMatrix();
+                let materialProj = projector.material;
+                matTmp.set(projector.getProjectorMatrix());
+                matTmp.multiply(this.node.worldMatrix);
+                materialProj.projMatrix = matTmp.elements;
+                materialProj.renderPass(this.mesh, uniformContext, materialProj.renderPasses[0]);
+            }
+
+            gl.disable(gl.BLEND);
+            gl.disable(gl.POLYGON_OFFSET_FILL);
+        }
+        
     }
 
 }

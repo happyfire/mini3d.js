@@ -7,6 +7,7 @@ class Scene{
         this._root._scene = this;
         this.cameras = [];
         this.lights = [];
+        this.projectors = [];
         this.renderNodes = [];
 
         this._ambientColor = [0.1,0.1,0.1];
@@ -37,6 +38,12 @@ class Scene{
             return;
         }
 
+        let projector = node.getComponent(SystemComponents.Projector);
+        if(projector!=null){
+            this.projectors.push(projector);
+            return;
+        }
+
         this.renderNodes.push(node);        
     }
 
@@ -50,6 +57,16 @@ class Scene{
             }
             return;
         } 
+
+        let projector = node.getComponent(SystemComponents.Projector);
+        if(projector!=null){
+            node.projector = null;
+            let idx = this.projectors.indexOf(projector);
+            if(idx>=0){
+                this.projectors.splice(idx, 1);
+            }
+            return;
+        }
         
         let light = node.getComponent(SystemComponents.Light);
         if(light!=null){
@@ -90,7 +107,7 @@ class Scene{
 
             //TODO：按优先级和范围选择灯光，灯光总数要有限制
             for(let rnode of this.renderNodes){
-                rnode.render(this, camera, this.lights);
+                rnode.render(this, camera, this.lights, this.projectors);
             }
 
             camera.afterRender();

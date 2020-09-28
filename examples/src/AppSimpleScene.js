@@ -2,6 +2,7 @@ let obj_file_capsule = './models/capsule.obj';
 let obj_file_sphere = './models/sphere.obj';
 let obj_main_texture = './imgs/wall01_diffuse.jpg';
 let plane_main_texture = './imgs/wall02_diffuse.png';
+let proj_texture = './imgs/t1.png';
 
 class AppSimpleScene {
     constructor() {             
@@ -16,7 +17,8 @@ class AppSimpleScene {
             [obj_file_capsule, mini3d.AssetType.Text],
             [obj_file_sphere, mini3d.AssetType.Text],
             [obj_main_texture, mini3d.AssetType.Image],
-            [plane_main_texture, mini3d.AssetType.Image]
+            [plane_main_texture, mini3d.AssetType.Image],
+            [proj_texture, mini3d.AssetType.Image]
         ]
 
         mini3d.assetManager.loadAssetList(assetList, function () {            
@@ -67,7 +69,11 @@ class AppSimpleScene {
         matPlane.mainTextureST = [2,2,0,0];
         matPlane.specular = [0.8, 0.8, 0.8];
         this._planeNode = this._scene.root.addMeshNode(planeMesh, matPlane);
-        this._planeNode.localPosition.set(0,0,0);       
+        this._planeNode.localPosition.set(0,0,0);    
+        
+        let planeNode2 = this._scene.root.addMeshNode(planeMesh, matPlane);
+        planeNode2.localPosition.set(0,0,-10); 
+        planeNode2.localRotation.setFromEulerAngles(new mini3d.Vector3(90,0,0));
 
         // Create an empty mesh root node
         let meshRoot = this._scene.root.addEmptyNode();        
@@ -123,6 +129,12 @@ class AppSimpleScene {
         this._cameraNode.lookAt(new mini3d.Vector3(0, 0, 0));
         this._cameraNode.camera.clearColor = [0.2,0.5,0.5];
 
+        // Add projector
+        this._projector = this._scene.root.addProjector(60, 1.0, 1.0, 1000.0);
+        this._projector.localPosition.set(0, 3, 0);
+        this._projector.lookAt(new mini3d.Vector3(0, 0, 0));
+        this._projector.projector.material.projTexture = mini3d.textureManager.getTexture(proj_texture);
+
     }
 
     onUpdate(dt) {
@@ -157,6 +169,11 @@ class AppSimpleScene {
             this._pointLight2.localPosition.y = 1+radius*(0.5+0.5*sinv);
             this._pointLight2.setTransformDirty();
 
+            //move projector
+            this._projector.localPosition.x = radius*cosv;
+            this._projector.localPosition.z = radius*sinv;
+            this._projector.localRotation.setFromEulerAngles(new mini3d.Vector3(60*sinv,0,0));
+            this._projector.setTransformDirty();
            
             this._scene.render();
         }

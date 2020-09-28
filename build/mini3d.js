@@ -3217,7 +3217,8 @@ var mini3d = (function (exports) {
         Renderer:'renderer',
         Mesh:'mesh',
         Camera:'camera',
-        Light:'light'
+        Light:'light',
+        Projector:'projector'
     };
 
     let LightMode = {
@@ -3394,7 +3395,7 @@ void main(){
             this.mesh = mesh;
         }
 
-        render(scene, camera, lights){
+        render(scene, camera, lights, projectors){
 
             let systemUniforms = this.material.systemUniforms;
             let uniformContext = {};
@@ -3452,6 +3453,8 @@ void main(){
                 return;
             }
 
+            let idx = 1;
+
             //逐pass渲染，对于 ForwardAdd pass 会渲染多次叠加效果
             for(let pass of this.material.renderPasses){            
                 if(pass.lightMode == LightMode.ForwardBase && mainLight!=null){
@@ -3462,7 +3465,6 @@ void main(){
                     this.material.renderPass(this.mesh, uniformContext, pass);
 
                 } else if(pass.lightMode == LightMode.ForwardAdd){
-                    let idx = 1;
                     for(let light of pixelLights){
                         if(light.type == LightType.Directional){
                             let lightForward = mainLight.node.forward.negative();
@@ -3484,7 +3486,6 @@ void main(){
                         this.material.renderPass(this.mesh, uniformContext, pass);              
                         idx++;
                     }
-
                     exports.gl.disable(exports.gl.BLEND);
                     exports.gl.disable(exports.gl.POLYGON_OFFSET_FILL);
 
@@ -3492,7 +3493,31 @@ void main(){
                     //非光照pass
                     this.material.renderPass(this.mesh, uniformContext, pass); 
                 }
-            }                               
+            }  
+            
+            //使用projector渲染投影材质
+            if(projectors != null && projectors.length > 0){
+                exports.gl.enable(exports.gl.BLEND);
+                exports.gl.blendFunc(exports.gl.ONE, exports.gl.ONE);
+                exports.gl.enable(exports.gl.POLYGON_OFFSET_FILL);
+
+                let matTmp = new Matrix4();
+                
+                for(let projector of projectors){
+                    exports.gl.polygonOffset(0.0, -1.0*idx);
+                    idx++;
+                    projector.updateMatrix();
+                    let materialProj = projector.material;
+                    matTmp.set(projector.getProjectorMatrix());
+                    matTmp.multiply(this.node.worldMatrix);
+                    materialProj.projMatrix = matTmp.elements;
+                    materialProj.renderPass(this.mesh, uniformContext, materialProj.renderPasses[0]);
+                }
+
+                exports.gl.disable(exports.gl.BLEND);
+                exports.gl.disable(exports.gl.POLYGON_OFFSET_FILL);
+            }
+            
         }
 
     }
@@ -3815,6 +3840,153 @@ void main(){
 
     }
 
+    let vs$1 = `
+attribute vec4 a_Position;
+
+uniform mat4 u_mvpMatrix;
+uniform mat4 u_projectorMatrix;
+
+varying vec4 v_projTexCoord;
+
+void main(){
+    gl_Position = u_mvpMatrix * a_Position;
+    v_projTexCoord = u_projectorMatrix * a_Position;
+}
+
+`;
+
+    let fs$1 = `
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform sampler2D u_texProj;
+varying vec4 v_projTexCoord;
+
+void main(){
+    vec4 projTexColor = vec4(0.0);
+    if(v_projTexCoord.z > 0.0){
+        projTexColor = texture2DProj(u_texProj, v_projTexCoord);
+    }
+    gl_FragColor = projTexColor * 0.5;
+}
+
+`;
+
+    let g_shader = null;
+
+    class MatProjector extends Material{
+        constructor(){
+            super();
+
+            if(g_shader==null){
+                g_shader = Material.createShader(vs$1, this.getFS(), [
+                    {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}               
+                ]);
+            }
+
+            this.addRenderPass(g_shader);
+
+            //default uniforms
+            this._projMatrix = null;
+            this._projTexture = textureManager.getDefaultTexture();
+        }
+
+        getFS(){
+            let fs_common = "";
+            // if(sysConfig.gammaCorrection){
+            //     fs_common += "#define GAMMA_CORRECTION\n";
+            // }
+            fs_common += fs$1;
+            return fs_common;
+        }
+
+        //Override
+        get systemUniforms(){
+            return [SystemUniforms.MvpMatrix]; 
+        }
+
+        //Override
+        setCustomUniformValues(pass){
+            
+            pass.shader.setUniformSafe('u_projectorMatrix', this._projMatrix);
+                
+            if(this._projTexture){
+                this._projTexture.bind();
+                pass.shader.setUniformSafe('u_texProj', 0);
+            } 
+        }
+
+        set projTexture(v){
+            this._projTexture = v;
+            this._projTexture.setClamp();
+        }
+
+        get projTexture(){
+            return this._projTexture;
+        }
+
+        set projMatrix(v){
+            this._projMatrix = v;
+        }
+
+    }
+
+    class Projector extends Component$1{
+        constructor(){
+            super();
+
+            this._fovy = 75;
+            this._aspect = 0.75;
+            this._near = 0.1;
+            this._far = 100.0;
+            this._projMatrix = new Matrix4();
+            this._viewMatrix = new Matrix4();
+            this._scaleMatrix = new Matrix4();
+            this._scaleMatrix.setTranslate(0.5,0.5,0.5).scale(0.5,0.5,0.5);
+
+            this._projectorMatrix = new Matrix4();
+
+            this._material = new MatProjector();
+        }
+
+        get material(){
+            return this._material;
+        }
+
+        set material(v){
+            this._material = v;
+        }
+
+        getProjectorMatrix(){
+            return this._projectorMatrix;
+        }
+
+        setPerspective(fovy, aspect, near, far){
+            this._fovy = fovy;
+            this._aspect = aspect;
+            this._near = near;
+            this._far = far; 
+            this._projMatrix.setPerspective(this._fovy, this._aspect, this._near, this._far);
+        }
+
+        setOrtho(left, right, bottom, top, near, far){ 
+            this._projMatrix.setOrtho(left, right, bottom, top, near, far);        
+        }
+
+        _updateProjectorMatrix(){
+            this._projectorMatrix.set(this._scaleMatrix);   
+            this._projectorMatrix.multiply(this._projMatrix);
+            this._projectorMatrix.multiply(this._viewMatrix);
+        }
+
+        updateMatrix(){
+            this._viewMatrix.setInverseOf(this.node.worldMatrix);
+            this._updateProjectorMatrix();
+        }
+
+    }
+
     let _tempVec3 = new Vector3();
     let _tempQuat = new Quaternion();
     let _tempQuat2 = new Quaternion();
@@ -4007,6 +4179,17 @@ void main(){
             return node;
         }
 
+        addProjector(fovy, aspect, near, far){
+            let projector = new Projector();
+            projector.setPerspective(fovy, aspect, near, far);
+
+            let node = new SceneNode();
+            node.addComponent(SystemComponents.Projector, projector);
+            node.setParent(this);
+            node.projector = projector;
+            return node;
+        }
+
         addDirectionalLight(color){
             let light = new Light(LightType.Directional);
             light.color = color;
@@ -4039,7 +4222,8 @@ void main(){
                     return;
             }
 
-            if(this.getComponent(SystemComponents.Camera)){
+            if(this.getComponent(SystemComponents.Camera) || 
+                this.getComponent(SystemComponents.Projector)){
                 _tempQuat.setLookRotation(target, worldPos, up);//因为对于OpenGL的camera来说，LookAt是让局部的-z轴指向target，因此这儿对调一下。
             } else {
                 _tempQuat.setLookRotation(worldPos, target, up);
@@ -4104,10 +4288,10 @@ void main(){
             return this.components[type];
         }
 
-        render(scene, camera, lights){
+        render(scene, camera, lights, projectors){
             let renderer = this.components[SystemComponents.Renderer];
             if(renderer){
-                renderer.render(scene, camera, lights);
+                renderer.render(scene, camera, lights, projectors);
             }
         }
 
@@ -4306,6 +4490,17 @@ void main(){
             return node;
         }
 
+        addProjector(fovy, aspect, near, far){
+            let projector = new Projector();
+            projector.setPerspective(fovy, aspect, near, far);
+
+            let node = new SceneNode$1();
+            node.addComponent(SystemComponents.Projector, projector);
+            node.setParent(this);
+            node.projector = projector;
+            return node;
+        }
+
         addDirectionalLight(color){
             let light = new Light(LightType.Directional);
             light.color = color;
@@ -4338,7 +4533,8 @@ void main(){
                     return;
             }
 
-            if(this.getComponent(SystemComponents.Camera)){
+            if(this.getComponent(SystemComponents.Camera) || 
+                this.getComponent(SystemComponents.Projector)){
                 _tempQuat$1.setLookRotation(target, worldPos, up);//因为对于OpenGL的camera来说，LookAt是让局部的-z轴指向target，因此这儿对调一下。
             } else {
                 _tempQuat$1.setLookRotation(worldPos, target, up);
@@ -4403,10 +4599,10 @@ void main(){
             return this.components[type];
         }
 
-        render(scene, camera, lights){
+        render(scene, camera, lights, projectors){
             let renderer = this.components[SystemComponents.Renderer];
             if(renderer){
-                renderer.render(scene, camera, lights);
+                renderer.render(scene, camera, lights, projectors);
             }
         }
 
@@ -4419,6 +4615,7 @@ void main(){
             this._root._scene = this;
             this.cameras = [];
             this.lights = [];
+            this.projectors = [];
             this.renderNodes = [];
 
             this._ambientColor = [0.1,0.1,0.1];
@@ -4449,6 +4646,12 @@ void main(){
                 return;
             }
 
+            let projector = node.getComponent(SystemComponents.Projector);
+            if(projector!=null){
+                this.projectors.push(projector);
+                return;
+            }
+
             this.renderNodes.push(node);        
         }
 
@@ -4462,6 +4665,16 @@ void main(){
                 }
                 return;
             } 
+
+            let projector = node.getComponent(SystemComponents.Projector);
+            if(projector!=null){
+                node.projector = null;
+                let idx = this.projectors.indexOf(projector);
+                if(idx>=0){
+                    this.projectors.splice(idx, 1);
+                }
+                return;
+            }
             
             let light = node.getComponent(SystemComponents.Light);
             if(light!=null){
@@ -4502,7 +4715,7 @@ void main(){
 
                 //TODO：按优先级和范围选择灯光，灯光总数要有限制
                 for(let rnode of this.renderNodes){
-                    rnode.render(this, camera, this.lights);
+                    rnode.render(this, camera, this.lights, this.projectors);
                 }
 
                 camera.afterRender();
@@ -4679,7 +4892,7 @@ void main(){
 
     //逐顶点光照材质，支持 diffuse 贴图和color tint, 使用blinn-phong高光
 
-    let vs$1 = `
+    let vs$2 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec2 a_Texcoord;
@@ -4738,7 +4951,7 @@ void main(){
 
 `;
 
-    let fs$1 = `
+    let fs$2 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -4811,7 +5024,7 @@ void main(){
         }
 
         getVS_Common(){
-            return vs$1;
+            return vs$2;
         }
 
         getFS_Common(){
@@ -4819,7 +5032,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs$1;
+            fs_common += fs$2;
             return fs_common;
         }
 
@@ -4892,7 +5105,7 @@ void main(){
 
     //逐像素光照材质，支持 diffuse 贴图和color tint, 使用blinn-phong高光
 
-    let vs$2 = `
+    let vs$3 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec2 a_Texcoord;
@@ -4916,7 +5129,7 @@ void main(){
 
 `;
 
-    let fs$2 = `
+    let fs$3 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5016,7 +5229,7 @@ void main(){
         }
 
         getVS_Common(){
-            return vs$2;
+            return vs$3;
         }
 
         getFS_Common(){
@@ -5024,7 +5237,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs$2;
+            fs_common += fs$3;
             return fs_common;
         }
 
@@ -5096,7 +5309,7 @@ void main(){
 
     }
 
-    let vs$3 = `
+    let vs$4 = `
 attribute vec4 a_Position;
 
 uniform mat4 u_mvpMatrix;
@@ -5107,7 +5320,7 @@ void main(){
 
 `;
 
-    let fs$3 = `
+    let fs$4 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5124,19 +5337,19 @@ void main(){
 
 `;
 
-    let g_shader = null;
+    let g_shader$1 = null;
 
     class MatSolidColor extends Material{
         constructor(color=null){
             super();
 
-            if(g_shader==null){
-                g_shader = Material.createShader(vs$3, this.getFS(), [
+            if(g_shader$1==null){
+                g_shader$1 = Material.createShader(vs$4, this.getFS(), [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'}               
                 ]);
             }
 
-            this.addRenderPass(g_shader);
+            this.addRenderPass(g_shader$1);
 
             //default uniforms
             if(color){
@@ -5151,7 +5364,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs$3;
+            fs_common += fs$4;
             return fs_common;
         }
 
@@ -5174,7 +5387,7 @@ void main(){
 
     //逐像素光照+法线贴图材质 （切线空间计算光照）
 
-    let vs$4 = `
+    let vs$5 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec4 a_Tangent;
@@ -5227,7 +5440,7 @@ void main(){
 }
 `;
 
-    let fs$4 = `
+    let fs$5 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5330,7 +5543,7 @@ void main(){
         }
 
         getVS_Common(){
-            return vs$4;
+            return vs$5;
         }
 
         getFS_Common(){
@@ -5338,7 +5551,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs$4;
+            fs_common += fs$5;
             return fs_common;
         }
 
@@ -5429,7 +5642,7 @@ void main(){
 
     //逐像素光照+法线贴图材质 （世界空间计算光照）
 
-    let vs$5 = `
+    let vs$6 = `
 attribute vec4 a_Position;
 attribute vec3 a_Normal;
 attribute vec4 a_Tangent;
@@ -5466,7 +5679,7 @@ void main(){
 }
 `;
 
-    let fs$5 = `
+    let fs$6 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5586,7 +5799,7 @@ void main(){
         }
 
         getVS_Common(){
-            return vs$5;
+            return vs$6;
         }
 
         getFS_Common(){
@@ -5594,7 +5807,7 @@ void main(){
             if(exports.sysConfig.gammaCorrection){
                 fs_common += "#define GAMMA_CORRECTION\n";
             }
-            fs_common += fs$5;
+            fs_common += fs$6;
             return fs_common;
         }
 
@@ -5685,7 +5898,7 @@ void main(){
 
     //镜子材质
 
-    let vs$6 = `
+    let vs$7 = `
 attribute vec4 a_Position;
 attribute vec2 a_Texcoord;
 uniform mat4 u_mvpMatrix;
@@ -5698,7 +5911,7 @@ void main(){
 }
 `;
 
-    let fs$6 = `
+    let fs$7 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5709,20 +5922,20 @@ void main(){
 }
 `;
 
-    let g_shader$1 = null;
+    let g_shader$2 = null;
 
     class MatMirror extends Material{
         constructor(){
             super();
             
-            if(g_shader$1==null){
-                g_shader$1 = Material.createShader(vs$6, fs$6, [
+            if(g_shader$2==null){
+                g_shader$2 = Material.createShader(vs$7, fs$7, [
                     {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                     {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
                 ]);
             }     
 
-            this.addRenderPass(g_shader$1, LightMode.None);              
+            this.addRenderPass(g_shader$2, LightMode.None);              
 
             //default uniforms
             this._mainTexture = null;
@@ -5809,7 +6022,7 @@ void main(){
 }
 `;
 
-    let fs$7 = `
+    let fs$8 = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -5835,9 +6048,9 @@ void main(){
 
     class MatPP_Blur extends MatPP_Base{
         constructor(){ 
-            super(fs$7, vs_vertical); // pass0 create in super constructor
+            super(fs$8, vs_vertical); // pass0 create in super constructor
             
-            this._shaderPass1 = Material.createShader(vs_horizontal, fs$7, [
+            this._shaderPass1 = Material.createShader(vs_horizontal, fs$8, [
                 {'semantic':VertexSemantic.POSITION, 'name':'a_Position'},
                 {'semantic':VertexSemantic.UV0 , 'name':'a_Texcoord'}
             ]); 
@@ -6169,7 +6382,7 @@ void main(){
 
     //PostProcessing: 简单的波动特效（可以将系数开放出来）
 
-    let fs$8 = `
+    let fs$9 = `
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -6189,7 +6402,7 @@ void main(){
 
     class MatPP_Wave extends MatPP_Base{
         constructor(){
-            super(fs$8);              
+            super(fs$9);              
             this._time = 0;
         }
 
@@ -6206,7 +6419,7 @@ void main(){
 
     //PostProcessing: Grayscale
 
-    let fs$9 = `
+    let fs$a = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -6221,13 +6434,13 @@ void main(){
 
     class MatPP_Grayscale extends MatPP_Base{
         constructor(){
-            super(fs$9);              
+            super(fs$a);              
         }
     }
 
     //PostProcessing: Modify brightness, saturation and contrast
 
-    let fs$a = `
+    let fs$b = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -6258,7 +6471,7 @@ void main(){
 
     class MatPP_ColorBSC extends MatPP_Base{
         constructor(){
-            super(fs$a);  
+            super(fs$b);  
             
             this._brightness = 1.0;
             this._saturation = 1.0;
@@ -6300,7 +6513,7 @@ void main(){
 
     //PostProcessing: Vignette 简单的晕影效果
 
-    let fs$b = `
+    let fs$c = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -6320,7 +6533,7 @@ void main(){
 
     class MatPP_Vignette extends MatPP_Base{
         constructor(){
-            super(fs$b);  
+            super(fs$c);  
             this._intensity = 3.0; 
             this._color = [0.0, 0.0, 0.0];
         }
@@ -6343,7 +6556,7 @@ void main(){
 
     //PostProcessing: edge detection
 
-    let vs$7 = `
+    let vs$8 = `
 attribute vec2 a_Position;
 attribute vec2 a_Texcoord;
 uniform vec2 u_texelSize;
@@ -6365,7 +6578,7 @@ void main(){
 }
 `;
 
-    let fs$c = `
+    let fs$d = `
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -6426,7 +6639,7 @@ void main(){
 
     class MatPP_EdgeDetection extends MatPP_Base{
         constructor(){
-            super(fs$c, vs$7);  
+            super(fs$d, vs$8);  
             
             this.texelSize = [1.0/512.0, 1.0/512.0];
             this._edgeOnly = 1.0;
@@ -6475,6 +6688,7 @@ void main(){
     exports.MatPP_Vignette = MatPP_Vignette;
     exports.MatPP_Wave = MatPP_Wave;
     exports.MatPixelLight = MatPixelLight;
+    exports.MatProjector = MatProjector;
     exports.MatSolidColor = MatSolidColor;
     exports.MatVertexLight = MatVertexLight;
     exports.Material = Material;
@@ -6487,6 +6701,7 @@ void main(){
     exports.PostEffectBlur = PostEffectBlur;
     exports.PostEffectLayerOnePass = PostEffectLayerOnePass;
     exports.PostProcessingChain = PostProcessingChain;
+    exports.Projector = Projector;
     exports.Quaternion = Quaternion;
     exports.RenderTexture = RenderTexture;
     exports.Scene = Scene;

@@ -856,6 +856,7 @@ var main = (function () {
 	var obj_file_sphere = './models/sphere.obj';
 	var obj_main_texture = './imgs/wall01_diffuse.jpg';
 	var plane_main_texture = './imgs/wall02_diffuse.png';
+	var proj_texture = './imgs/t1.png';
 
 	var AppSimpleScene =
 	/*#__PURE__*/
@@ -872,7 +873,7 @@ var main = (function () {
 	  _createClass(AppSimpleScene, [{
 	    key: "onInit",
 	    value: function onInit() {
-	      var assetList = [[obj_file_capsule, mini3d.AssetType.Text], [obj_file_sphere, mini3d.AssetType.Text], [obj_main_texture, mini3d.AssetType.Image], [plane_main_texture, mini3d.AssetType.Image]];
+	      var assetList = [[obj_file_capsule, mini3d.AssetType.Text], [obj_file_sphere, mini3d.AssetType.Text], [obj_main_texture, mini3d.AssetType.Image], [plane_main_texture, mini3d.AssetType.Image], [proj_texture, mini3d.AssetType.Image]];
 	      mini3d.assetManager.loadAssetList(assetList, function () {
 	        this.start();
 	      }.bind(this));
@@ -919,8 +920,12 @@ var main = (function () {
 	      matPlane.specular = [0.8, 0.8, 0.8];
 	      this._planeNode = this._scene.root.addMeshNode(planeMesh, matPlane);
 
-	      this._planeNode.localPosition.set(0, 0, 0); // Create an empty mesh root node
+	      this._planeNode.localPosition.set(0, 0, 0);
 
+	      var planeNode2 = this._scene.root.addMeshNode(planeMesh, matPlane);
+
+	      planeNode2.localPosition.set(0, 0, -10);
+	      planeNode2.localRotation.setFromEulerAngles(new mini3d.Vector3(90, 0, 0)); // Create an empty mesh root node
 
 	      var meshRoot = this._scene.root.addEmptyNode(); //meshRoot.localPosition.set(-1, 1, 1);
 	      //meshRoot.localScale.set(0.8, 1, 1);
@@ -978,7 +983,15 @@ var main = (function () {
 
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 0, 0));
 
-	      this._cameraNode.camera.clearColor = [0.2, 0.5, 0.5];
+	      this._cameraNode.camera.clearColor = [0.2, 0.5, 0.5]; // Add projector
+
+	      this._projector = this._scene.root.addProjector(60, 1.0, 1.0, 1000.0);
+
+	      this._projector.localPosition.set(0, 3, 0);
+
+	      this._projector.lookAt(new mini3d.Vector3(0, 0, 0));
+
+	      this._projector.projector.material.projTexture = mini3d.textureManager.getTexture(proj_texture);
 	    }
 	  }, {
 	    key: "onUpdate",
@@ -1017,7 +1030,15 @@ var main = (function () {
 	        this._pointLight2.localPosition.z = -radius * sinv * cosv;
 	        this._pointLight2.localPosition.y = 1 + radius * (0.5 + 0.5 * sinv);
 
-	        this._pointLight2.setTransformDirty();
+	        this._pointLight2.setTransformDirty(); //move projector
+
+
+	        this._projector.localPosition.x = radius * cosv;
+	        this._projector.localPosition.z = radius * sinv;
+
+	        this._projector.localRotation.setFromEulerAngles(new mini3d.Vector3(60 * sinv, 0, 0));
+
+	        this._projector.setTransformDirty();
 
 	        this._scene.render();
 	      }
@@ -1272,6 +1293,7 @@ var main = (function () {
 	var plane_normal_map = './imgs/wall02_normal.png';
 	var brick_main_texture = './imgs/brickwall_diffuse.jpg';
 	var brick_normal_map = './imgs/brickwall_normal.jpg';
+	var proj_texture$1 = './imgs/t1.png';
 
 	var AppNormalMap =
 	/*#__PURE__*/
@@ -1289,7 +1311,7 @@ var main = (function () {
 	  _createClass(AppNormalMap, [{
 	    key: "onInit",
 	    value: function onInit() {
-	      var assetList = [[obj_file_capsule$1, mini3d.AssetType.Text], [obj_file_sphere$1, mini3d.AssetType.Text], [obj_main_texture$1, mini3d.AssetType.Image], [obj_normal_map, mini3d.AssetType.Image], [box_main_texture, mini3d.AssetType.Image], [box_normal_map, mini3d.AssetType.Image], [plane_main_texture$1, mini3d.AssetType.Image], [plane_normal_map, mini3d.AssetType.Image], [brick_main_texture, mini3d.AssetType.Image], [brick_normal_map, mini3d.AssetType.Image]];
+	      var assetList = [[obj_file_capsule$1, mini3d.AssetType.Text], [obj_file_sphere$1, mini3d.AssetType.Text], [obj_main_texture$1, mini3d.AssetType.Image], [obj_normal_map, mini3d.AssetType.Image], [box_main_texture, mini3d.AssetType.Image], [box_normal_map, mini3d.AssetType.Image], [plane_main_texture$1, mini3d.AssetType.Image], [plane_normal_map, mini3d.AssetType.Image], [brick_main_texture, mini3d.AssetType.Image], [brick_normal_map, mini3d.AssetType.Image], [proj_texture$1, mini3d.AssetType.Image]];
 	      mini3d.assetManager.loadAssetList(assetList, function () {
 	        this.start();
 	      }.bind(this));
@@ -1431,7 +1453,15 @@ var main = (function () {
 
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
 
-	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1];
+	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1]; // Add projector
+
+	      this._projector = this._scene.root.addProjector(60, 1.0, 1.0, 1000.0);
+
+	      this._projector.localPosition.set(0, 3, 0);
+
+	      this._projector.lookAt(new mini3d.Vector3(0, 0, 0));
+
+	      this._projector.projector.material.projTexture = mini3d.textureManager.getTexture(proj_texture$1);
 	    }
 	  }, {
 	    key: "onUpdate",
@@ -1455,7 +1485,13 @@ var main = (function () {
 	        this._pointLight2.localPosition.z = -radius * sinv * cosv;
 	        this._pointLight2.localPosition.y = 0.5 + radius * (0.5 + 0.5 * sinv) * 0.5;
 
-	        this._pointLight2.setTransformDirty();
+	        this._pointLight2.setTransformDirty(); //move projector
+
+
+	        this._projector.localPosition.x = radius * cosv; //this._projector.localPosition.z = radius*sinv;
+	        //this._projector.localRotation.setFromEulerAngles(new mini3d.Vector3(60*sinv,0,0));
+
+	        this._projector.setTransformDirty();
 
 	        this._scene.render();
 	      }
