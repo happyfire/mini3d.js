@@ -84,8 +84,6 @@ class MeshRenderer extends Component{
             return;
         }
 
-        let idx = 1;
-
         //逐pass渲染，对于 ForwardAdd pass 会渲染多次叠加效果
         for(let pass of this.material.renderPasses){            
             if(pass.lightMode == LightMode.ForwardBase && mainLight!=null){
@@ -96,6 +94,7 @@ class MeshRenderer extends Component{
                 this.material.renderPass(this.mesh, uniformContext, pass);
 
             } else if(pass.lightMode == LightMode.ForwardAdd){
+                let idx = 1;
                 for(let light of pixelLights){
                     if(light.type == LightType.Directional){
                         let lightForward = mainLight.node.forward.negative();
@@ -107,18 +106,22 @@ class MeshRenderer extends Component{
                     
                     uniformContext[SystemUniforms.LightColor] = light.color;
                     
-                    //TODO:临时解决方案，为了能让多个灯光pass混合
+                    //让多个灯光pass混合
+                    //状态设置为 blend one one; ztest lequal; zwrite off;
+                    //TODO:全局状态管理（下同）
                     if(idx==1){
                         gl.enable(gl.BLEND);
                         gl.blendFunc(gl.ONE, gl.ONE);
-                        gl.enable(gl.POLYGON_OFFSET_FILL);
+                        gl.depthMask(false);
+                        gl.depthFunc(gl.LEQUAL);
                     }
-                    gl.polygonOffset(0.0, -1.0*idx);         
+                            
                     this.material.renderPass(this.mesh, uniformContext, pass);              
                     idx++;
                 }
-                gl.disable(gl.BLEND);
-                gl.disable(gl.POLYGON_OFFSET_FILL);
+                gl.disable(gl.BLEND);                
+                gl.depthMask(true);   
+                gl.depthFunc(gl.LESS);             
 
             } else if(pass.lightMode == LightMode.ShadowCaster){
                 
@@ -132,13 +135,12 @@ class MeshRenderer extends Component{
         if(projectors != null && projectors.length > 0){
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.ONE, gl.ONE);
-            gl.enable(gl.POLYGON_OFFSET_FILL);
-
+            gl.depthMask(false);
+            gl.depthFunc(gl.LEQUAL);
+                    
             let matTmp = new Matrix4();
             
             for(let projector of projectors){
-                gl.polygonOffset(0.0, -1.0*idx);
-                idx++;
                 projector.updateMatrix();
                 let materialProj = projector.material;
                 matTmp.set(projector.getProjectorMatrix());
@@ -148,7 +150,8 @@ class MeshRenderer extends Component{
             }
 
             gl.disable(gl.BLEND);
-            gl.disable(gl.POLYGON_OFFSET_FILL);
+            gl.depthMask(true);   
+            gl.depthFunc(gl.LESS);         
         }
         
     }

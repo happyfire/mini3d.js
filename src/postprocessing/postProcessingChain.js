@@ -95,7 +95,7 @@ class PostProcessingChain {
             dstTexture = tmp;
         }
 
-        gl.depthFunc(gl.LESS);
+        gl.depthFunc(gl.LEQUAL);
         gl.depthMask(true);
     }
 }

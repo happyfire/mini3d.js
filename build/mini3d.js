@@ -3453,8 +3453,6 @@ void main(){
                 return;
             }
 
-            let idx = 1;
-
             //逐pass渲染，对于 ForwardAdd pass 会渲染多次叠加效果
             for(let pass of this.material.renderPasses){            
                 if(pass.lightMode == LightMode.ForwardBase && mainLight!=null){
@@ -3465,6 +3463,7 @@ void main(){
                     this.material.renderPass(this.mesh, uniformContext, pass);
 
                 } else if(pass.lightMode == LightMode.ForwardAdd){
+                    let idx = 1;
                     for(let light of pixelLights){
                         if(light.type == LightType.Directional){
                             let lightForward = mainLight.node.forward.negative();
@@ -3476,18 +3475,22 @@ void main(){
                         
                         uniformContext[SystemUniforms.LightColor] = light.color;
                         
-                        //TODO:临时解决方案，为了能让多个灯光pass混合
+                        //让多个灯光pass混合
+                        //状态设置为 blend one one; ztest lequal; zwrite off;
+                        //TODO:全局状态管理（下同）
                         if(idx==1){
                             exports.gl.enable(exports.gl.BLEND);
                             exports.gl.blendFunc(exports.gl.ONE, exports.gl.ONE);
-                            exports.gl.enable(exports.gl.POLYGON_OFFSET_FILL);
+                            exports.gl.depthMask(false);
+                            exports.gl.depthFunc(exports.gl.LEQUAL);
                         }
-                        exports.gl.polygonOffset(0.0, -1.0*idx);         
+                                
                         this.material.renderPass(this.mesh, uniformContext, pass);              
                         idx++;
                     }
-                    exports.gl.disable(exports.gl.BLEND);
-                    exports.gl.disable(exports.gl.POLYGON_OFFSET_FILL);
+                    exports.gl.disable(exports.gl.BLEND);                
+                    exports.gl.depthMask(true);   
+                    exports.gl.depthFunc(exports.gl.LESS);             
 
                 } else if(pass.lightMode == LightMode.ShadowCaster); else {
                     //非光照pass
@@ -3499,13 +3502,12 @@ void main(){
             if(projectors != null && projectors.length > 0){
                 exports.gl.enable(exports.gl.BLEND);
                 exports.gl.blendFunc(exports.gl.ONE, exports.gl.ONE);
-                exports.gl.enable(exports.gl.POLYGON_OFFSET_FILL);
-
+                exports.gl.depthMask(false);
+                exports.gl.depthFunc(exports.gl.LEQUAL);
+                        
                 let matTmp = new Matrix4();
                 
                 for(let projector of projectors){
-                    exports.gl.polygonOffset(0.0, -1.0*idx);
-                    idx++;
                     projector.updateMatrix();
                     let materialProj = projector.material;
                     matTmp.set(projector.getProjectorMatrix());
@@ -3515,7 +3517,8 @@ void main(){
                 }
 
                 exports.gl.disable(exports.gl.BLEND);
-                exports.gl.disable(exports.gl.POLYGON_OFFSET_FILL);
+                exports.gl.depthMask(true);   
+                exports.gl.depthFunc(exports.gl.LESS);         
             }
             
         }
@@ -3711,7 +3714,7 @@ void main(){
                 dstTexture = tmp;
             }
 
-            exports.gl.depthFunc(exports.gl.LESS);
+            exports.gl.depthFunc(exports.gl.LEQUAL);
             exports.gl.depthMask(true);
         }
     }
