@@ -1,3 +1,5 @@
+//此例子演示的是引擎开发早期载入obj格式模式，并使用shader进行渲染。
+//此时尚没有材质系统，保留这个例子是为了更好的演示基础知识
 
 let vs_file = './shaders/basic_light.vs';
 let fs_file = './shaders/basic_light.fs';
@@ -72,7 +74,7 @@ class AppObjLoader{
         
         let that = this;
         mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function(event, data){                           
-            let factor = 300/mini3d.canvas.width;      
+            let factor = 1;      
             let dx = data.dx * factor;
             let dy = data.dy * factor;    
             
