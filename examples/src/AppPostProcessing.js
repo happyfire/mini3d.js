@@ -79,7 +79,7 @@ class AppPostProcessing {
         matGround.normalMap = mini3d.textureManager.getTexture(plane_normal_map);
         matGround.normalMap.setRepeat();
         matGround.normalMapST = [3,3,0,0];
-        matGround.specular = [0.8, 0.8, 0.8];
+        matGround.specular = [0.5, 0.5, 0.5];
         let groundNode = this._scene.root.addMeshNode(groundMesh, matGround);
         groundNode.localPosition.set(0,0,0); 
     }
@@ -133,7 +133,7 @@ class AppPostProcessing {
         material1.specular = [0.8, 0.8, 0.8];
 
         this._mesh1 = meshRoot.addMeshNode(capusleMesh, material1);
-        this._mesh1.localPosition.set(1, 1, 0);        
+        this._mesh1.localPosition.set(1.5, 1, 0);        
         
         // Create mesh node 2
         let material2 = new mini3d.MatNormalMapW();
@@ -144,7 +144,7 @@ class AppPostProcessing {
         material2.gloss = 10;
 
         this._mesh2 = meshRoot.addMeshNode(mini3d.Cube.createMesh(), material2);
-        this._mesh2.localPosition.set(-1, 1, 0);
+        this._mesh2.localPosition.set(-1.5, 1, 0);
         this._mesh2.localScale.set(0.8, 0.8, 0.8);
         
         // Add a directional light node to scene        
@@ -175,20 +175,20 @@ class AppPostProcessing {
         this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
         this._cameraNode.camera.clearColor = [0.34,0.98,1];
         
-        //this._matPPWave = new mini3d.MatPP_Wave();
-        //this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(this._matPPWave));
+        this._matPPWave = new mini3d.MatPP_Wave();
+        this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(this._matPPWave));
 
         let matPP;
         // matPP = new mini3d.MatPP_ColorBSC();
-        // matPP.brightness = 1.2;
-        // matPP.saturation = 1.0;
+        // matPP.brightness = 0.95;
+        // matPP.saturation = 1.2;
         // matPP.contrast = 1.0;
         // this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
 
         matPP = new mini3d.MatPP_Bloom();
         let bloomEffect = new mini3d.PostEffectBloom(matPP);
         bloomEffect.brightThreshold = 0.35;
-        bloomEffect.blurSpread = 1.0;
+        bloomEffect.blurSpread = 2.0;
         bloomEffect.downSample = 8;
         this._cameraNode.camera.addPostProcessing(bloomEffect);
         
@@ -203,10 +203,10 @@ class AppPostProcessing {
         //this._postEffectBlur = new mini3d.PostEffectBlur(matPP);
         //this._cameraNode.camera.addPostProcessing(this._postEffectBlur);
 
-        //matPP = new mini3d.MatPP_Vignette();
-        //matPP.color = [0.1,0.1,0.1];
-        //matPP.intensity = 5.0;
-        //this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
+        // matPP = new mini3d.MatPP_Vignette();
+        // matPP.color = [0.1,0.1,0.9];
+        // matPP.intensity = 3.0;
+        // this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
         
 
     }
@@ -216,7 +216,7 @@ class AppPostProcessing {
             this._time += dt;
             this._scene.update();    
             
-            //this._matPPWave.time = this._time/1000;
+            this._matPPWave.time = this._time*0.8/1000;
 
             //let factor = (1 + Math.sin(this._time/2000))*0.5;
             //this._matPPEdge.edgeOnly = factor;

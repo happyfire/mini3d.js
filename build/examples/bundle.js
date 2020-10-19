@@ -573,34 +573,36 @@ var main = (function () {
 	  return Constructor;
 	}
 
-	var vs_file = './shaders/tex_color.vs';
-	var fs_file = './shaders/tex_color.fs';
-	var tex_file = './imgs/box_diffuse.jpg';
+	//此例子演示的是引擎开发早期载入obj格式模式，并使用shader进行渲染。
+	//此时尚没有材质系统，保留这个例子是为了更好的演示基础知识
+	var vs_file = './shaders/basic_light.vs';
+	var fs_file = './shaders/basic_light.fs';
+	var obj_file = './models/dragon.obj';
 
-	var AppTexturedCube =
+	var AppObjLoader =
 	/*#__PURE__*/
 	function () {
-	  function AppTexturedCube() {
-	    _classCallCheck(this, AppTexturedCube);
+	  function AppObjLoader() {
+	    _classCallCheck(this, AppObjLoader);
 
 	    this._inited = false;
 	    this._mesh = null;
 	    this._shader = null;
-	    this._texture = null;
 	    this._viewMatrix = new mini3d.Matrix4();
 	    this._modelMatrix = new mini3d.Matrix4();
-	    this._normalMatrix = new mini3d.Matrix4();
 	    this._viewProjMatrix = new mini3d.Matrix4();
 	    this._mvpMatrix = new mini3d.Matrix4();
-	    this._rotX = 30;
-	    this._rotY = 30;
-	    this._rotZ = 0;
+	    this._normalMatrix = new mini3d.Matrix4();
+	    this._rotationQuat = new mini3d.Quaternion();
+	    this._matRot = new mini3d.Matrix4();
+	    this._rotX = 0;
+	    this._rotY = 0;
 	  }
 
-	  _createClass(AppTexturedCube, [{
+	  _createClass(AppObjLoader, [{
 	    key: "onInit",
 	    value: function onInit() {
-	      var assetList = [[vs_file, mini3d.AssetType.Text], [fs_file, mini3d.AssetType.Text], [tex_file, mini3d.AssetType.Image]];
+	      var assetList = [[vs_file, mini3d.AssetType.Text], [fs_file, mini3d.AssetType.Text], [obj_file, mini3d.AssetType.Text]];
 	      mini3d.assetManager.loadAssetList(assetList, function () {
 	        this._inited = true;
 	        this.start();
@@ -641,155 +643,13 @@ var main = (function () {
 
 	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.NORMAL, 'a_Normal');
 
-	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.UV0, 'a_TexCoord');
-
-	      this._shader.use();
-
-	      this._texture = mini3d.textureManager.getTexture(tex_file);
-	      this._mesh = mini3d.Cube.createMesh();
-	      var that = this;
-	      mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
-	        var factor = 300 / mini3d.canvas.width;
-	        var dx = data.dx * factor;
-	        var dy = data.dy * factor;
-
-	        var clampAngle = function clampAngle(angle, min, max) {
-	          if (angle < -360) angle += 360;
-	          if (angle > 360) angle -= 360;
-	          return Math.max(Math.min(angle, max), min);
-	        };
-
-	        that._rotX = clampAngle(that._rotX + dy, -90.0, 90.0);
-	        that._rotY += dx;
-	        that.draw();
-	      });
-	      gl.clearColor(0, 0, 0, 1);
-	      gl.clearDepth(1.0);
-	      gl.enable(gl.DEPTH_TEST);
-	      this.draw();
-	    }
-	  }, {
-	    key: "draw",
-	    value: function draw() {
-	      //rotate order: y-x-z
-	      this._modelMatrix.setRotate(this._rotZ, 0, 0, 1); //rot around z-axis
-
-
-	      this._modelMatrix.rotate(this._rotX, 1.0, 0.0, 0.0); //rot around x-axis
-
-
-	      this._modelMatrix.rotate(this._rotY, 0.0, 1.0, 0.0); //rot around y-axis
-
-
-	      this._normalMatrix.setInverseOf(this._modelMatrix);
-
-	      this._normalMatrix.transpose();
-
-	      this._mvpMatrix.set(this._viewProjMatrix);
-
-	      this._mvpMatrix.multiply(this._modelMatrix);
-
-	      this._shader.setUniform('u_mvpMatrix', this._mvpMatrix.elements);
-
-	      this._shader.setUniform('u_NormalMatrix', this._normalMatrix.elements);
-
-	      this._shader.setUniform('u_LightColor', [1.0, 1.0, 1.0]);
-
-	      var lightDir = [0.5, 3.0, 4.0];
-
-	      this._shader.setUniform('u_LightDir', lightDir);
-
-	      this._texture.bind();
-
-	      this._shader.setUniform('u_sampler', 0);
-
-	      var gl = mini3d.gl;
-	      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-	      this._mesh.render(this._shader);
-
-	      this._texture.unbind();
-	    }
-	  }]);
-
-	  return AppTexturedCube;
-	}();
-
-	var vs_file$1 = './shaders/basic_light.vs';
-	var fs_file$1 = './shaders/basic_light.fs';
-	var obj_file = './models/dragon.obj';
-
-	var AppObjLoader =
-	/*#__PURE__*/
-	function () {
-	  function AppObjLoader() {
-	    _classCallCheck(this, AppObjLoader);
-
-	    this._inited = false;
-	    this._mesh = null;
-	    this._shader = null;
-	    this._viewMatrix = new mini3d.Matrix4();
-	    this._modelMatrix = new mini3d.Matrix4();
-	    this._viewProjMatrix = new mini3d.Matrix4();
-	    this._mvpMatrix = new mini3d.Matrix4();
-	    this._normalMatrix = new mini3d.Matrix4();
-	    this._rotationQuat = new mini3d.Quaternion();
-	    this._matRot = new mini3d.Matrix4();
-	    this._rotX = 0;
-	    this._rotY = 0;
-	  }
-
-	  _createClass(AppObjLoader, [{
-	    key: "onInit",
-	    value: function onInit() {
-	      var assetList = [[vs_file$1, mini3d.AssetType.Text], [fs_file$1, mini3d.AssetType.Text], [obj_file, mini3d.AssetType.Text]];
-	      mini3d.assetManager.loadAssetList(assetList, function () {
-	        this._inited = true;
-	        this.start();
-	      }.bind(this));
-
-	      this._viewMatrix.setViewByLookAt(.0, .0, 8.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
-	    }
-	  }, {
-	    key: "onResize",
-	    value: function onResize(width, height) {
-	      this._viewProjMatrix.setPerspective(60.0, width / height, 1.0, 100.0);
-
-	      this._viewProjMatrix.multiply(this._viewMatrix);
-
-	      if (this._inited) {
-	        this.draw();
-	      }
-	    }
-	  }, {
-	    key: "onUpdate",
-	    value: function onUpdate(dt) {}
-	  }, {
-	    key: "start",
-	    value: function start() {
-	      var gl = mini3d.gl;
-	      var vs = mini3d.assetManager.getAsset(vs_file$1).data;
-	      var fs = mini3d.assetManager.getAsset(fs_file$1).data;
-	      var shader = new mini3d.Shader();
-
-	      if (!shader.create(vs, fs)) {
-	        console.log("Failed to initialize shaders");
-	        return;
-	      }
-
-	      this._shader = shader;
-
-	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.POSITION, 'a_Position');
-
-	      this._shader.mapAttributeSemantic(mini3d.VertexSemantic.NORMAL, 'a_Normal');
-
 	      this._shader.use();
 
 	      var objFileString = mini3d.assetManager.getAsset(obj_file).data;
 	      this._mesh = mini3d.objFileLoader.load(objFileString, 0.3);
 	      var that = this;
 	      mini3d.eventManager.addEventHandler(mini3d.SystemEvent.touchMove, function (event, data) {
-	        var factor = 300 / mini3d.canvas.width;
+	        var factor = 1;
 	        var dx = data.dx * factor;
 	        var dy = data.dy * factor;
 
@@ -1454,14 +1314,10 @@ var main = (function () {
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
 
 	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1]; // Add projector
-
-	      this._projector = this._scene.root.addProjector(60, 1.0, 1.0, 1000.0);
-
-	      this._projector.localPosition.set(0, 3, 0);
-
-	      this._projector.lookAt(new mini3d.Vector3(0, 0, 0));
-
-	      this._projector.projector.material.projTexture = mini3d.textureManager.getTexture(proj_texture$1);
+	      //this._projector = this._scene.root.addProjector(60, 1.0, 1.0, 1000.0);
+	      //this._projector.localPosition.set(0, 3, 0);
+	      //this._projector.lookAt(new mini3d.Vector3(0, 0, 0));
+	      //this._projector.projector.material.projTexture = mini3d.textureManager.getTexture(proj_texture);
 	    }
 	  }, {
 	    key: "onUpdate",
@@ -1486,12 +1342,11 @@ var main = (function () {
 	        this._pointLight2.localPosition.y = 0.5 + radius * (0.5 + 0.5 * sinv) * 0.5;
 
 	        this._pointLight2.setTransformDirty(); //move projector
+	        //this._projector.localPosition.x = radius*cosv;
+	        ////this._projector.localPosition.z = radius*sinv;
+	        ////this._projector.localRotation.setFromEulerAngles(new mini3d.Vector3(60*sinv,0,0));
+	        //this._projector.setTransformDirty();
 
-
-	        this._projector.localPosition.x = radius * cosv; //this._projector.localPosition.z = radius*sinv;
-	        //this._projector.localRotation.setFromEulerAngles(new mini3d.Vector3(60*sinv,0,0));
-
-	        this._projector.setTransformDirty();
 
 	        this._scene.render();
 	      }
@@ -1826,7 +1681,7 @@ var main = (function () {
 	      matGround.normalMap = mini3d.textureManager.getTexture(plane_normal_map$2);
 	      matGround.normalMap.setRepeat();
 	      matGround.normalMapST = [3, 3, 0, 0];
-	      matGround.specular = [0.8, 0.8, 0.8];
+	      matGround.specular = [0.5, 0.5, 0.5];
 
 	      var groundNode = this._scene.root.addMeshNode(groundMesh, matGround);
 
@@ -1876,7 +1731,7 @@ var main = (function () {
 	      material1.specular = [0.8, 0.8, 0.8];
 	      this._mesh1 = meshRoot.addMeshNode(capusleMesh, material1);
 
-	      this._mesh1.localPosition.set(1, 1, 0); // Create mesh node 2
+	      this._mesh1.localPosition.set(1.5, 1, 0); // Create mesh node 2
 
 
 	      var material2 = new mini3d.MatNormalMapW();
@@ -1887,7 +1742,7 @@ var main = (function () {
 	      material2.gloss = 10;
 	      this._mesh2 = meshRoot.addMeshNode(mini3d.Cube.createMesh(), material2);
 
-	      this._mesh2.localPosition.set(-1, 1, 0);
+	      this._mesh2.localPosition.set(-1.5, 1, 0);
 
 	      this._mesh2.localScale.set(0.8, 0.8, 0.8); // Add a directional light node to scene        
 
@@ -1921,19 +1776,21 @@ var main = (function () {
 
 	      this._cameraNode.lookAt(new mini3d.Vector3(0, 1, 0));
 
-	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1]; //this._matPPWave = new mini3d.MatPP_Wave();
-	      //this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(this._matPPWave));
+	      this._cameraNode.camera.clearColor = [0.34, 0.98, 1];
+	      this._matPPWave = new mini3d.MatPP_Wave();
+
+	      this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(this._matPPWave));
 
 	      var matPP; // matPP = new mini3d.MatPP_ColorBSC();
-	      // matPP.brightness = 1.2;
-	      // matPP.saturation = 1.0;
+	      // matPP.brightness = 0.95;
+	      // matPP.saturation = 1.2;
 	      // matPP.contrast = 1.0;
 	      // this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
 
 	      matPP = new mini3d.MatPP_Bloom();
 	      var bloomEffect = new mini3d.PostEffectBloom(matPP);
 	      bloomEffect.brightThreshold = 0.35;
-	      bloomEffect.blurSpread = 1.0;
+	      bloomEffect.blurSpread = 2.0;
 	      bloomEffect.downSample = 8;
 
 	      this._cameraNode.camera.addPostProcessing(bloomEffect); //matPP = new mini3d.MatPP_EdgeDetection();
@@ -1945,10 +1802,10 @@ var main = (function () {
 	      //matPP = new mini3d.MatPP_Blur();
 	      //this._postEffectBlur = new mini3d.PostEffectBlur(matPP);
 	      //this._cameraNode.camera.addPostProcessing(this._postEffectBlur);
-	      //matPP = new mini3d.MatPP_Vignette();
-	      //matPP.color = [0.1,0.1,0.1];
-	      //matPP.intensity = 5.0;
-	      //this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
+	      // matPP = new mini3d.MatPP_Vignette();
+	      // matPP.color = [0.1,0.1,0.9];
+	      // matPP.intensity = 3.0;
+	      // this._cameraNode.camera.addPostProcessing(new mini3d.PostEffectLayerOnePass(matPP));
 
 	    }
 	  }, {
@@ -1957,12 +1814,12 @@ var main = (function () {
 	      if (this._scene) {
 	        this._time += dt;
 
-	        this._scene.update(); //this._matPPWave.time = this._time/1000;
-	        //let factor = (1 + Math.sin(this._time/2000))*0.5;
+	        this._scene.update();
+
+	        this._matPPWave.time = this._time * 0.8 / 1000; //let factor = (1 + Math.sin(this._time/2000))*0.5;
 	        //this._matPPEdge.edgeOnly = factor;
 	        //this._postEffectBlur.blurSpread = factor<0.2? 0: factor*0.6;
 	        //灯光做圆周运动
-
 
 	        var cosv = Math.cos(this._time / 1500);
 	        var sinv = Math.sin(this._time / 1500);
@@ -1986,11 +1843,6 @@ var main = (function () {
 
 	  return AppPostProcessing;
 	}();
-
-	function exampleTexturedCube() {
-	  var app = new AppTexturedCube();
-	  mini3d.init('webgl', app);
-	}
 
 	function exampleObjLoader() {
 	  var app = new AppObjLoader();
@@ -2018,22 +1870,24 @@ var main = (function () {
 	}
 
 	var examples = [{
-	  name: 'Textured Cube',
-	  entry: exampleTexturedCube
-	}, {
 	  name: 'Load .Obj Mesh',
+	  img: 'load_obj.jpg',
 	  entry: exampleObjLoader
 	}, {
-	  name: 'Simple Scene',
+	  name: 'Simple Scene & Projector',
+	  img: 'simple_scene.jpg',
 	  entry: exampleSimpleScene
 	}, {
 	  name: 'Normal Map',
+	  img: 'normalmap.jpg',
 	  entry: exampleNormalMap
 	}, {
 	  name: 'Mirror',
+	  img: 'mirror.jpg',
 	  entry: exampleMirror
 	}, {
 	  name: 'PostProcessing',
+	  img: 'pp1.jpg',
 	  entry: examplePostProcessing
 	}];
 	function main() {

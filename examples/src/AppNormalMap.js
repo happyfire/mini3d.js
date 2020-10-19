@@ -178,10 +178,10 @@ class AppNormalMap {
         this._cameraNode.camera.clearColor = [0.34,0.98,1];
 
         // Add projector
-        this._projector = this._scene.root.addProjector(60, 1.0, 1.0, 1000.0);
-        this._projector.localPosition.set(0, 3, 0);
-        this._projector.lookAt(new mini3d.Vector3(0, 0, 0));
-        this._projector.projector.material.projTexture = mini3d.textureManager.getTexture(proj_texture);
+        //this._projector = this._scene.root.addProjector(60, 1.0, 1.0, 1000.0);
+        //this._projector.localPosition.set(0, 3, 0);
+        //this._projector.lookAt(new mini3d.Vector3(0, 0, 0));
+        //this._projector.projector.material.projTexture = mini3d.textureManager.getTexture(proj_texture);
 
     }
 
@@ -206,10 +206,10 @@ class AppNormalMap {
             this._pointLight2.setTransformDirty();
 
             //move projector
-            this._projector.localPosition.x = radius*cosv;
-            //this._projector.localPosition.z = radius*sinv;
-            //this._projector.localRotation.setFromEulerAngles(new mini3d.Vector3(60*sinv,0,0));
-            this._projector.setTransformDirty();
+            //this._projector.localPosition.x = radius*cosv;
+            ////this._projector.localPosition.z = radius*sinv;
+            ////this._projector.localRotation.setFromEulerAngles(new mini3d.Vector3(60*sinv,0,0));
+            //this._projector.setTransformDirty();
 
             this._scene.render();
         }
