@@ -6,15 +6,18 @@
 * 开发笔记：https://blog.csdn.net/n5/category_9647112.html
 
 ## Roadmap
-* 场景和变换 ✓ 
+* 数学库和变换 ✓
+* 场景树 ✓
+* Frustum culling
 * 静态模型载入 ✓ 
-* 材质系统和自定义Shader/材质 ✓ 
-* 多光源前向渲染 ✓ 
-* 可自定义的PostProcessing系统 ✓ 
 * glTF支持
+* 材质系统和自定义Shader/材质 ✓ 
+* 多光源前向渲染流水线 ✓ 
+* 可自定义的PostProcessing系统 ✓ 
 * ShadowMap阴影
-* 地形系统
 * 半透明渲染
+* PBR材质
+* 地形系统
 * 实例化绘制
 * 水体/海洋渲染
 * 大规模草地
@@ -24,6 +27,8 @@
 * Computer Shader
 * Forward+
 * 延迟渲染
+* SSR
+* 球谐光照
 * 其他...
 
 
