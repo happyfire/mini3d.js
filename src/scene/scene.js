@@ -1,5 +1,6 @@
 import { SceneNode } from "./SceneNode";
 import { SystemComponents } from "./systemComps";
+import { SceneForwardRenderer } from "./sceneForwardRenderer";
 
 class Scene{
     constructor(){
@@ -11,6 +12,8 @@ class Scene{
         this.renderNodes = [];
 
         this._ambientColor = [0.1,0.1,0.1];
+
+        this._sceneRenderer = new SceneForwardRenderer();
     }
 
     set ambientColor(v){
@@ -94,26 +97,10 @@ class Scene{
         this.root.updateWorldMatrix();
     }
 
+    
+
     render(){
-        //TODO: 找出camera, 灯光和可渲染结点，逐camera进行forward rendering
-        //1. camera frustum culling
-        //2. 逐队列渲染
-        //   2-1. 不透明物体队列，按材质实例将node分组，然后排序（从前往后）
-        //   2-2, 透明物体队列，按z序从后往前排列
-
-        //TODO: camera需要排序，按指定顺序渲染
-        for(let camera of this.cameras){
-            camera.beforeRender();
-
-            //TODO：按优先级和范围选择灯光，灯光总数要有限制
-            for(let rnode of this.renderNodes){
-                rnode.render(this, camera, this.lights, this.projectors);
-            }
-
-            camera.afterRender();
-        }
-
-        
+        this._sceneRenderer.render(this);        
     }
 
 }

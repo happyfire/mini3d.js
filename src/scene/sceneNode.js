@@ -184,7 +184,7 @@ class SceneNode {
         meshRenderer.setMaterial(material);
         
         let node = new SceneNode();
-        node.addComponent(SystemComponents.Renderer, meshRenderer);  
+        node.addComponent(SystemComponents.MeshRenderer, meshRenderer);  
         node.setParent(this);        
         return node;
     }
@@ -310,7 +310,7 @@ class SceneNode {
     }
 
     render(scene, camera, lights, projectors){
-        let renderer = this.components[SystemComponents.Renderer];
+        let renderer = this.components[SystemComponents.MeshRenderer];
         if(renderer){
             renderer.render(scene, camera, lights, projectors);
         }

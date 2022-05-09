@@ -3214,8 +3214,7 @@ var mini3d = (function (exports) {
     let objFileLoader = new ObjFileLoader();
 
     let SystemComponents = {
-        Renderer:'renderer',
-        Mesh:'mesh',
+        MeshRenderer:'renderer',    
         Camera:'camera',
         Light:'light',
         Projector:'projector'
@@ -3371,7 +3370,8 @@ void main(){
         constructor(type){
             super();
             this.type = type;
-            this.color = [1.0, 1.0, 1.0];
+            this.color = [1.0, 1.0, 1.0]; 
+            this.intensity = 1.0;       
         }
     }
 
@@ -3381,6 +3381,8 @@ void main(){
 
             this.mesh = null;
             this.material = null;
+            this.castShadow = false;
+            this.receiveShadow = false;
 
             this._mvpMatrix = new Matrix4();
             this._objectToWorld = new Matrix4();
@@ -3395,10 +3397,12 @@ void main(){
             this.mesh = mesh;
         }
 
-        render(scene, camera, lights, projectors){
+        render(scene, camera, mainLight, addlights, projectors){
 
             let systemUniforms = this.material.systemUniforms;
             let uniformContext = {};
+
+            //TODO: PerObject uniforms 和 PerMaterial uniforms要分开，为以后batch set pass call做准备
 
             for(let sysu of systemUniforms){
                 switch(sysu){
@@ -3429,26 +3433,11 @@ void main(){
                     }
 
                 }
-            }
+            }        
 
-            //TODO:灯光规则，选出最亮的平行光为主光（传入forwardbase pass)，
-            //如果存在forwardadd pass, 则剩下的灯光中选择不大于MaxForwardAddLights的数量的光为逐像素光（传入forwardadd pass)
-            //如果不存在forwardadd pass，则剩下的灯光中选择MaxVertexLights数量的光为逐顶点光（传入forwardbase pass)
-            let mainLight = null;
-            let pixelLights = [];
-            for(let light of lights){                
-                if(mainLight==null && light.type == LightType.Directional){
-                    mainLight = light;
-                    break;
-                }            
-            }    
-            for(let light of lights){
-                if(light != mainLight){
-                    pixelLights.push(light);
-                }
-            }    
 
             //避免render to texture时渲染使用了该RT的材质，否则会出现错误 Feedback loop formed between Framebuffer and active Texture.
+            //TODO:有RT的camera的渲染要独立出来先渲染。另外要实现camera stack
             if(camera.target!=null && camera.target.texture2D == this.material.mainTexture){
                 return;
             }
@@ -3464,7 +3453,7 @@ void main(){
 
                 } else if(pass.lightMode == LightMode.ForwardAdd){
                     let idx = 1;
-                    for(let light of pixelLights){
+                    for(let light of addlights){
                         if(light.type == LightType.Directional){
                             let lightForward = mainLight.node.forward.negative();
                             uniformContext[SystemUniforms.WorldLightPos] = [lightForward.x, lightForward.y, lightForward.z, 0.0];                        
@@ -3785,6 +3774,8 @@ void main(){
             this._viewProjMatrix.multiply(this._viewMatrix);
         }
 
+        //TODO: 渲染相关代码从Camera中拿出来（为以后实现不同的scene renderer做准备）
+        //TODO: ShadowMap渲染只需要灯光矩阵和renderTexture，所以要从camera中解耦这些
         beforeRender(){
             if(this._renderTexture!=null){
                 this._renderTexture.bind();
@@ -4166,7 +4157,7 @@ void main(){
             meshRenderer.setMaterial(material);
             
             let node = new SceneNode();
-            node.addComponent(SystemComponents.Renderer, meshRenderer);  
+            node.addComponent(SystemComponents.MeshRenderer, meshRenderer);  
             node.setParent(this);        
             return node;
         }
@@ -4292,7 +4283,7 @@ void main(){
         }
 
         render(scene, camera, lights, projectors){
-            let renderer = this.components[SystemComponents.Renderer];
+            let renderer = this.components[SystemComponents.MeshRenderer];
             if(renderer){
                 renderer.render(scene, camera, lights, projectors);
             }
@@ -4477,7 +4468,7 @@ void main(){
             meshRenderer.setMaterial(material);
             
             let node = new SceneNode$1();
-            node.addComponent(SystemComponents.Renderer, meshRenderer);  
+            node.addComponent(SystemComponents.MeshRenderer, meshRenderer);  
             node.setParent(this);        
             return node;
         }
@@ -4603,13 +4594,96 @@ void main(){
         }
 
         render(scene, camera, lights, projectors){
-            let renderer = this.components[SystemComponents.Renderer];
+            let renderer = this.components[SystemComponents.MeshRenderer];
             if(renderer){
                 renderer.render(scene, camera, lights, projectors);
             }
         }
 
         
+    }
+
+    class SceneForwardRendererConfig
+    {
+        constructor(){
+            this.MaxForwardAddLights = 5;
+        }
+    }
+
+    class SceneForwardRenderer{
+        constructor(){
+            this.config = new SceneForwardRendererConfig();        
+            this._mainLight = null;
+            this._additionalLights = [];
+        }
+
+        //确定一个主光源和多个附加光源
+        //主光源是亮度最高的平行光
+        //附加光源是其他所有光源，包含平行光和点光源，附加光源数量不超过 MaxForwardAddLights
+        //主光源使用材质的forwardbase pass渲染
+        //每个附加光源分别使用forwardadd pass渲染一次（多pass)
+        //主光源阴影渲染（如果开启）则使用材质的shadow caster pass渲染到一张shadow map
+
+        //TODO: 按物体分配附加灯光（URP模式）
+        prepareLights(lights)
+        {        
+            let mainLight = null;
+            let additionalLights = [];
+
+            let maxIntensity = 0;
+            
+            for(let light of lights){                
+                if(light.type == LightType.Directional){
+                    if(light.intensity > maxIntensity){
+                        maxIntensity = light.intensity;
+                        mainLight = light;
+                    }                                
+                }            
+            }    
+
+            let addLightCount = 0;
+            for(let light of lights){
+                if(light != mainLight && addLightCount < this.config.MaxForwardAddLights){
+                    addLightCount++;
+                    additionalLights.push(light);
+                }
+            }  
+            
+            this._mainLight = mainLight;
+            this._additionalLights = additionalLights;
+        }
+
+        render(scene){
+            //TODO: 找出camera, 灯光和可渲染结点，逐camera进行forward rendering
+            //1. camera frustum culling
+            //2. 逐队列渲染
+            //   2-1. 不透明物体队列，按材质实例将node分组，然后排序（从前往后）
+            //   2-2, 透明物体队列，按z序从后往前排列
+
+            
+            this.prepareLights(scene.lights);           
+
+            //TODO: camera需要排序，按指定顺序渲染
+            for(let camera of scene.cameras){
+                camera.beforeRender();
+
+                
+
+                //投影Pass
+                for(let rnode of scene.renderNodes){
+                    if(rnode.castShadow);
+                }
+              
+                for(let rnode of scene.renderNodes){
+                    rnode.render(scene, camera, this._mainLight, this._additionalLights, scene.projectors);
+                }
+
+                camera.afterRender();
+            }
+
+            
+        }
+
     }
 
     class Scene{
@@ -4622,6 +4696,8 @@ void main(){
             this.renderNodes = [];
 
             this._ambientColor = [0.1,0.1,0.1];
+
+            this._sceneRenderer = new SceneForwardRenderer();
         }
 
         set ambientColor(v){
@@ -4705,26 +4781,10 @@ void main(){
             this.root.updateWorldMatrix();
         }
 
+        
+
         render(){
-            //TODO: 找出camera, 灯光和可渲染结点，逐camera进行forward rendering
-            //1. camera frustum culling
-            //2. 逐队列渲染
-            //   2-1. 不透明物体队列，按材质实例将node分组，然后排序（从前往后）
-            //   2-2, 透明物体队列，按z序从后往前排列
-
-            //TODO: camera需要排序，按指定顺序渲染
-            for(let camera of this.cameras){
-                camera.beforeRender();
-
-                //TODO：按优先级和范围选择灯光，灯光总数要有限制
-                for(let rnode of this.renderNodes){
-                    rnode.render(this, camera, this.lights, this.projectors);
-                }
-
-                camera.afterRender();
-            }
-
-            
+            this._sceneRenderer.render(this);        
         }
 
     }

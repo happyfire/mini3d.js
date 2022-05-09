@@ -1,6 +1,5 @@
 let SystemComponents = {
-    Renderer:'renderer',
-    Mesh:'mesh',
+    MeshRenderer:'renderer',    
     Camera:'camera',
     Light:'light',
     Projector:'projector'

@@ -70,6 +70,8 @@ class Camera extends Component{
         this._viewProjMatrix.multiply(this._viewMatrix);
     }
 
+    //TODO: 渲染相关代码从Camera中拿出来（为以后实现不同的scene renderer做准备）
+    //TODO: ShadowMap渲染只需要灯光矩阵和renderTexture，所以要从camera中解耦这些
     beforeRender(){
         if(this._renderTexture!=null){
             this._renderTexture.bind();

@@ -12,6 +12,8 @@ class MeshRenderer extends Component{
 
         this.mesh = null;
         this.material = null;
+        this.castShadow = false;
+        this.receiveShadow = false;
 
         this._mvpMatrix = new Matrix4();
         this._objectToWorld = new Matrix4();
@@ -26,10 +28,12 @@ class MeshRenderer extends Component{
         this.mesh = mesh;
     }
 
-    render(scene, camera, lights, projectors){
+    render(scene, camera, mainLight, addlights, projectors){
 
         let systemUniforms = this.material.systemUniforms;
         let uniformContext = {};
+
+        //TODO: PerObject uniforms 和 PerMaterial uniforms要分开，为以后batch set pass call做准备
 
         for(let sysu of systemUniforms){
             switch(sysu){
@@ -60,26 +64,11 @@ class MeshRenderer extends Component{
                 }
 
             }
-        }
+        }        
 
-        //TODO:灯光规则，选出最亮的平行光为主光（传入forwardbase pass)，
-        //如果存在forwardadd pass, 则剩下的灯光中选择不大于MaxForwardAddLights的数量的光为逐像素光（传入forwardadd pass)
-        //如果不存在forwardadd pass，则剩下的灯光中选择MaxVertexLights数量的光为逐顶点光（传入forwardbase pass)
-        let mainLight = null;
-        let pixelLights = [];
-        for(let light of lights){                
-            if(mainLight==null && light.type == LightType.Directional){
-                mainLight = light;
-                break;
-            }            
-        }    
-        for(let light of lights){
-            if(light != mainLight){
-                pixelLights.push(light);
-            }
-        }    
 
         //避免render to texture时渲染使用了该RT的材质，否则会出现错误 Feedback loop formed between Framebuffer and active Texture.
+        //TODO:有RT的camera的渲染要独立出来先渲染。另外要实现camera stack
         if(camera.target!=null && camera.target.texture2D == this.material.mainTexture){
             return;
         }
@@ -95,7 +84,7 @@ class MeshRenderer extends Component{
 
             } else if(pass.lightMode == LightMode.ForwardAdd){
                 let idx = 1;
-                for(let light of pixelLights){
+                for(let light of addlights){
                     if(light.type == LightType.Directional){
                         let lightForward = mainLight.node.forward.negative();
                         uniformContext[SystemUniforms.WorldLightPos] = [lightForward.x, lightForward.y, lightForward.z, 0.0];                        
